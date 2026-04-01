@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Canvas worktree sessions
+canvas_worktrees/
+
+# UI Studio process artifacts (iteration history, moodboard items, explorations)
+# Approved designs live in design/ — ui-studio/ is the working directory
+ui-studio/
+
+# Superpowers scratch
+.superpowers/
