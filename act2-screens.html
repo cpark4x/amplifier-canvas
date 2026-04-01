@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Act 2 — Working Screens</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0E0E12;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      padding: 32px;
+      color: #E2E2E8;
+    }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #555568; margin-bottom: 36px; }
+
+    .screen { margin-bottom: 40px; }
+    .label {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 10px;
+    }
+    .step {
+      font-size: 10px; font-weight: 700;
+      padding: 3px 8px; border-radius: 4px;
+      background: #1A1A24; color: #555568;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .screen-title { font-size: 13px; font-weight: 600; color: #D8D4CE; }
+    .screen-desc  { font-size: 11px; color: #555568; }
+    img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #1E1E2A;
+      display: block;
+      cursor: zoom-in;
+    }
+
+    /* Lightbox */
+    .lb { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:99; align-items:center; justify-content:center; cursor:zoom-out; }
+    .lb.open { display:flex; }
+    .lb img { max-width:92vw; max-height:92vh; border-radius:6px; border:none; }
+  </style>
+</head>
+<body>
+
+<h1>Act 2 — Working</h1>
+<p class="subtitle">5 screens · Carbon & Amber theme · March 30 2026</p>
+
+<div class="screen">
+  <div class="label">
+    <span class="step">Step 1</span>
+    <div>
+      <div class="screen-title">View Document</div>
+      <div class="screen-desc">User opens VISION.md from their session — appears in right panel as a tab, rendered in Preview mode</div>
+    </div>
+  </div>
+  <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/frames/screen-5-open-vision-doc/v2-carbon.png" onclick="zoom(this)" />
+</div>
+
+<div class="screen">
+  <div class="label">
+    <span class="step">Step 2</span>
+    <div>
+      <div class="screen-title">Toggle to Source</div>
+      <div class="screen-desc">Same tab, user clicks Source toggle — raw markdown with line numbers replaces the rendered view</div>
+    </div>
+  </div>
+  <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/frames/screen-8-source-view/v3-carbon.png" onclick="zoom(this)" />
+</div>
+
+<div class="screen">
+  <div class="label">
+    <span class="step">Step 3</span>
+    <div>
+      <div class="screen-title">Browse File System</div>
+      <div class="screen-desc">User types "browse docs" — FILES tab goes active, file browser appears, VISION.md tab persists, user hovers OUTCOMES.md</div>
+    </div>
+  </div>
+  <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/frames/screen-6-file-panel-states/v3-carbon-browse.png" onclick="zoom(this)" />
+</div>
+
+<div class="screen">
+  <div class="label">
+    <span class="step">Step 4</span>
+    <div>
+      <div class="screen-title">Two Documents Open</div>
+      <div class="screen-desc">OUTCOMES.md opens as a second tab — both tabs visible, OUTCOMES.md active, VISION.md dimmed but present</div>
+    </div>
+  </div>
+  <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/frames/screen-7-file-view/v3-carbon-dual-docs.png" onclick="zoom(this)" />
+</div>
+
+<div class="screen">
+  <div class="label">
+    <span class="step">Step 5</span>
+    <div>
+      <div class="screen-title">App Preview</div>
+      <div class="screen-desc">User runs "amplifier run dev" — APP tab goes active showing live app at localhost:3000, all 4 tabs visible</div>
+    </div>
+  </div>
+  <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/frames/screen-9-app-preview/v2-carbon.png" onclick="zoom(this)" />
+</div>
+
+<div class="lb" id="lb" onclick="this.classList.remove('open')">
+  <img id="lb-img" src="" />
+</div>
+<script>
+  function zoom(el) {
+    document.getElementById('lb-img').src = el.src;
+    document.getElementById('lb').classList.add('open');
+  }
+  document.addEventListener('keydown', e => { if(e.key==='Escape') document.getElementById('lb').classList.remove('open'); });
+</script>
+</body>
+</html>

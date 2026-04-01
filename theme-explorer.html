@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Screen 14 — Theme Exploration</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0E0E12;
+      color: #E2E2E8;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      padding: 40px 32px 80px;
+      min-height: 100vh;
+    }
+
+    header {
+      max-width: 1200px;
+      margin: 0 auto 48px;
+      border-bottom: 1px solid #1E1E2A;
+      padding-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #E2E2E8;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 13px;
+      color: #666680;
+    }
+
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .card {
+      border: 1px solid #1E1E2A;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #111116;
+      transition: border-color 0.15s ease;
+    }
+
+    .card:hover { border-color: #2E2E42; }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .r1 { background: #C9A96E22; color: #C9A96E; border: 1px solid #C9A96E44; }
+    .r2 { background: #6366F122; color: #8B8EF8; border: 1px solid #6366F144; }
+    .r3 { background: #10B98122; color: #34D399; border: 1px solid #10B98144; }
+    .r4, .r5, .r6 { background: #2A2A36; color: #8888A8; border: 1px solid #2E2E42; }
+    .r7, .r8, .r9, .r10 { background: #1E1E28; color: #555568; border: 1px solid #252532; }
+
+    .card-header {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #1A1A24;
+    }
+
+    .card-title { flex: 1; }
+    .card-title h2 { font-size: 13px; font-weight: 600; color: #D8D8E8; letter-spacing: -0.01em; }
+    .card-title p { font-size: 11px; color: #555568; margin-top: 2px; }
+
+    .score {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 4px;
+    }
+
+    .s-hi { background: #10B98118; color: #34D399; border: 1px solid #10B98130; }
+    .s-md { background: #6366F118; color: #8B8EF8; border: 1px solid #6366F130; }
+    .s-lo { background: #88888818; color: #888890; border: 1px solid #88888830; }
+
+    .card img { width: 100%; display: block; cursor: zoom-in; }
+
+    .card-footer { padding: 12px 16px; border-top: 1px solid #1A1A24; }
+    .card-footer p { font-size: 11px; color: #555568; line-height: 1.55; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: #1A1A24;
+      color: #666680;
+      border: 1px solid #222232;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    footer {
+      max-width: 1200px;
+      margin: 48px auto 0;
+      border-top: 1px solid #1E1E2A;
+      padding-top: 20px;
+      text-align: center;
+      font-size: 11px;
+      color: #333344;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Screen 14 — Merge Complete · Theme Exploration</h1>
+  <p>10 directions · ranked 1–10 by design quality, distinctiveness &amp; polish · March 30, 2026</p>
+</header>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r1">1</span>
+      <div class="card-title">
+        <h2>Phosphor Terminal</h2>
+        <p>CRT phosphor green · retro computing elevated to precision art</p>
+      </div>
+      <span class="score s-hi">9.0</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-05-phosphor-terminal.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>The only theme creating a genuinely new visual language. 10/10 distinctiveness — CRT scanlines, phosphor green monochrome, pure monospace throughout. No developer tool on the market looks like this.</p>
+      <div class="tags">
+        <span class="tag">DARK</span><span class="tag">MONOCHROME</span><span class="tag">RETRO</span><span class="tag">🏆 MOST DISTINCTIVE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r2">2</span>
+      <div class="card-title">
+        <h2>Arctic Monochrome</h2>
+        <p>Scandinavian minimalism · typography is the entire design system</p>
+      </div>
+      <span class="score s-hi">8.4</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-04-arctic-monochrome.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>9/10 visual, 9/10 polish. Monospace everywhere — not just code. Dieter Rams / Braun applied to developer tooling. One accent color, zero decoration, maximum typographic hierarchy.</p>
+      <div class="tags">
+        <span class="tag">LIGHT</span><span class="tag">MINIMAL</span><span class="tag">BRUTALIST</span><span class="tag">TYPOGRAPHIC</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r3">3</span>
+      <div class="card-title">
+        <h2>Carbon &amp; Amber</h2>
+        <p>Mature dark · Raycast energy · thermal amber contrast</p>
+      </div>
+      <span class="score s-hi">8.1</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-08-carbon-amber.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>9/10 visual, 9/10 polish. Most shippable theme in the set. Amber as the sole accent against full carbon creates thermal tension — the entire aesthetic is built on this contrast. Porsche interior in software form.</p>
+      <div class="tags">
+        <span class="tag">DARK</span><span class="tag">MATURE</span><span class="tag">AMBER</span><span class="tag">🚢 MOST SHIPPABLE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r4">4</span>
+      <div class="card-title">
+        <h2>Midnight Indigo</h2>
+        <p>Linear / Vercel dark · premium precision-engineered</p>
+      </div>
+      <span class="score s-hi">8.25</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-01-midnight-indigo.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>9/10 visual, 9.5/10 polish. Lowest-risk highest-reward option. Competes directly with Linear and Vercel. Near-flawless execution but doesn't invent a new paradigm — it perfects the existing one.</p>
+      <div class="tags">
+        <span class="tag">DARK</span><span class="tag">INDIGO</span><span class="tag">PREMIUM</span><span class="tag">SAFE CHOICE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r4">5</span>
+      <div class="card-title">
+        <h2>Paper &amp; Ink</h2>
+        <p>Warm parchment editorial · craft indie-tool aesthetic</p>
+      </div>
+      <span class="score s-md">8.15</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-02-paper-ink.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>9/10 distinctiveness. Boldest light-mode in the set. The warm parchment + stark dark terminal creates maximum dramatic tension. Hemingway novel as app. Held back by minor content rendering artifacts.</p>
+      <div class="tags">
+        <span class="tag">LIGHT</span><span class="tag">WARM</span><span class="tag">EDITORIAL</span><span class="tag">DISTINCTIVE LIGHT</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r4">6</span>
+      <div class="card-title">
+        <h2>Obsidian Gold</h2>
+        <p>Ultra-luxury dark · Bloomberg Terminal elevated · gold = success</p>
+      </div>
+      <span class="score s-md">7.7</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-06-obsidian-gold.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>8/10 visual, 9/10 polish. Gold-as-success-state is the most memorable single design decision in the entire set. Feels like a financial terminal a luxury bank would build. Highest ceiling of any theme.</p>
+      <div class="tags">
+        <span class="tag">DARK</span><span class="tag">GOLD</span><span class="tag">LUXURY</span><span class="tag">ENTERPRISE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r7">7</span>
+      <div class="card-title">
+        <h2>Midnight Forest</h2>
+        <p>Deep forest green dark · fully monochromatic green world</p>
+      </div>
+      <span class="score s-md">7.7</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-10-midnight-forest.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>8/10 visual, 8/10 polish. The fully green monochromatic world is deeply considered. Bright leaf mint accent used surgically. Scores lower on distinctiveness and has secondary text contrast concerns.</p>
+      <div class="tags">
+        <span class="tag">DARK</span><span class="tag">MONOCHROMATIC</span><span class="tag">FOREST</span><span class="tag">MINT ACCENT</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r7">8</span>
+      <div class="card-title">
+        <h2>Slate &amp; Terracotta</h2>
+        <p>Clean SaaS light · Stripe / Vercel energy · warm terracotta pop</p>
+      </div>
+      <span class="score s-md">7.3</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-09-slate-terracotta.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>8.5/10 visual quality but lowest distinctiveness. Cleanest light mode, would appeal most to enterprise / non-developer users. Safe but solid — terracotta is a surprisingly warm surprise in the cool palette.</p>
+      <div class="tags">
+        <span class="tag">LIGHT</span><span class="tag">SAAS</span><span class="tag">ENTERPRISE</span><span class="tag">CONVENTIONAL</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r9">9</span>
+      <div class="card-title">
+        <h2>Tokyo Night</h2>
+        <p>Navy-purple dark · electric pink + cyan · polished cyberpunk</p>
+      </div>
+      <span class="score s-lo">6.4</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-03-tokyo-night.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>Good concept, execution issues. Active sidebar block is too heavy and dominates the layout; terminal has a floating "pasted on" feel. High potential — needs a focused refinement pass to unlock it.</p>
+      <div class="tags">
+        <span class="tag">DARK</span><span class="tag">CYBERPUNK</span><span class="tag">NEEDS WORK</span><span class="tag">HIGH POTENTIAL</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="rank-badge r10">10</span>
+      <div class="card-title">
+        <h2>Sage Studio</h2>
+        <p>Japanese minimalism light · forest green terminal · calm palette</p>
+      </div>
+      <span class="score s-lo">6.4</span>
+    </div>
+    <img src="/Users/chrispark/Projects/canvas-app2/ui-studio/exploration/screen-14-themes/theme-07-sage-studio.png" onclick="openLightbox(this)" />
+    <div class="card-footer">
+      <p>Critical render issues: placeholder spec text visible in output, terminal text garbled. The underlying concept (calm sage + forest green terminal) is genuinely beautiful — worth a full redo with tighter prompting.</p>
+      <div class="tags">
+        <span class="tag">LIGHT</span><span class="tag">SAGE</span><span class="tag">BROKEN RENDER</span><span class="tag">WORTH REDO</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  canvas-app2 · ui-studio/exploration/screen-14-themes · 10 themes · March 30 2026
+</footer>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lb" onclick="closeLightbox()">
+  <img id="lb-img" src="" alt="" />
+</div>
+
+<script>
+  function openLightbox(el) {
+    document.getElementById('lb-img').src = el.src;
+    document.getElementById('lb').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lb').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+
+</body>
+</html>
