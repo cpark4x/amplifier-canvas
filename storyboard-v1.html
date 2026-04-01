@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amplifier Canvas — Product Storyboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #F0EBE3;
+      color: #1C1A16;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      padding: 0 0 96px;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 36px 64px 32px;
+      border-bottom: 1px solid #DDD5C8;
+      margin-bottom: 64px;
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: #1A0F00;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-mark span {
+      color: #F59E0B;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1C1A16;
+      letter-spacing: -0.2px;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: #8A8278;
+      letter-spacing: 0.1px;
+    }
+
+    /* ── Page body ── */
+    .page-body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    /* ── Act header ── */
+    .act-header {
+      margin-bottom: 40px;
+    }
+
+    .act-header + .act-header {
+      margin-top: 80px;
+    }
+
+    .act-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1C1A16;
+      letter-spacing: 0.3px;
+      margin-bottom: 10px;
+    }
+
+    .act-divider {
+      height: 1px;
+      background: #DDD5C8;
+    }
+
+    /* ── Screen card ── */
+    .screen-card {
+      margin-bottom: 48px;
+    }
+
+    .screen-meta {
+      margin-bottom: 10px;
+    }
+
+    .step-label {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #F59E0B;
+      margin-bottom: 6px;
+    }
+
+    .screen-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1C1A16;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+
+    .screen-description {
+      font-size: 13px;
+      color: #8A8278;
+    }
+
+    /* ── Image frame ── */
+    .screen-image-wrap {
+      margin-top: 14px;
+      cursor: zoom-in;
+    }
+
+    .screen-image-wrap img {
+      display: block;
+      width: 100%;
+      border-radius: 6px;
+      box-shadow:
+        0 1px 3px rgba(0,0,0,0.07),
+        0 4px 12px rgba(0,0,0,0.08),
+        0 12px 32px rgba(0,0,0,0.06);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .screen-image-wrap:hover img {
+      box-shadow:
+        0 1px 3px rgba(0,0,0,0.09),
+        0 6px 20px rgba(0,0,0,0.11),
+        0 20px 48px rgba(0,0,0,0.09);
+    }
+
+    /* ── Lightbox ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 16, 10, 0.88);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    #lightbox.open {
+      display: flex;
+    }
+
+    #lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 6px;
+      object-fit: contain;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      cursor: default;
+    }
+
+    #lightbox-close {
+      position: fixed;
+      top: 24px;
+      right: 28px;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="logo-mark"><span>C</span></div>
+    <div class="header-text">
+      <div class="header-title">Amplifier Canvas</div>
+      <div class="header-subtitle">Product Storyboard · Carbon &amp; Amber Light</div>
+    </div>
+  </header>
+
+  <!-- Page body -->
+  <main class="page-body">
+
+    <!-- Act 1 -->
+    <div class="act-header">
+      <div class="act-label">Act 1 — Getting Started</div>
+      <div class="act-divider"></div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 1</div>
+        <div class="screen-title">Welcome</div>
+        <div class="screen-description">First launch — empty workspace, no projects yet.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act1-light/v2-screen-1.png" alt="Welcome screen" />
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 2</div>
+        <div class="screen-title">Create Project</div>
+        <div class="screen-description">User creates their first project via the New Project dialog.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act1-light/v3-screen-2.png" alt="Create Project screen" />
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 3</div>
+        <div class="screen-title">Session Started</div>
+        <div class="screen-description">Canvas-App project created — Amplifier session is live and waiting.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act1-light/v2-screen-3.png" alt="Session Started screen" />
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 4</div>
+        <div class="screen-title">Opening a Document</div>
+        <div class="screen-description">User asks Amplifier to show the project vision — the file panel opens for the first time.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act1-light/v3-screen-4.png" alt="Opening a Document screen" />
+      </div>
+    </div>
+
+    <!-- Act 2 -->
+    <div class="act-header">
+      <div class="act-label">Act 2 — The Workspace in Action</div>
+      <div class="act-divider"></div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 5</div>
+        <div class="screen-title">Browse Files</div>
+        <div class="screen-description">User clicks the browse icon — file index appears in the same visual language as the document.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act2-light/final-screen-5-v2.png" alt="Browse Files screen" />
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 6</div>
+        <div class="screen-title">Two Documents Open</div>
+        <div class="screen-description">User opens OUTCOMES.md — both files accessible as sub-tabs.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act2-light/final-screen-6-v2.png" alt="Two Documents Open screen" />
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 7</div>
+        <div class="screen-title">Source View</div>
+        <div class="screen-description">User switches to VISION.md and views the raw markdown source.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act2-light/final-screen-7-v2.png" alt="Source View screen" />
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="screen-meta">
+        <div class="step-label">Step 8</div>
+        <div class="screen-title">App Preview</div>
+        <div class="screen-description">User runs the dev server — live app preview loads in the App panel.</div>
+      </div>
+      <div class="screen-image-wrap" onclick="openLightbox(this)">
+        <img src="../../ui-studio/frames/act2-light/final-screen-8-v2.png" alt="App Preview screen" />
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Lightbox -->
+  <div id="lightbox" onclick="closeLightbox()">
+    <div id="lightbox-close">ESC to close</div>
+    <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()" />
+  </div>
+
+  <script>
+    function openLightbox(wrap) {
+      const img = wrap.querySelector('img');
+      document.getElementById('lightbox-img').src = img.src;
+      document.getElementById('lightbox-img').alt = img.alt;
+      document.getElementById('lightbox').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+
+</body>
+</html>

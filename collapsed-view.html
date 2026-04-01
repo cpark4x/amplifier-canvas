@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Canvas App — Collapsed Sidebar</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0E0E10;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    height: 38px;
+    background: #111114;
+    border-bottom: 1px solid #1E1E24;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  .header-left { display: flex; align-items: center; gap: 6px; flex: 1; font-size: 13px; color: #D8D4CE; }
+  .header-left .sep    { color: #444456; }
+  .header-left .branch { color: #78787E; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .header-icon  { color: #555568; font-size: 14px; cursor: pointer; }
+  .header-icon:hover { color: #D8D4CE; }
+  .logo-mark {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: #1A0F00;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #F59E0B; cursor: pointer;
+  }
+
+  /* ── BODY ── */
+  .body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── COLLAPSED SIDEBAR ── */
+  .sidebar-collapsed {
+    width: 80px;
+    flex-shrink: 0;
+    background: #141416;
+    border-right: 1px solid #1E1E22;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .expand-btn {
+    height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    color: #2E2E3A; font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #1A1A1E;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .expand-btn:hover { color: #666678; }
+
+  .s-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 9px 10px 9px 0;
+    cursor: pointer;
+    border-bottom: 1px solid #18181C;
+  }
+  .s-row:hover { background: #1C1C20; }
+
+  .s-bar {
+    width: 3px;
+    align-self: stretch;
+    border-radius: 0 2px 2px 0;
+    margin-right: 9px;
+    flex-shrink: 0;
+  }
+
+  .s-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .s-name {
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .s-status { font-size: 10px; line-height: 1.3; }
+
+  /* ── STATES ── */
+
+  /* Waiting on you */
+  .waiting             { background: rgba(245,158,11,0.05); }
+  .waiting .s-bar      { background: #F59E0B; }
+  .waiting .s-name     { color: #D8D4CE; }
+  .waiting .s-status   { color: #F59E0B; }
+
+  /* Failed, unread */
+  .failed              { background: rgba(239,68,68,0.05); }
+  .failed .s-bar       { background: #EF4444; }
+  .failed .s-name      { color: #D8D4CE; }
+  .failed .s-status    { color: #EF4444; }
+
+  /* Finished, unread */
+  .unread              { background: rgba(255,255,255,0.025); }
+  .unread .s-bar       { background: #D8D4CE; }
+  .unread .s-name      { color: #D8D4CE; }
+  .unread .s-status    { color: #888898; }
+
+  /* Running */
+  .running .s-bar      { background: #F59E0B; animation: pulse 2s ease-in-out infinite; }
+  .running .s-name     { color: #A8A4A0; }
+  .running .s-status   { color: #F59E0B; }
+
+  /* Finished, read — fades away */
+  .read                { pointer-events: none; }
+  .read .s-bar         { background: transparent; }
+  .read .s-name        { color: #252530; }
+  .read .s-status      { color: #1E1E28; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── TERMINAL ── */
+  .terminal-pane {
+    flex: 1;
+    background: #1A1A1C;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid #1E1E22;
+    padding: 14px;
+  }
+  .terminal-box {
+    background: #0A0A0C;
+    border: 1px solid #262626;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: "JetBrains Mono", "Fira Code", "Menlo", monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .t-prompt  { color: #F59E0B; }
+  .t-cmd     { color: #C8C4BE; }
+  .t-output  { color: #555568; }
+  .t-success { color: #F59E0B; font-weight: 600; }
+  .t-hash    { color: #787880; }
+  .t-url     { color: #3A3A48; }
+  .t-cursor  { color: #F59E0B; animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    width: 300px;
+    flex-shrink: 0;
+    background: #1E1E22;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid #252528;
+    padding: 0 14px;
+    flex-shrink: 0;
+  }
+  .panel-tab {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+    color: #444456; padding: 10px 8px 9px;
+    cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .panel-tab.active { color: #D8D4CE; border-bottom-color: #F59E0B; }
+  .panel-tab:hover:not(.active) { color: #777788; }
+
+  .panel-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  .merge-card { background: #252528; border-radius: 7px; padding: 12px; }
+  .merge-card-header { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .merge-check  { color: #F59E0B; font-size: 14px; }
+  .merge-title  { font-size: 12px; font-weight: 600; color: #D8D4CE; }
+  .merge-meta   { font-size: 10px; color: #555568; margin-bottom: 8px; }
+  .merge-chips  { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #1E1E22; color: #78787E; font-family: monospace; }
+  .chip-pass { color: #34D399; }
+
+  .section-label { font-size: 9px; font-weight: 600; color: #3A3A48; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 7px; }
+
+  .file-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #232326; }
+  .file-name { color: #888898; font-family: monospace; font-size: 10px; }
+  .file-tag  { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; letter-spacing: 0.04em; }
+  .tag-updated { background: #1E1E22; color: #444456; }
+  .tag-new     { background: #231500; color: #F59E0B; }
+
+  .panel-footer { padding: 10px 14px; border-top: 1px solid #252528; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .footer-count { font-size: 10px; color: #3A3A48; }
+  .footer-link  { font-size: 10px; color: #F59E0B; cursor: pointer; }
+  .footer-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span style="color:#333344;font-size:14px;cursor:pointer;">›</span>
+    <span>Canvas-App</span>
+    <span class="sep">/</span>
+    <span class="branch">main</span>
+  </div>
+  <div class="header-right">
+    <span class="header-icon">⊞</span>
+    <span class="header-icon">⚙</span>
+    <div class="logo-mark">C</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- COLLAPSED SIDEBAR -->
+  <div class="sidebar-collapsed">
+    <div class="expand-btn">›</div>
+
+    <div class="s-row waiting">
+      <div class="s-bar"></div>
+      <div class="s-text">
+        <span class="s-name">Amp Core</span>
+        <span class="s-status">waiting</span>
+      </div>
+    </div>
+
+    <div class="s-row failed">
+      <div class="s-bar"></div>
+      <div class="s-text">
+        <span class="s-name">Team</span>
+        <span class="s-status">failed</span>
+      </div>
+    </div>
+
+    <div class="s-row unread">
+      <div class="s-bar"></div>
+      <div class="s-text">
+        <span class="s-name">Canvas</span>
+        <span class="s-status">done</span>
+      </div>
+    </div>
+
+    <div class="s-row running">
+      <div class="s-bar"></div>
+      <div class="s-text">
+        <span class="s-name">Ridecast</span>
+        <span class="s-status">running</span>
+      </div>
+    </div>
+
+    <div class="s-row read">
+      <div class="s-bar"></div>
+      <div class="s-text">
+        <span class="s-name">Infra</span>
+        <span class="s-status">done</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="terminal-pane">
+    <div class="terminal-box">
+      <div><span class="t-prompt">❯ </span><span class="t-cmd">amplifier merge --branch main</span></div>
+      <div><span class="t-output">Checking branch status...</span></div>
+      <div><span class="t-output">Running pre-merge checks... </span><span style="color:#34D399">✓</span></div>
+      <div>&nbsp;</div>
+      <div><span class="t-prompt">❯ </span><span class="t-cmd">git add -A</span></div>
+      <div><span class="t-prompt">❯ </span><span class="t-cmd">git commit -m "feat: implement new design system components"</span></div>
+      <div><span class="t-hash">[main a3f2b1c] feat: implement new design system components</span></div>
+      <div><span class="t-output">&nbsp;23 files changed, 847 insertions(+), 124 deletions(-)</span></div>
+      <div>&nbsp;</div>
+      <div><span class="t-prompt">❯ </span><span class="t-cmd">git push origin main</span></div>
+      <div><span class="t-output">Enumerating objects: 31, done.</span></div>
+      <div><span class="t-url">To https://github.com/canvas-app/canvas-app.git</span></div>
+      <div><span class="t-url">&nbsp;&nbsp; 8f3a2e4..a3f2b1c  main → main</span></div>
+      <div>&nbsp;</div>
+      <div><span class="t-success">✓ Merged to main successfully</span></div>
+      <div>&nbsp;</div>
+      <div><span class="t-prompt">amplifier&nbsp;</span><span class="t-cursor">▋</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="panel-tabs">
+      <div class="panel-tab">FILES</div>
+      <div class="panel-tab">ANALYSIS</div>
+      <div class="panel-tab">APP</div>
+      <div class="panel-tab active">CHANGES</div>
+      <div style="margin-left:auto;display:flex;align-items:center;color:#333344;font-size:11px;cursor:pointer;">✕</div>
+    </div>
+    <div class="panel-body">
+      <div class="merge-card">
+        <div class="merge-card-header">
+          <span class="merge-check">✓</span>
+          <span class="merge-title">Merged to main</span>
+        </div>
+        <div class="merge-meta">a3f2b1c &bull; 2h 20m ago</div>
+        <div class="merge-chips">
+          <span class="chip">a3f2b1c</span>
+          <span class="chip">23 files</span>
+          <span class="chip chip-pass">12/12 tests ✓</span>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Summary</div>
+        <div style="font-size:11px;color:#4A4A58;line-height:1.6;">Added ProjectPicker component and updated the design system with new tokens and spacing.</div>
+      </div>
+      <div>
+        <div class="section-label">Changes</div>
+        <div class="file-row"><span class="file-name">Header.tsx</span><span class="file-tag tag-updated">UPDATED</span></div>
+        <div class="file-row"><span class="file-name">ProjectPicker.tsx</span><span class="file-tag tag-new">NEW</span></div>
+        <div class="file-row"><span class="file-name">Sidebar.tsx</span><span class="file-tag tag-updated">UPDATED</span></div>
+        <div class="file-row"><span class="file-name">tokens.ts</span><span class="file-tag tag-updated">UPDATED</span></div>
+        <div class="file-row"><span class="file-name">theme.ts</span><span class="file-tag tag-new">NEW</span></div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <span class="footer-count">23 files total</span>
+      <a class="footer-link">View on GitHub →</a>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
