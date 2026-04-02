@@ -1,113 +1,120 @@
-# Generating New Screens
+# Building New Screens
 
-How to create accurate new screens for Amplifier Canvas without drift from the design system.
+How to add new screens to Amplifier Canvas while staying consistent with the design system.
 
-## The Problem
+## The Approach: HTML-First
 
-Text descriptions of the design system lose fidelity through the AI generation pipeline. "#F59E0B amber" becomes "amber-ish" becomes sage green. The fix is a closed loop: the canonical HTML renders the design → screenshots anchor generation → new output stays consistent.
+screens.html is the product. New screens are built directly as HTML/CSS inside it. No PNG generation step, no fidelity gap, no rebuilding from images. The CSS variables and existing components ARE the design system -- reuse them.
 
 ## The Reference Kit
 
-`design/reference/` contains screenshots taken directly from screens.html -- the single source of visual truth.
+`design/reference/` contains screenshots taken from screens.html. Their purpose is visual context for the person (or AI) writing the HTML -- not input to an image generator.
 
-| File | What it shows | Use as reference when... |
-|------|---------------|--------------------------|
-| `component-sheet.png` | Color palette, typography, sidebar components, header, tabs, 5 session states | **Every generation.** Always include this. |
-| `welcome.png` | Empty sidebar, header, warm background, amber CTA | Generating onboarding or empty-state screens |
-| `session-started.png` | Active session, full-width terminal, amber status dot | Generating terminal-focused screens |
-| `two-panel.png` | Sidebar + terminal + viewer with file content | Generating any two-panel layout |
-| `app-preview.png` | Terminal + APP tab with live preview | Generating preview or embedded content screens |
-| `dual-sessions.png` | Multiple sessions in different states | Generating multi-session or sidebar-heavy screens |
-| `session-analysis.png` | ANALYSIS tab with structured data | Generating data-rich or stats screens |
-| `project-overview.png` | Project-level AI assessment and outcomes | Generating project-level or dashboard screens |
+| File | What it shows | Look at this when building... |
+|------|---------------|-------------------------------|
+| `component-sheet.png` | Color palette, typography, sidebar states, header, tabs, session indicators | Any new screen -- the full component vocabulary |
+| `welcome.png` | Empty sidebar, header, amber CTA | Onboarding or empty states |
+| `session-started.png` | Active session, full-width terminal | Terminal-only layouts |
+| `two-panel.png` | Sidebar + terminal + viewer with file content | Any two-panel layout |
+| `app-preview.png` | Terminal + APP tab with live preview | Embedded content / preview screens |
+| `dual-sessions.png` | Multiple sessions in different states | Multi-session sidebar |
+| `session-analysis.png` | ANALYSIS tab with structured data | Data-rich or stats screens |
+| `project-overview.png` | Project-level AI assessment | Dashboard or project-level screens |
 
 ## The Workflow
 
 ### Step 1: Write the scene in STORYBOARD.md
 
-Before generating anything visual, write the narrative beat:
+Before touching HTML, write the narrative beat:
 - What happens in this scene?
 - Why does this moment matter?
-- What components appear?
+- What components appear? (sidebar state, terminal content, viewer tabs, etc.)
 
-The scene description is the generation prompt's foundation.
+### Step 2: Identify existing components to reuse
 
-### Step 2: Choose reference images
+Open screens.html and find the closest existing screen. Most new screens are a recombination of existing parts:
 
-Always include `component-sheet.png`. Then pick 1-2 screen references that are closest to what you're building:
+| Component | Where it exists | CSS class / pattern |
+|-----------|----------------|---------------------|
+| Sidebar (empty) | Act 1 Step 1 | `.sidebar` |
+| Sidebar (with sessions) | Act 1 Step 3+ | `.session-item`, `.status-dot` |
+| Header bar | Every screen | `.header` |
+| Full-width terminal | Act 1 Step 3 | `.terminal` (no viewer) |
+| Two-panel (terminal + viewer) | Act 2 Step 2+ | `.main-content` with `.terminal` + `.viewer` |
+| Viewer tab bar | Act 2+ | `.viewer-tabs` with `.tab.active` |
+| File tab bar | Act 2 Step 2+ | `.file-tabs` |
+| Toast notification | Act 3 Step 2 | `.toast` |
+| Session analysis | Act 3 Step 3 | ANALYSIS tab content |
+| Project overview | Act 3 Step 6 | Full-width structured content |
 
-```
-Building a new settings screen?
-→ component-sheet.png (always)
-→ project-overview.png (similar layout: full-width content area with structured sections)
+### Step 3: Build the screen in screens.html
 
-Building a multi-project sidebar view?
-→ component-sheet.png (always)
-→ dual-sessions.png (sidebar with multiple items)
-→ welcome.png (the empty/minimal sidebar state)
-```
+Copy the closest existing screen's HTML structure. Change the content, not the components. The CSS variables enforce the design system:
 
-### Step 3: Generate with references
-
-```python
-nano-banana(
-    operation="generate",
-    prompt="[Scene description from STORYBOARD.md + specific component instructions]",
-    reference_image_paths=[
-        "design/reference/component-sheet.png",   # always
-        "design/reference/[closest-screen].png",   # pick 1-2
-    ],
-    output_path="design/reference/[new-screen].png"
-)
-```
-
-### Step 4: Compare against reference
-
-After generating, compare the output to the reference screenshots:
-
-```python
-nano-banana(
-    operation="compare",
-    image1_path="design/reference/[closest-existing-screen].png",
-    image2_path="design/reference/[new-screen].png",
-    prompt="Compare these two screens from the same app. Check:
-    1. Does the sidebar match (background color, typography, session item style)?
-    2. Does the header match (height, logo, icon style)?
-    3. Is the accent color the same amber (#F59E0B)?
-    4. Is the terminal background the same dark (#0F0E0C)?
-    5. Is the overall background the same warm paper white?
-    Flag any visual inconsistencies."
-)
+```css
+/* These are already defined in screens.html -- don't redefine them */
+--bg-primary: #F0EBE3;      /* warm paper white */
+--bg-sidebar: #F0EBE3;      /* same warm tone */
+--bg-terminal: #0F0E0C;     /* deep carbon */
+--text-primary: #2A2A2A;    /* warm charcoal */
+--text-secondary: #A8A098;  /* warm gray */
+--accent: #F59E0B;          /* amber */
+--success: #3ECF8E;         /* emerald */
 ```
 
-### Step 5: Build in screens.html
+### Step 4: Screenshot and verify
 
-Once the generated image is approved, implement it as HTML/CSS in screens.html. The HTML version becomes the new canonical reference. Screenshot it to update the reference kit if it introduces new components.
+After building, screenshot the new screen and compare it visually to an existing reference:
 
-## Rules
+1. Open screens.html in browser at 1440px viewport
+2. Scroll to the new screen
+3. Compare against `design/reference/[closest-screen].png` -- does it feel like the same app?
 
-1. **component-sheet.png is mandatory.** Every nano-banana generate call includes it as a reference image. No exceptions.
+If it introduces new components, screenshot it and add to `design/reference/`.
 
-2. **At least one screen reference.** Always include the closest existing screen screenshot alongside the component sheet. Two reference images minimum per generation.
+## When to Use Image Generation (Exploration Only)
 
-3. **Compare after every generation.** Use nano-banana compare to check the output against an existing screen before accepting it.
+Use nano-banana for **exploration** when you need to try radically different layouts or compositions before committing to HTML. This is optional, not the default path.
 
-4. **screens.html is always right.** If a generated PNG disagrees with what screens.html renders, the PNG is wrong. Regenerate or adjust.
+When you do explore with image generation:
+1. Always pass `component-sheet.png` + closest screen reference as `reference_image_paths`
+2. Treat the output as a sketch, not a deliverable
+3. Build the final version in HTML
 
-5. **Update the kit when screens.html grows.** After adding new acts/screens to screens.html, screenshot them and add to `design/reference/`. The reference kit must stay in sync with the canonical source.
+## Adding a New Act
+
+When adding an entire act (e.g., Act 4):
+
+1. Write all scenes in STORYBOARD.md first
+2. Add the act header in screens.html following the existing pattern:
+   ```html
+   <div class="act-header">
+     <div class="act-number">Act 4</div>
+     <div class="act-title">[Title]</div>
+     <div class="act-subtitle">[Subtitle]</div>
+   </div>
+   ```
+3. Build each screen by copying and modifying the closest existing screen
+4. Screenshot the completed act and add key screens to `design/reference/`
+5. Update STORYBOARD.md with visual references
 
 ## Refreshing the Reference Kit
 
-When screens.html changes (new screens added, design tweaks):
+When screens.html changes significantly:
 
-1. Open screens.html in a browser at 1440px viewport width
-2. Screenshot each new/changed screen at 1440x900
+1. Open in browser at 1440px viewport
+2. Screenshot new or changed screens at 1440x900
 3. Save to `design/reference/[descriptive-name].png`
-4. Regenerate `component-sheet.png` if any components changed (new states, new elements, palette adjustments)
+4. Regenerate `component-sheet.png` only if new component types are added (new session states, new panel types, new UI patterns)
 
-## What NOT to Do
+## Rules
 
-- **Don't generate from text alone.** Always pass reference images. Text-only prompts drift immediately.
-- **Don't use old PNGs as references.** Only use screenshots from the current screens.html. Old PNGs may have wrong colors.
-- **Don't skip the compare step.** A screen that "looks right" at a glance may have subtle palette drift that compounds across multiple screens.
-- **Don't keep generated PNGs as the source of truth.** They're exploration artifacts. screens.html is the source of truth. Build the final version there.
+1. **HTML is the deliverable.** New screens are built in screens.html. PNGs are exploration artifacts only.
+
+2. **Reuse, don't reinvent.** Every new screen should be assembled from existing components. If you need a new component, define it once and use it everywhere.
+
+3. **CSS variables are the design system.** Never hardcode colors. Use the variables. This is how consistency stays automatic.
+
+4. **screens.html is always right.** The reference screenshots are snapshots. If screens.html has been updated since the screenshots were taken, the HTML wins.
+
+5. **STORYBOARD.md before screens.html.** Write the story first. The scene description tells you which components to assemble. Don't design in HTML without knowing what moment you're capturing.
