@@ -4,11 +4,11 @@ How to add new screens to Amplifier Canvas while staying consistent with the des
 
 ## The Approach: HTML-First
 
-screens.html is the product. New screens are built directly as HTML/CSS inside it. No PNG generation step, no fidelity gap, no rebuilding from images. The CSS variables and existing components ARE the design system -- reuse them.
+canvas.html is the product. New screens are built directly as HTML/CSS inside it. No PNG generation step, no fidelity gap, no rebuilding from images. The CSS variables and existing components ARE the design system -- reuse them.
 
 ## The Reference Kit
 
-`design/reference/` contains screenshots taken from screens.html. Their purpose is visual context for the person (or AI) writing the HTML -- not input to an image generator.
+`design/reference/` contains screenshots taken from canvas.html. Their purpose is visual context for the person (or AI) writing the HTML -- not input to an image generator.
 
 | File | What it shows | Look at this when building... |
 |------|---------------|-------------------------------|
@@ -32,7 +32,7 @@ Before touching HTML, write the narrative beat:
 
 ### Step 2: Identify existing components to reuse
 
-Open screens.html and find the closest existing screen. Most new screens are a recombination of existing parts:
+Open canvas.html and find the closest existing screen. Most new screens are a recombination of existing parts:
 
 | Component | Where it exists | CSS class / pattern |
 |-----------|----------------|---------------------|
@@ -47,12 +47,12 @@ Open screens.html and find the closest existing screen. Most new screens are a r
 | Session analysis | Act 3 Step 3 | ANALYSIS tab content |
 | Project overview | Act 3 Step 6 | Full-width structured content |
 
-### Step 3: Build the screen in screens.html
+### Step 3: Build the screen in canvas.html
 
 Copy the closest existing screen's HTML structure. Change the content, not the components. The CSS variables enforce the design system:
 
 ```css
-/* These are already defined in screens.html -- don't redefine them */
+/* These are already defined in canvas.html -- don't redefine them */
 --bg-primary: #F0EBE3;      /* warm paper white */
 --bg-sidebar: #F0EBE3;      /* same warm tone */
 --bg-terminal: #0F0E0C;     /* deep carbon */
@@ -66,7 +66,7 @@ Copy the closest existing screen's HTML structure. Change the content, not the c
 
 After building, screenshot the new screen and compare it visually to an existing reference:
 
-1. Open screens.html in browser at 1440px viewport
+1. Open canvas.html in browser at 1440px viewport
 2. Scroll to the new screen
 3. Compare against `design/reference/[closest-screen].png` -- does it feel like the same app?
 
@@ -86,7 +86,7 @@ When you do explore with image generation:
 When adding an entire act (e.g., Act 4):
 
 1. Write all scenes in STORYBOARD.md first
-2. Add the act header in screens.html following the existing pattern:
+2. Add the act header in canvas.html following the existing pattern:
    ```html
    <div class="act-header">
      <div class="act-number">Act 4</div>
@@ -100,7 +100,7 @@ When adding an entire act (e.g., Act 4):
 
 ## Refreshing the Reference Kit
 
-When screens.html changes significantly:
+When canvas.html changes significantly:
 
 1. Open in browser at 1440px viewport
 2. Screenshot new or changed screens at 1440x900
@@ -109,12 +109,12 @@ When screens.html changes significantly:
 
 ## Rules
 
-1. **HTML is the deliverable.** New screens are built in screens.html. PNGs are exploration artifacts only.
+1. **HTML is the deliverable.** New screens are built in canvas.html. PNGs are exploration artifacts only.
 
 2. **Reuse, don't reinvent.** Every new screen should be assembled from existing components. If you need a new component, define it once and use it everywhere.
 
 3. **CSS variables are the design system.** Never hardcode colors. Use the variables. This is how consistency stays automatic.
 
-4. **screens.html is always right.** The reference screenshots are snapshots. If screens.html has been updated since the screenshots were taken, the HTML wins.
+4. **canvas.html is always right.** The reference screenshots are snapshots. If canvas.html has been updated since the screenshots were taken, the HTML wins.
 
-5. **STORYBOARD.md before screens.html.** Write the story first. The scene description tells you which components to assemble. Don't design in HTML without knowing what moment you're capturing.
+5. **STORYBOARD.md before canvas.html.** Write the story first. The scene description tells you which components to assemble. Don't design in HTML without knowing what moment you're capturing.

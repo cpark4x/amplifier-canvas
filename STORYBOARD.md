@@ -4,7 +4,7 @@
 >
 > **Emotional arc:** skepticism → utility → trust → ownership
 
-This document is the canonical narrative for Amplifier-Canvas. The story comes first. [screens.html](screens.html) illustrates it. Every design decision, every screen, every pixel exists to serve a moment in this story.
+This document is the canonical narrative for Amplifier-Canvas. The story comes first. [canvas.html](canvas.html) illustrates it. Every design decision, every screen, every pixel exists to serve a moment in this story.
 
 ---
 
@@ -20,7 +20,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 **Why this moment matters.** The welcome screen establishes Canvas's personality before anything functional happens. It's warm, not cold. Inviting, not overwhelming. The sidebar is already visible but empty — foreshadowing the structure that will fill in. The single call-to-action means zero decision paralysis.
 
-**Visual reference:** Open [screens.html](screens.html) — Act 1, Step 1
+**Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 1
 
 ### Scene 1.2 — New Project
 
@@ -28,7 +28,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 **Why this moment matters.** This is the only configuration moment in the entire onboarding. Two choices, both obvious. The "existing folder" option signals that Canvas respects your existing workflow — it doesn't force you to start from scratch. The modal is small, centered, and feels like a quick aside, not a commitment.
 
-**Visual reference:** Open [screens.html](screens.html) — Act 1, Step 2
+**Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 2
 
 ### Scene 1.3 — Session Started
 
@@ -267,7 +267,7 @@ Summarized from the v2 Maru-Anchored aesthetic brief. The full brief lives at [d
 
 ## Visual Reference
 
-**The canonical visual reference is [screens.html](screens.html).** Open it in any browser to see every screen at 1440×900, rendered as self-contained HTML/CSS with the actual design system (warm paper whites, amber accent, dark terminal). No PNGs needed — the prototype IS the spec.
+**The canonical visual reference is [canvas.html](canvas.html).** Open it in any browser to see every screen at 1440×900, rendered as self-contained HTML/CSS with the actual design system (warm paper whites, amber accent, dark terminal). No PNGs needed — the prototype IS the spec.
 
 Design specs for implementation live in `design/`:
 - [aesthetic-brief.md](design/aesthetic-brief.md) — palette, typography, anti-slop rules
@@ -322,4 +322,4 @@ For context on how this design evolved:
 | `9e2a4e4` | Storyboard: session naming, worktree isolation, PR result view (PR #1) |
 | `acd682c` | Major cleanup: reorganize design assets, remove expendable explorations |
 
-The exploration artifacts (act3-screens.html, sidebar-concept.html, theme-explorer.html, collapsed-view.html) were created during the `9e2a4e4` era and removed in `acd682c`. Their design decisions survive in this document and in screens.html.
+The exploration artifacts (act3-canvas.html, sidebar-concept.html, theme-explorer.html, collapsed-view.html) were created during the `9e2a4e4` era and removed in `acd682c`. Their design decisions survive in this document and in canvas.html.

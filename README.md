@@ -11,7 +11,7 @@ See [VISION.md](VISION.md) for the full product vision and [OUTCOMES.md](OUTCOME
 ## Project structure
 
 ```
-screens.html          The product -- self-contained HTML/CSS prototype, all acts, all screens
+canvas.html          The product -- self-contained HTML/CSS prototype, all acts, all screens
 VISION.md             Why this exists, principles, non-goals
 OUTCOMES.md           Measurable success criteria
 
@@ -24,7 +24,7 @@ design/
 
 ## Viewing the prototype
 
-Open `screens.html` in any browser. It's fully self-contained -- no build step, no dependencies, no external images. Pure HTML/CSS with inline SVG.
+Open `canvas.html` in any browser. It's fully self-contained -- no build step, no dependencies, no external images. Pure HTML/CSS with inline SVG.
 
 ## v1 capabilities
 
