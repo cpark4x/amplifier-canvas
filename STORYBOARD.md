@@ -38,7 +38,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 ---
 
-## Act 2 — Your First Session
+## Act 2 — Running my Amplifier CLI session
 
 **Job to be done:** Discover that Canvas adds value *on top of* the CLI, without ever getting in the way. The viewer earns its place.
 
@@ -76,7 +76,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 ---
 
-## Act 3 — Canvas Knows What You've Built
+## Act 3 — Managing my entire project
 
 **Job to be done:** Work across parallel sessions without conflicts, stay informed without interruption, and accumulate project-level memory that persists across sessions.
 
@@ -134,6 +134,59 @@ This act has three sub-arcs:
 **The beat.** You tap the HISTORY tab. At the top: the currently running session (Dark mode, amber dot, 34m, "View →"). Below a "History" label: every completed session — Auth module (today, 1h 12m, "Built session panel with live status indicators," PR #47 linked), then older sessions going back days. Each has a title auto-derived from its first prompt, a one-line summary, duration, and a "Resume →" action. At the bottom: "+ 3 more sessions."
 
 **Why this moment matters.** This is the final scene because it delivers the thesis: *nothing is ever lost*. Every session you've run lives here with a meaningful name, a summary, and a way back in. "Auth module" isn't `session_a3f2b1c` — it's a piece of work you can describe, find, and resume. This is the project memory that the CLI never had. The story ends with accumulation — your project is richer for having used Canvas.
+
+---
+
+## Act 4 — Managing multiple projects
+
+**Job to be done:** Stay organized across your entire portfolio of work, not just one project. The sidebar becomes your command center.
+
+**Setup.** You've mastered one project. But real life isn't one project — it's five. A new repo arrives, then another. Suddenly the sidebar isn't just a session list — it's a triage surface. Which project needs me? Which sessions are stuck? Which ones are done? Act 4 is about the sidebar growing from a list into a dashboard, and then learning to clean itself up.
+
+### Scene 4.1 — A second project arrives
+
+**The beat.** You click "+" in the sidebar and add a second project (Amplifier-Docs). It appears below Canvas-App with its own session: "Fix navigation." The sidebar now has two project labels, each with their own sessions. The terminal switches to the new project's session.
+
+**Why this moment matters.** The sidebar's structure — project labels with sessions underneath — scales naturally from one project to two. No new UI, no mode switch. The same pattern just repeats. The user's mental model doesn't need to change.
+
+### Scene 4.2 — Two worlds, one sidebar
+
+**The beat.** Canvas-App has a "Dark mode" session running (48m, pulsing amber). Amplifier-Docs has "Fix navigation" running (just now). Both are visible in the sidebar simultaneously. The terminal shows the Amplifier-Docs session. The dark mode session is working in the background — you can see its time ticking up.
+
+**Why this moment matters.** This is the cross-project visibility breakthrough. In separate terminal windows, you'd need to mentally track what's running where. Canvas shows all of it in one glance. The pulsing amber dots tell you what's alive without clicking into anything.
+
+### Scene 4.3 — Switching without losing your place
+
+**The beat.** You click "Dark mode" under Canvas-App. The terminal switches — the pane title changes to "Dark mode · Canvas-App," and the terminal shows the dark mode session's output. The Amplifier-Docs session continues running. Nothing was lost, nothing was interrupted.
+
+**Why this moment matters.** Context switching between projects is a click, not a workflow. The sidebar makes the switch instant and the state preservation invisible. Both sessions continue running regardless of which one you're looking at. Canvas manages the multiplexing — you just point.
+
+### Scene 4.4 — The sidebar grows up
+
+**The beat.** More sessions accumulate. Canvas-App has "Dark mode" (PR #48, green) and "Test suite" (6m, running). API-Service has "Auth endpoints" (22m, running) and "Schema migration" (committed, green). Amplifier-Docs has "Fix navigation" (committed, green). Design-System and Landing-Page are collapsed — just project names with "3 sessions · 2d ago" metadata.
+
+**Why this moment matters.** The sidebar now shows five projects with mixed states. Active projects are expanded with session details. Quiet projects auto-collapse to save space. The session labels tell you what happened — `✓ PR #48`, `✓ committed`, `22m` — without clicking into anything. The sidebar becomes a triage surface: scan, spot what needs you, act.
+
+**Sidebar label system:**
+
+| State | Dot | Label | Example |
+|-------|-----|-------|---------|
+| Running | amber (pulsing) | elapsed time | `48m` |
+| Needs you | blue (pulsing) | what it needs | `needs input` |
+| Done | green (static) | ✓ + disposition | `✓ PR #48`, `✓ committed` |
+| Failed | red (static) | what broke | `test failed` |
+
+### Scene 4.5 — Something needs you
+
+**The beat.** Auth endpoints has failed — red dot, "test failed." Fix navigation has a question — blue pulsing dot, "needs input." Everything else is running or done. The terminal shows the test failure output. The sidebar is a priority queue: blue and red demand attention, amber is working, green is done.
+
+**Why this moment matters.** This is the attention hierarchy in action. You open Canvas and in one glance you know: one thing broke, one thing is waiting on you, and everything else is fine. Three colors, three meanings: amber = working, blue = your turn, green = done, red = broken. No badge counts, no notification center. Just the sidebar, doing its job.
+
+### Scene 4.6 — Cleaning house
+
+**The beat.** Time has passed. Amplifier-Docs, Design-System, and Landing-Page are all done — every session merged. The sidebar shows two active projects (Canvas-App, API-Service) expanded at the top, then a collapsed "▶ Archived (3)" section at the bottom — one line, just a chevron and a count.
+
+**Why this moment matters.** The sidebar can't grow forever. Projects that are finished shouldn't compete for attention with projects that need you. The archived section is hidden by default — you know the projects exist (the count says 3), but they take up one line instead of six. Click the chevron if you ever need them. The sidebar reflects your current reality, not your history.
 
 ---
 
@@ -279,22 +332,13 @@ Design specs for implementation live in `design/`:
 
 ## Open Threads
 
-The story currently ends at "Nothing is ever lost" — project memory, session history, accumulated understanding. Acts 1–3 cover: first launch → first session → multi-session mastery → project-level awareness. The emotional arc reaches *ownership*. Here's where it could go next.
-
-### Where Does Act 4 Begin?
-
-Act 3 ends with a single project, fully understood. The natural next boundary is: **what happens when you have five projects?** Act 4's job-to-be-done might be: *stay organized across your entire portfolio of work, not just one project.*
-
-Possible Act 4 beats:
-- **Multi-project home.** A view above the project level — all your projects, their statuses, which ones need attention. The sidebar already has a "Projects" section header with a `+` button — this foreshadows multiple projects but Acts 1–3 never show more than one.
-- **Cross-project notifications.** A background session in Project B completes while you're working in Project A. The sidebar shows it. How does the notification hierarchy work across projects?
-- **Project switching.** What does the transition feel like? Does the terminal change? Does the viewer reset? What state is preserved?
+The story currently covers Acts 1–4: first launch → first session → project mastery → multi-project management. The emotional arc reaches *control*. Here's where it could go next.
 
 ### Where Does Act 5 Begin?
 
-Act 5 might cross the single-user boundary.
+Act 4 ends with a clean sidebar — active projects front and center, finished projects archived behind a chevron. The natural next question: **what happens beyond the single user?**
 
-Possible beats:
+Possible Act 5 beats:
 - **Settings and customization.** Theme preferences, keyboard shortcuts, terminal configuration, model selection.
 - **Sharing a session.** You completed a session that produced great work. Can you share its analysis view with a teammate?
 - **Onboarding someone else.** Your project has memory. A new team member starts a session. Does the project context help them ramp up faster?
@@ -302,11 +346,9 @@ Possible beats:
 
 ### Questions Future Acts Need to Answer
 
-1. **What's the maximum session count before the sidebar needs a different design?** The current sidebar shows 2–3 sessions comfortably. What about 10? 20? The collapsed 5-state indicator spec from collapsed-view.html suggests an 80px collapsed mode was explored.
-2. **How does archiving work at scale?** Scene 3.8 shows "3 more sessions" — but what about 100? Is there search? Filtering? Date grouping?
-3. **Does Canvas have its own persistence, or is everything derived from git + Amplifier?** The project overview's AI assessment implies Canvas stores data beyond what git contains. Where does it live?
-4. **What happens when a session fails?** The 5-state indicator has a "failed" state (red bar, red text), but no scene shows it. What does the recovery flow look like?
-5. **When does the AI assessment go wrong?** The "On track" banner and LLM insights are useful when they're right. What happens when they're not? Is there a correction flow?
+1. **Does Canvas have its own persistence, or is everything derived from git + Amplifier?** The project overview's AI assessment implies Canvas stores data beyond what git contains. Where does it live?
+2. **When does the AI assessment go wrong?** The "On track" banner and LLM insights are useful when they're right. What happens when they're not? Is there a correction flow?
+3. **What happens at team scale?** Multiple developers, overlapping sessions on the same repo, shared project memory. How does Canvas handle shared state?
 
 ---
 
