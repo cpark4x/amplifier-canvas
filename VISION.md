@@ -16,16 +16,17 @@ Amplifier-Canvas is the workspace companion for Amplifier.
 
 Today, most people use Amplifier through its CLI. The CLI is powerful — but the experience around it is invisible. Sessions run in the background with no indication of progress. Files are created with no notification. Projects span multiple terminals with no unifying view. The power is there — the visibility isn't.
 
-Amplifier-Canvas makes the invisible visible. You are still using the Amplifier CLI, but Canvas helps you organize your projects. You can manage multiple sessions for each project and see which sessions need your attention. You can seamlessly navigate between files, previews, and data in a single view.
+Amplifier-Canvas makes the invisible visible. You are still using the Amplifier CLI — Canvas is a visibility layer, not a replacement. It shows you what's happening across your projects and sessions, helps you spot what needs attention, and lets you navigate between files, previews, and terminal output in a single view. The CLI does the work. Canvas shows the state of the work.
 
-Amplifier is the engine. Amplifier-Canvas is where you drive.
+Amplifier is the engine. Amplifier-Canvas is the cockpit.
 
 ### Core Principles
 
-- **Additive, not replacement.** Amplifier-Canvas doesn't change what Amplifier does. It works alongside the CLI. Nothing is taken away from CLI users — only added.
-- **Project-centric.** Every project is a self-contained world. Sessions, files, git status, stats — all in one place.
-- **Respect attention.** Builders have limited attention. Amplifier-Canvas doesn't demand it — it directs it. Surface what matters, hide what doesn't, and never make the user go hunting.
-- **Fast and reliable.** If it's slower than the CLI or it breaks, nobody switches. Speed and stability are features.
+- **Visibility, not action.** Canvas shows you the state of your work — it does not do the work. The CLI does the work. You commit in the terminal; Canvas shows you the PR status. You run sessions from the CLI; Canvas shows you which ones need attention.
+- **Additive, not replacement.** Nothing is taken away from CLI users — only added. If you close Canvas, Amplifier still works exactly the same.
+- **Respect attention.** The sidebar is a triage surface. Three colors, three meanings: amber = working, blue = your turn, green = done. Scan, spot what needs you, act. No badge counts, no notification center.
+- **The sidebar is the command center.** It starts as a project list (Act 1), becomes a session dashboard (Act 3), and grows into a multi-project triage surface (Act 4). Done projects collapse behind a chevron. The sidebar reflects your current reality, not your history.
+- **Fast and reliable.** If it's slower than the CLI or it breaks, nobody switches. Speed and stability are non-negotiable.
 
 ### The Flywheel
 
@@ -80,12 +81,12 @@ The line is clear: Amplifier-Canvas makes Amplifier visible and accessible. It d
 
 All five capabilities are v1 must-haves. If any one is missing, CLI users won't switch.
 
-1. **Project Home** — Your landing screen. All your projects, organized. Each one shows its current state at a glance — active sessions, last activity, what's happening. Pick a project and you're in its world.
+1. **Sidebar as Triage Surface** — The sidebar shows every project and session with a status you can read at a glance. Amber pulsing = running. Blue pulsing = needs your input. Green with checkmark = done. Red = failed. Active projects are expanded; done projects collapse behind a chevron. One scan tells you what needs you.
 
-2. **Session Awareness** — For each project: which sessions are running, done, waiting, or stuck. How long they've been running. What they were about. No commands needed — you see it.
+2. **Terminal Integration** — The Amplifier CLI runs inside Canvas. You type in the terminal, Amplifier works, Canvas shows the state. The terminal is the primary workspace — everything else supports it.
 
-3. **File Browser & Preview** — See what was created and changed. Browse files, preview them — rendered markdown, syntax-highlighted code, images — without opening VS Code or another app.
+3. **File Browser & Preview** — See what was created and changed. Browse files, preview them — rendered markdown, syntax-highlighted code, images — without opening VS Code or another app. The viewer appears only when content earns its place (progressive disclosure).
 
-4. **Multi-Project, Multi-Session** — Work across projects without losing context. Switch between them. Keep sessions alive in the background. No juggling terminal windows.
+4. **Multi-Project, Multi-Session** — Work across projects without losing context. Switch between them with a click. Sessions continue running in the background. The sidebar multiplexes — you just point.
 
-5. **Terminal Integration** — The Amplifier CLI runs inside Amplifier-Canvas. You're not leaving the terminal behind — you're putting it in context alongside files, status, and preview.
+5. **Project Memory** — Projects accumulate understanding across sessions. Session history, AI-generated summaries, outcomes tracking, stats. Nothing is ever lost. The project is richer for having used Canvas.
