@@ -20,7 +20,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 **Why this moment matters.** The welcome screen establishes Canvas's personality before anything functional happens. It's warm, not cold. Inviting, not overwhelming. The sidebar is already visible but empty — foreshadowing the structure that will fill in. The single call-to-action means zero decision paralysis.
 
-**Screen reference:** [design/screens/screen-1-welcome.png](design/screens/screen-1-welcome.png)
+**Visual reference:** Open [screens.html](screens.html) — Act 1, Step 1
 
 ### Scene 1.2 — New Project
 
@@ -28,7 +28,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 **Why this moment matters.** This is the only configuration moment in the entire onboarding. Two choices, both obvious. The "existing folder" option signals that Canvas respects your existing workflow — it doesn't force you to start from scratch. The modal is small, centered, and feels like a quick aside, not a commitment.
 
-**Screen reference:** [design/screens/screen-2-new-project.png](design/screens/screen-2-new-project.png)
+**Visual reference:** Open [screens.html](screens.html) — Act 1, Step 2
 
 ### Scene 1.3 — Session Started
 
@@ -265,24 +265,15 @@ Summarized from the v2 Maru-Anchored aesthetic brief. The full brief lives at [d
 
 ---
 
-## Screen Inventory
+## Visual Reference
 
-Approved PNGs in `design/screens/` mapped to narrative scenes where applicable.
+**The canonical visual reference is [screens.html](screens.html).** Open it in any browser to see every screen at 1440×900, rendered as self-contained HTML/CSS with the actual design system (warm paper whites, amber accent, dark terminal). No PNGs needed — the prototype IS the spec.
 
-| PNG | Best Scene Match | Notes |
-|-----|-----------------|-------|
-| screen-1-welcome.png | 1.1 Welcome | Direct match |
-| screen-2-new-project.png | 1.2 New Project | Direct match |
-| screen-6-master.png | 1.3 / general | Master layout reference |
-| screen-8-source-view.png | 2.2–2.4 | Source/file viewing |
-| screen-9-app-preview.png | 2.5 App Preview | Direct match |
-| screen-10-session-stats.png | 3.3 / 3.7 | Session analysis / stats |
-| screen-11-progress.png | 3.2–3.3 | Session progress |
-| screen-12-dual-sessions.png | 3.1 Start second session | Parallel worktrees |
-| screen-13-notification.png | 3.2 Session completes | Toast notification |
-| screen-14-merge.png | 3.4 Commit the changes | PR result view |
-| screen-15-new-project.png | 1.2 variant | Alternate new-project |
-| screen-20-settings.png | — | Not yet in storyboard |
+Design specs for implementation live in `design/`:
+- [aesthetic-brief.md](design/aesthetic-brief.md) — palette, typography, anti-slop rules
+- [nav-shell.md](design/nav-shell.md) — pixel-level layout dimensions
+- [screen-inventory.md](design/screen-inventory.md) — screen catalog and user journey
+- [manifest.md](design/manifest.md) — 22 design references that shaped the aesthetic
 
 ---
 
@@ -304,7 +295,7 @@ Possible Act 4 beats:
 Act 5 might cross the single-user boundary.
 
 Possible beats:
-- **Settings and customization.** screen-20-settings.png exists but has no scene. Theme preferences, keyboard shortcuts, terminal configuration, model selection.
+- **Settings and customization.** Theme preferences, keyboard shortcuts, terminal configuration, model selection.
 - **Sharing a session.** You completed a session that produced great work. Can you share its analysis view with a teammate?
 - **Onboarding someone else.** Your project has memory. A new team member starts a session. Does the project context help them ramp up faster?
 - **Team awareness.** Multiple people using Amplifier on the same repo. Whose sessions are running? What's been done?

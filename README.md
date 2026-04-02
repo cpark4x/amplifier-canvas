@@ -20,9 +20,6 @@ design/
   screen-inventory.md Screen catalog and user journey spec
   nav-shell.md        Navigation shell spec (pixel widths, hex codes, typography)
   manifest.md         22 design references that shaped the aesthetic
-  screens/            Approved screen PNGs (12 screens)
-  components/         Component reference anchors (header, sidebar)
-  storyboards/        Act-level composite views and storyboard panels
 ```
 
 ## Viewing the prototype
