@@ -19,9 +19,11 @@ If Canvas crashes, nothing is lost. If Canvas is closed, Amplifier keeps working
 
 **Why not Tauri?** xterm.js requires a full browser runtime. Tauri uses native webviews that don't guarantee this. The terminal is the primary workspace — can't compromise.
 
-**Why not a web app?** Canvas spawns local CLI processes, watches the local filesystem, accesses git. A web app would need a server bridging all of this. Electron gives direct access.
+**Why not a web app?** The terminal is the primary workspace. Canvas embeds it. A web app would need a local server to spawn CLI processes and pipe them to the browser (that's what Grove does — Express + WebSocket). Two pieces to install and keep running instead of one app you double-click. Desktop wins on simplicity of the first experience: download, open, you're in. If Canvas ever needs web access (check on sessions from your phone, share a view with teammates), the path is a lightweight web companion — not replacing the desktop app.
 
 **Why not amplifierd (Distro's server)?** Different product. Distro is a multi-user server with REST+SSE. Canvas is a local desktop app. We don't need auth, HTTP APIs, or a daemon. If amplifierd matures into the standard way to run Amplifier, Canvas could adopt it later — the architecture allows this because Canvas never couples to *how* it gets data, only *what shape* the data is.
+
+**Build tooling:** Vite (fast dev server, fast builds) + electron-builder (packages the app for macOS). Single app, no monorepo needed.
 
 ## The Two-Process Architecture
 
@@ -246,6 +248,20 @@ The renderer never reads files or talks to processes. It renders state and dispa
 
 **Persistence:** `~/.amplifier/canvas/config.json` — just the "owns" column. Everything else is re-derived from Amplifier's files on startup.
 
+## Confirmed Product Decisions
+
+These were validated through structured product review (not assumed):
+
+| # | Decision | Answer | Principle |
+|---|----------|--------|-----------|
+| 1 | Desktop vs web | Desktop. One app, double-click, done. | Simplicity of first experience. Web needs a local server + browser tab — two pieces. |
+| 2 | Reverse channel (Amplifier → Canvas) | Design for it, don't build it yet. File watching for v1. | Sidebar is a glanceable dashboard, not a real-time ticker. Half-second delay is invisible. |
+| 3 | What happens when session finishes | Nothing. Terminal stays with last output. User decides. | Visibility layer, not workflow layer. Don't automate what different users would do differently. |
+| 4 | Database | No database for v1. Design so we can add one later. | Core value is sidebar + terminal. Nobody skips Canvas because they can't rename a session. |
+| 5 | Build tooling | Vite + electron-builder. Standard, boring, fast. | One app, no monorepo. |
+| 6 | Session lifecycle | User manages sessions. Exit or delete — Canvas doesn't auto-clean. | Sessions are the user's to manage. |
+| 7 | File viewer | Essential. Ships with v1. | The viewer is part of the core experience (Act 2), not a nice-to-have. |
+
 ## Key Architectural Decisions
 
 ### 1. Electron main process IS the backend
@@ -262,7 +278,7 @@ Canvas never writes to Amplifier's data. Never calls Amplifier APIs. This means:
 
 ### 3. PTY-based terminal via node-pty + xterm.js
 
-Canvas spawns `amplifier run` in a pseudo-terminal. The terminal experience is identical to a regular terminal. Learned from Grove: wrap in shell (`zsh -i`) so the terminal survives after Amplifier exits — user can continue using the shell.
+Canvas spawns `amplifier run` in a pseudo-terminal. The terminal experience is identical to a regular terminal. When a session finishes, the terminal stays with the last output — Canvas doesn't decide what happens next. The user exits or deletes the session when they're done.
 
 ### 4. File watchers + tail-read for reactivity
 
@@ -344,9 +360,15 @@ amplifier-canvas/
 └── tsconfig.json
 ```
 
-## Future: Reverse Channel (v1.x)
+## Designed For: Reverse Channel (not built, but accounted for)
 
-If file-watcher latency for `needs_input` detection becomes a problem, we can add a lightweight Amplifier hook module — similar to Grove's `hooks-host-relay`:
+The State Aggregator accepts state from file watchers today. It is designed to accept state from additional sources without changing the renderer or any UI component. When any of these become necessary, we add an input — not a new architecture:
+
+**Scenario 1: Instant status updates.** A lightweight Amplifier hook module (like Grove's `hooks-host-relay`) POSTs lifecycle events directly to Canvas. The State Aggregator accepts them alongside file watcher events. Status dots update instantly instead of within ~0.5s.
+
+**Scenario 2: Amplifier opens a file in the viewer.** This is Act 2.2 — the AI decides you should see a file. File watching can detect this in events.jsonl, but a reverse channel makes it feel instant and intentional. The hook module sends `{action: "open-file", path: "VISION.md"}` and the State Aggregator routes it to the viewer.
+
+**Scenario 3: Future web companion.** If we ever want a lightweight web view to check on sessions remotely, the State Aggregator can push state via WebSocket instead of (or in addition to) Electron IPC. The renderer components don't change — they consume the same Zustand store shape regardless of transport.
 
 ```python
 # amplifier-module-canvas-relay (future)
@@ -355,4 +377,10 @@ If file-watcher latency for `needs_input` detection becomes a problem, we can ad
 # Hook POSTs to localhost:<port>/events — fire and forget
 ```
 
-This would give us sub-second status updates without changing the architecture. The State Aggregator just gets another input source. The renderer doesn't know or care where state comes from.
+**Why not build it now?** File watching is sufficient for v1's glanceable sidebar. The reverse channel adds a second piece (plugin installed in Amplifier) and a coupling to Amplifier's hook API. We save that complexity for when a real user need demands it.
+
+## Designed For: Local Store (not built, but accounted for)
+
+Canvas has no database in v1. All state is derived from Amplifier's files. `config.json` stores only what Canvas itself owns (project list, UI preferences).
+
+If users ask for features that require Canvas-specific data — session nicknames, starred sessions, notes, custom groupings — we add a small local store (SQLite or flat JSON). The Zustand store already separates "derived state" from "owned state" in its type definitions. Adding persisted Canvas data means extending the "owned" side without touching the "derived" side.
