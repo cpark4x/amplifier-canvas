@@ -1,7 +1,8 @@
 # Navigation Shell (v6 — V5 Baseline + Distinct Header)
 
 ## Core Rule
-EVERYTHING matches storyboard_v5.png EXACTLY. The ONLY delta is the header bar.
+EVERYTHING matches the storyboard baseline EXACTLY. The ONLY delta is the header bar.
+Visual reference: canvas.html is the canonical source. See design/reference/ for screenshots.
 
 ## Palette (unchanged from v5)
 - #F9F9F7 — paper white (content, file panels)

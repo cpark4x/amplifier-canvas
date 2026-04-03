@@ -1,7 +1,8 @@
 # Screen Inventory — Amplifier-Canvas v6 (V5 Baseline + Distinct Header, 15 Screens)
 
 ## Core Rule
-Everything matches storyboard_v5.png. The ONLY delta is a distinct warm header bar.
+Everything matches the storyboard aesthetic. The ONLY delta from v5 baseline is a distinct warm header bar.
+Note: Original storyboard PNGs (v5/v6) have been superseded by canvas.html as the canonical visual reference.
 
 ## Palette (from v5)
 - #F9F9F7 — paper white (content, file panels)
@@ -11,9 +12,9 @@ Everything matches storyboard_v5.png. The ONLY delta is a distinct warm header b
 - #8B8B90 — muted gray (secondary text)
 - #8DAE92 — muted sage green (3px dots, 1px underlines only)
 
-## Storyboard Panels
-- `storyboard_v6_panel1.png` — Screens 1-8
-- `storyboard_v6_panel2.png` — Screens 9-15
+## Visual Reference
+- See `canvas.html` for the canonical rendered screens
+- See `reference/` for PNG screenshots of key states
 
 ## Screen Inventory (15 screens)
 
