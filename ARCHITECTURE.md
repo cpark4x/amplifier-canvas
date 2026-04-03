@@ -6,6 +6,32 @@ Canvas is a **visibility layer** over the Amplifier CLI. It does not replace the
 
 If Canvas crashes, nothing is lost. If Canvas is closed, Amplifier keeps working. Canvas reads; Amplifier writes.
 
+## Phase 1 Scope
+
+Phase 1 delivers the core experience: see your sessions, work in the terminal, inspect files.
+
+**Phase 1 — Building:**
+
+| Layer | Features |
+|-------|----------|
+| **Terminal** | xterm.js + node-pty, bidirectional PTY pipe, `amplifier canvas` CLI launch, keyboard fidelity (Ctrl+C, Ctrl+D, arrows, tab) |
+| **Sidebar** | Session list, status dots (running/needs_input/done/failed/paused), project grouping from disk structure, real-time updates via chokidar |
+| **Viewer** | File browser, markdown rendering (react-markdown), code syntax highlighting (shiki), image preview |
+| **Integration** | Session-viewer wiring, terminal persistence across session switches, design token alignment with component library |
+
+**Phase 2 — Designed for, not built:**
+
+| Feature | Why deferred |
+|---------|-------------|
+| Git Poller (5s per project) | No Phase 1 feature depends on git state. Architecture has a slot for it in the State Aggregator. |
+| AppHeader (logo, breadcrumb, settings) | Chrome, not core. Phase 1 uses the window title bar. |
+| Reverse channel hook (Amplifier → Canvas) | File watching is sufficient for the glanceable sidebar. Adds coupling to Amplifier's hook API. |
+| Local store / database | All state derives from Amplifier's files. config.json covers Canvas preferences. |
+| Multi-session terminals | Phase 1 supports one PTY terminal. Multiple tabs are a Phase 2 UX decision. |
+| Project archive/unarchive | Project management is Phase 2. Phase 1 shows what's on disk. |
+
+The architecture accounts for all Phase 2 items — adding them means extending existing modules, not restructuring.
+
 ## Tech Stack
 
 **Electron + React + TypeScript**
@@ -23,58 +49,59 @@ If Canvas crashes, nothing is lost. If Canvas is closed, Amplifier keeps working
 
 **Why not amplifierd (Distro's server)?** Different product. Distro is a multi-user server with REST+SSE. Canvas is a local desktop app. We don't need auth, HTTP APIs, or a daemon. If amplifierd matures into the standard way to run Amplifier, Canvas could adopt it later — the architecture allows this because Canvas never couples to *how* it gets data, only *what shape* the data is.
 
-**Build tooling:** Vite (fast dev server, fast builds) + electron-builder (packages the app for macOS). Single app, no monorepo needed.
+**Build tooling:** electron-vite (handles the main/preload/renderer split cleanly with one config file) + electron-builder (packages the app for macOS). Single app, no monorepo needed.
 
 ## The Two-Process Architecture
 
 Electron apps have two processes. This isn't a choice — it's how Electron works. But the split maps perfectly to what we need:
 
 ```
-┌────────────────────────────────────────────────────────┐
-│  MAIN PROCESS (Node.js)                                │
-│  Everything that touches the OS                        │
-│                                                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ PTY Manager  │  │ File Watcher │  │ Git Poller   │ │
-│  │              │  │              │  │              │ │
-│  │ Spawns       │  │ Watches      │  │ Polls every  │ │
-│  │ amplifier run│  │ events.jsonl │  │ 5s per       │ │
-│  │ via node-pty │  │ via chokidar │  │ project      │ │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
-│         │                 │                 │          │
-│         └────────┬────────┴────────┬────────┘          │
-│                  ▼                 │                    │
-│  ┌───────────────────────────┐    │                    │
-│  │ State Aggregator          │◄───┘                    │
-│  │                           │                         │
-│  │ Merges PTY process state  │                         │
-│  │ + parsed events.jsonl     │                         │
-│  │ + git status              │                         │
-│  │ into canonical shape      │                         │
-│  └─────────────┬─────────────┘                         │
-│                │ IPC (ipcMain.handle)                   │
-├────────────────┼───────────────────────────────────────┤
-│                ▼                                        │
-│  RENDERER PROCESS (Chromium)                           │
-│  Everything the user sees                              │
-│                                                        │
-│  ┌───────────────────────────┐                         │
-│  │ Zustand Store             │                         │
-│  │ (mirrors main process     │                         │
-│  │  state via IPC)           │                         │
-│  └─────────────┬─────────────┘                         │
-│                │                                        │
-│    ┌───────────┼───────────────────────────┐           │
-│    ▼           ▼                           ▼           │
-│  ┌──────┐  ┌──────────────────────┐  ┌──────────┐     │
-│  │Sidebar│  │ Terminal (xterm.js)  │  │ Viewer   │     │
-│  │      │  │ connected to PTY     │  │ (files,  │     │
-│  │      │  │ via IPC passthrough  │  │  preview)│     │
-│  └──────┘  └──────────────────────┘  └──────────┘     │
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  MAIN PROCESS (Node.js)                                    │
+│  Everything that touches the OS                            │
+│                                                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ PTY Manager  │  │ File Watcher │  │ Git Poller   │     │
+│  │              │  │              │  │  (Phase 2)   │     │
+│  │ Spawns       │  │ Watches      │  │              │     │
+│  │ amplifier run│  │ events.jsonl │  │ Polls every  │     │
+│  │ via node-pty │  │ via chokidar │  │ 5s per       │     │
+│  │              │  │              │  │ project      │     │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
+│         │                 │                 │              │
+│         └────────┬────────┴────────┬────────┘              │
+│                  ▼                 │                        │
+│  ┌───────────────────────────────┐ │                       │
+│  │ State Aggregator              │◄┘                       │
+│  │                               │                         │
+│  │ Merges PTY process state      │                         │
+│  │ + parsed events.jsonl         │                         │
+│  │ + git status (Phase 2)        │                         │
+│  │ into canonical shape          │                         │
+│  └─────────────┬─────────────────┘                         │
+│                │ IPC (ipcMain.handle)                       │
+├────────────────┼───────────────────────────────────────────┤
+│                ▼                                           │
+│  RENDERER PROCESS (Chromium)                               │
+│  Everything the user sees                                  │
+│                                                            │
+│  ┌───────────────────────────────┐                         │
+│  │ Zustand Store                 │                         │
+│  │ (mirrors main process         │                         │
+│  │  state via IPC)               │                         │
+│  └─────────────┬─────────────────┘                         │
+│                │                                           │
+│    ┌───────────┼───────────────────────────────┐           │
+│    ▼           ▼                               ▼           │
+│  ┌──────┐  ┌──────────────────────┐  ┌──────────┐         │
+│  │Sidebar│  │ Terminal (xterm.js)  │  │ Viewer   │         │
+│  │      │  │ connected to PTY     │  │ (files,  │         │
+│  │      │  │ via IPC passthrough  │  │  preview) │         │
+│  └──────┘  └──────────────────────┘  └──────────┘         │
+└────────────────────────────────────────────────────────────┘
 ```
 
-**Why this matters:** The main process owns all I/O (filesystem, PTY, git). The renderer owns all UI. They talk via Electron IPC. This gives us:
+**Why this matters:** The main process owns all I/O (filesystem, PTY). The renderer owns all UI. They talk via Electron IPC. This gives us:
 - Renderer can't corrupt filesystem or kill processes (security)
 - Main process doesn't need to know about React (separation)
 - IPC messages are the contract between them (testable)
@@ -86,18 +113,26 @@ The main→renderer channel is the real API of this app:
 ```typescript
 // Main → Renderer (push: state updates)
 'state:sessions-changed'     → SessionState[]
-'state:git-changed'          → GitState[]
 'terminal:data'              → { sessionId: string, data: Buffer }
 
 // Renderer → Main (request: user actions)
+'terminal:input'             → { sessionId: string, data: string }
+'terminal:resize'            → { sessionId: string, cols: number, rows: number }
+
+// Renderer → Main (invoke/handle: request-response)
+'files:list-dir'             → { path: string } → FileEntry[]
+'files:read-text'            → { path: string } → string
+'files:read-image'           → { path: string } → string (base64)
+```
+
+Phase 2 additions (slots exist, not wired):
+```typescript
+'state:git-changed'          → GitState[]
 'session:start'              → { projectPath: string } → sessionId
 'session:switch'             → { sessionId: string }
 'session:resume'             → { sessionId: string }
-'terminal:input'             → { sessionId: string, data: string }
-'terminal:resize'            → { sessionId: string, cols: number, rows: number }
 'project:add'                → { path: string }
 'project:archive'            → { projectId: string }
-'project:unarchive'          → { projectId: string }
 ```
 
 ## Data Architecture
@@ -109,7 +144,7 @@ Canvas reads — it never writes to Amplifier's data.
 | Source | What it gives us | How we read it | Update mechanism |
 |--------|-----------------|----------------|-----------------|
 | **Session files** (`~/.amplifier/projects/<slug>/sessions/<id>/events.jsonl`) | Session state, tool calls, agent output, status | Tail-read (track file offset, parse only new bytes) | chokidar file watcher |
-| **Git state** (`.git/` in each project) | Branch, recent commits, PR status | `git` CLI commands | Poll every 5 seconds |
+| **Git state** (`.git/` in each project) | Branch, recent commits, PR status | `git` CLI commands | Poll every 5 seconds *(Phase 2)* |
 | **File system** (project working directory) | Files created/modified by sessions | Directory listing | On-demand (when viewer opens) |
 
 **Why tail-read for events.jsonl?** These files grow to megabytes. We track the byte offset of our last read and only parse new content. On startup, we read the last ~50 events (enough to derive current status) not the full file. Learned from both Grove and Distro — neither reads full event files.
@@ -127,40 +162,33 @@ Canvas reads — it never writes to Amplifier's data.
 | Status | Visual | How derived |
 |--------|--------|------------|
 | `running` | Amber pulsing dot | PTY process alive AND producing output |
-| `needs_input` | Blue pulsing dot | PTY process alive AND last event is orchestrator waiting for user input (parsed from events.jsonl) |
-| `done` | Green dot + checkmark | PTY process exited code 0. Outcome label from last meaningful tool call: `git commit` → "committed", `gh pr create` → "PR #48", `git push` → "pushed" |
+| `needs_input` | Blue pulsing dot | Last event is `prompt:complete` (AI finished, waiting for user) |
+| `done` | Green dot + checkmark | `session:end` event present |
 | `failed` | Red dot | PTY process exited non-zero, or last event indicates error |
 | `paused` | Gray dot | Session file exists on disk but no PTY process running. Can be resumed. |
 
 **The `needs_input` challenge:** This is the hardest status to derive. Amplifier emits an event when it's waiting for user input, but there's a lag between the event being written to disk and our file watcher firing. For sessions started by Canvas (PTY-owned), we can detect this faster by watching the terminal output stream directly. For external sessions, we rely on events.jsonl.
 
-**Future: hook module.** If detection lag becomes a problem, we can ship a lightweight Amplifier hook module (like Grove's `hooks-host-relay`) that signals Canvas directly. The architecture allows this — we'd just add another input to the State Aggregator. Not needed for v1.
-
 ## Component Architecture
 
-Components map directly to the storyboard:
+Phase 1 uses a flat component structure — no nested subdirectories:
 
 ```
 App
-├── AppHeader                    Fixed top bar
-│   ├── Logo + "Amplifier Canvas"
-│   ├── Breadcrumb (project > session)
-│   └── Settings gear
-├── Sidebar                      Left panel, resizable
-│   ├── ProjectSection[]         One per active project
-│   │   ├── ProjectHeader        Name + status summary
-│   │   └── SessionRow[]         Dot + name + label
-│   ├── ArchivedSection          "▸ Archived (3)"
-│   │   └── ProjectSection[]     Same component, collapsed
-│   └── AddProjectButton         "+ Add Project"
-└── MainArea                     Right of sidebar
-    ├── TerminalPane             xterm.js instance
-    ├── ViewerPane               File preview (progressive disclosure)
-    │   ├── CodeViewer           Syntax highlighted (shiki, not Monaco)
-    │   ├── MarkdownViewer       Rendered markdown
-    │   └── ImageViewer          Images, screenshots
-    └── ProjectOverview          Stats, session history, AI summary
+├── Sidebar
+│   └── SessionItem[]
+├── Terminal (xterm.js)
+└── Viewer
+    ├── FileBrowser
+    └── FileRenderer
+        ├── MarkdownRenderer
+        ├── CodeRenderer
+        └── ImageRenderer
 ```
+
+**Three-panel layout:** `Sidebar (220px, collapsible) | Terminal (flex, always visible) | Viewer (~350px, conditional)`
+
+The viewer appears when a session is selected in the sidebar. The terminal is always visible and never unmounts.
 
 ### Terminal Management
 
@@ -179,6 +207,7 @@ Monaco is 5MB+ and designed for editing. We need read-only viewing.
 - **Markdown:** `react-markdown` with GitHub-flavored markdown
 - **Images:** Native `<img>` tag
 - **Other:** Raw text fallback with line numbers
+- **Error handling:** File type not recognized → raw text. File >1MB → truncated. File inaccessible → error state, don't crash.
 
 ## State Management
 
@@ -186,49 +215,30 @@ Monaco is 5MB+ and designed for editing. We need read-only viewing.
 
 ```typescript
 interface CanvasStore {
-  // Projects
-  projects: Project[];
-  archivedProjects: Project[];
-  activeProjectId: string | null;
+  // Sessions (derived from main process via IPC)
+  sessions: SessionState[];
   activeSessionId: string | null;
 
-  // UI
-  sidebarWidth: number;
+  // Viewer
   viewerVisible: boolean;
   viewerFile: string | null;
-  theme: 'light' | 'dark';
 
-  // Actions (dispatch to main process via IPC)
-  startSession: (projectPath: string) => void;
-  switchSession: (sessionId: string) => void;
-  archiveProject: (projectId: string) => void;
-  addProject: (path: string) => void;
+  // UI
+  sidebarCollapsed: boolean;
 }
 
-interface Project {
+interface SessionState {
   id: string;
-  name: string;
-  path: string;
-  sessions: Session[];
-  gitBranch?: string;
-  gitStatus?: string;        // "clean" | "3 uncommitted"
-  lastActivity: Date;
-}
-
-interface Session {
-  id: string;
-  name: string;
+  projectSlug: string;
+  projectName: string;       // last segment of decoded slug
   status: 'running' | 'needs_input' | 'done' | 'failed' | 'paused';
-  startedAt: Date;
-  elapsed?: string;          // "48m" for running sessions
-  outcome?: string;          // "PR #48" for done sessions
-  error?: string;            // for failed sessions
+  startedAt: string;
   isPtyOwned: boolean;       // true = Canvas started it, false = found on disk
 }
 ```
 
 **State flow is unidirectional:**
-1. Main process detects change (file watcher, PTY event, git poll)
+1. Main process detects change (file watcher, PTY event)
 2. Main process updates State Aggregator
 3. State Aggregator sends canonical state via IPC
 4. Renderer Zustand store updates
@@ -240,13 +250,101 @@ The renderer never reads files or talks to processes. It renders state and dispa
 
 | Canvas owns (persisted) | Canvas derives (in-memory, reconstructed on restart) |
 |------------------------|------------------------------------------------------|
-| Project list + paths | Session state and status |
-| Archive/active state per project | Git branch and status |
-| UI preferences (sidebar width, theme) | File trees and previews |
-| Window position and size | Session elapsed time |
-| Active session selection | Outcome labels ("PR #48") |
+| UI preferences (sidebar width, theme) | Session state and status |
+| Window position and size | File trees and previews |
+| Active session selection | Session elapsed time |
 
-**Persistence:** `~/.amplifier/canvas/config.json` — just the "owns" column. Everything else is re-derived from Amplifier's files on startup.
+**Persistence:** `~/.amplifier/canvas/config.json` — just the "owns" column. Everything else is re-derived from Amplifier's files on startup. No database.
+
+## File Structure (Planned)
+
+```
+amplifier-canvas/
+├── VISION.md
+├── OUTCOMES.md
+├── STORYBOARD.md
+├── ARCHITECTURE.md
+├── SCORECARD.md
+├── STATE.yaml                     # Feature tracking
+├── LESSONS.md                     # Recurring patterns
+├── docs/plans/                    # Implementation plans (1A, 1B, 1C)
+├── canvas.html                    # Design reference (22 screens)
+├── electron.vite.config.ts        # Single config for main/preload/renderer
+├── package.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── tsconfig.web.json
+├── src/
+│   ├── main/                      # Electron main process
+│   │   ├── index.ts               # App entry, window creation
+│   │   ├── ipc.ts                 # IPC handler registration
+│   │   ├── pty.ts                 # PTY spawning and lifecycle
+│   │   ├── watcher.ts             # chokidar on events.jsonl
+│   │   ├── state-aggregator.ts    # Merges all sources → canonical state
+│   │   └── file-reader.ts         # Read files for viewer (list-dir, read-text, read-image)
+│   ├── renderer/                  # React app
+│   │   ├── index.html             # HTML shell
+│   │   └── src/
+│   │       ├── main.tsx           # Renderer entry point
+│   │       ├── App.tsx            # Root component, layout
+│   │       ├── App.css            # Global styles, design tokens
+│   │       ├── stores/
+│   │       │   └── session-store.ts   # Zustand store
+│   │       └── components/        # Flat — no subdirectories
+│   │           ├── Terminal.tsx
+│   │           ├── Sidebar.tsx
+│   │           ├── SessionItem.tsx
+│   │           ├── Viewer.tsx
+│   │           ├── FileBrowser.tsx
+│   │           ├── FileRenderer.tsx
+│   │           ├── MarkdownRenderer.tsx
+│   │           ├── CodeRenderer.tsx
+│   │           └── ImageRenderer.tsx
+│   ├── shared/                    # Types shared across processes
+│   │   ├── types.ts               # SessionState, FileEntry, IPC channel types
+│   │   └── constants.ts           # IPC channel names, paths
+│   └── preload/
+│       └── index.ts               # contextBridge — exposes IPC to renderer
+├── e2e/                           # Playwright E2E tests
+│   ├── app.spec.ts                # Scaffold smoke test
+│   ├── terminal.spec.ts           # T1-T5 terminal tests
+│   ├── sidebar.spec.ts            # S1-S5 sidebar tests
+│   ├── viewer.spec.ts             # V1-V5 viewer tests
+│   ├── integration.spec.ts        # I1-I3 cross-layer tests
+│   └── fixtures/                  # Test data
+│       ├── amplifier-home/        # Fake ~/.amplifier for sidebar tests
+│       └── test-workdir/          # Fake project dir for viewer tests
+└── build/                         # electron-builder output (gitignored)
+```
+
+## Testing Strategy
+
+Phase 1 uses **E2E tests only** (Playwright + Electron). No unit tests, no component tests — yet.
+
+| What | How |
+|------|-----|
+| **Test runner** | Playwright with Electron support (`_electron.launch`) |
+| **Test count** | 10–15 E2E tests covering the 9 terminal regression requirements + sidebar + viewer |
+| **Test data** | Fixture directories (`e2e/fixtures/`) with `AMPLIFIER_HOME` and `CANVAS_WORKDIR` env overrides |
+| **Pre-commit gate** | `npm run build && npx playwright test` — must pass before every commit |
+
+**When we add more testing layers:**
+- **Unit tests:** When data logic (state-aggregator, status derivation, slug decoding) exceeds ~2,000 LOC
+- **Component tests:** When component count exceeds ~15
+
+This is deliberate — E2E tests catch integration bugs that unit tests miss, and Phase 1 is small enough that E2E coverage is sufficient.
+
+## Build Practices
+
+| Practice | Detail |
+|----------|--------|
+| **Feature tracking** | `STATE.yaml` — updated after each feature completes |
+| **Lessons learned** | `LESSONS.md` — recurring patterns and gotchas captured during build |
+| **Feature specs** | Scaled to size: S (inline), M (1-page), L (multi-page with diagrams) |
+| **Antagonistic review** | After each component layer (terminal, sidebar, viewer) — dedicated review pass |
+| **Pre-commit gate** | Build + full E2E suite before every commit |
+| **Stop conditions** | Blocker, ambiguity, repeated failure (3×), coherence loss → stop and escalate |
+| **Implementation plans** | `docs/plans/plan-1a-scaffold-terminal.md`, `plan-1b-sidebar.md`, `plan-1c-viewer-integration.md` |
 
 ## Confirmed Product Decisions
 
@@ -258,7 +356,7 @@ These were validated through structured product review (not assumed):
 | 2 | Reverse channel (Amplifier → Canvas) | Design for it, don't build it yet. File watching for v1. | Sidebar is a glanceable dashboard, not a real-time ticker. Half-second delay is invisible. |
 | 3 | What happens when session finishes | Nothing. Terminal stays with last output. User decides. | Visibility layer, not workflow layer. Don't automate what different users would do differently. |
 | 4 | Database | No database for v1. Design so we can add one later. | Core value is sidebar + terminal. Nobody skips Canvas because they can't rename a session. |
-| 5 | Build tooling | Vite + electron-builder. Standard, boring, fast. | One app, no monorepo. |
+| 5 | Build tooling | electron-vite + electron-builder. Standard, boring, fast. | One config file handles main/preload/renderer split. |
 | 6 | Session lifecycle | User manages sessions. Exit or delete — Canvas doesn't auto-clean. | Sessions are the user's to manage. |
 | 7 | File viewer | Essential. Ships with v1. | The viewer is part of the core experience (Act 2), not a nice-to-have. |
 
@@ -266,7 +364,7 @@ These were validated through structured product review (not assumed):
 
 ### 1. Electron main process IS the backend
 
-No Express server. No separate backend. Electron's main process handles PTY spawning, file watching, git polling, and state aggregation. IPC to the renderer is the API. This is simpler than Grove (Express + WebSocket) and simpler than Distro (FastAPI + SSE) because Canvas is local-only — we don't need HTTP, auth, or multi-user.
+No Express server. No separate backend. Electron's main process handles PTY spawning, file watching, and state aggregation. IPC to the renderer is the API. This is simpler than Grove (Express + WebSocket) and simpler than Distro (FastAPI + SSE) because Canvas is local-only — we don't need HTTP, auth, or multi-user.
 
 ### 2. Read-only relationship with Amplifier
 
@@ -282,11 +380,11 @@ Canvas spawns `amplifier run` in a pseudo-terminal. The terminal experience is i
 
 ### 4. File watchers + tail-read for reactivity
 
-chokidar watches events.jsonl files. On change, we tail-read (parse only new bytes from last offset). Near-instant UI updates. Git state is polled at 5s intervals (no watch mechanism for git).
+chokidar watches events.jsonl files. On change, we tail-read (parse only new bytes from last offset). Near-instant UI updates. 500ms debounce on watcher updates keeps things responsive without thrashing.
 
 ### 5. All state derived, nothing cached
 
-If Canvas restarts, it re-derives everything from Amplifier's files. No SQLite database (unlike Grove), no index files. Just config.json for Canvas's own preferences + project list. This means zero sync bugs, zero migration problems, zero stale state.
+If Canvas restarts, it re-derives everything from Amplifier's files. No SQLite database, no index files. Just config.json for Canvas's own preferences. This means zero sync bugs, zero migration problems, zero stale state.
 
 ### 6. Session ID capture from terminal banner
 
@@ -312,75 +410,18 @@ How Canvas differs from the two reference projects:
 
 **Key difference:** Grove and Distro both have backends because they serve web UIs. Canvas doesn't need a backend because Electron's main process handles all OS interaction natively.
 
-## File Structure (Planned)
-
-```
-amplifier-canvas/
-├── VISION.md
-├── OUTCOMES.md
-├── STORYBOARD.md
-├── ARCHITECTURE.md
-├── SCORECARD.md
-├── canvas.html                    # Design reference (22 screens)
-├── src/
-│   ├── main/                      # Electron main process
-│   │   ├── index.ts               # App entry, window creation
-│   │   ├── ipc.ts                 # IPC handler registration
-│   │   ├── pty-manager.ts         # PTY spawning and lifecycle
-│   │   ├── session-watcher.ts     # chokidar on events.jsonl
-│   │   ├── git-poller.ts          # Git status polling
-│   │   ├── state-aggregator.ts    # Merges all sources → canonical state
-│   │   └── config.ts              # Read/write config.json
-│   ├── renderer/                  # React app
-│   │   ├── App.tsx                # Root component
-│   │   ├── store.ts               # Zustand store
-│   │   ├── components/
-│   │   │   ├── Sidebar/
-│   │   │   │   ├── Sidebar.tsx
-│   │   │   │   ├── ProjectSection.tsx
-│   │   │   │   ├── SessionRow.tsx
-│   │   │   │   └── ArchivedSection.tsx
-│   │   │   ├── Terminal/
-│   │   │   │   └── TerminalPane.tsx
-│   │   │   ├── Viewer/
-│   │   │   │   ├── ViewerPane.tsx
-│   │   │   │   ├── CodeViewer.tsx
-│   │   │   │   └── MarkdownViewer.tsx
-│   │   │   └── Header/
-│   │   │       └── AppHeader.tsx
-│   │   └── hooks/
-│   │       ├── useIPC.ts          # IPC communication hook
-│   │       └── useTerminal.ts     # xterm.js lifecycle hook
-│   ├── shared/                    # Types shared across processes
-│   │   └── types.ts               # Project, Session, IPC message types
-│   └── preload/
-│       └── preload.ts             # Electron preload (exposes IPC to renderer)
-├── package.json
-├── electron.config.ts
-└── tsconfig.json
-```
-
-## Designed For: Reverse Channel (not built, but accounted for)
+## Designed For: Reverse Channel (Phase 2 — not built, architecture accounts for it)
 
 The State Aggregator accepts state from file watchers today. It is designed to accept state from additional sources without changing the renderer or any UI component. When any of these become necessary, we add an input — not a new architecture:
 
 **Scenario 1: Instant status updates.** A lightweight Amplifier hook module (like Grove's `hooks-host-relay`) POSTs lifecycle events directly to Canvas. The State Aggregator accepts them alongside file watcher events. Status dots update instantly instead of within ~0.5s.
 
-**Scenario 2: Amplifier opens a file in the viewer.** This is Act 2.2 — the AI decides you should see a file. File watching can detect this in events.jsonl, but a reverse channel makes it feel instant and intentional. The hook module sends `{action: "open-file", path: "VISION.md"}` and the State Aggregator routes it to the viewer.
+**Scenario 2: Amplifier opens a file in the viewer.** The AI decides you should see a file. File watching can detect this in events.jsonl, but a reverse channel makes it feel instant and intentional. The hook module sends `{action: "open-file", path: "VISION.md"}` and the State Aggregator routes it to the viewer.
 
-**Scenario 3: Future web companion.** If we ever want a lightweight web view to check on sessions remotely, the State Aggregator can push state via WebSocket instead of (or in addition to) Electron IPC. The renderer components don't change — they consume the same Zustand store shape regardless of transport.
+**Why not build it now?** File watching is sufficient for Phase 1's glanceable sidebar. The reverse channel adds a second piece (plugin installed in Amplifier) and a coupling to Amplifier's hook API. We save that complexity for when a real user need demands it.
 
-```python
-# amplifier-module-canvas-relay (future)
-# Hook that notifies Canvas directly when session state changes
-# Canvas sets CANVAS_IPC_PORT env var when spawning PTY
-# Hook POSTs to localhost:<port>/events — fire and forget
-```
+## Designed For: Local Store (Phase 2 — not built, architecture accounts for it)
 
-**Why not build it now?** File watching is sufficient for v1's glanceable sidebar. The reverse channel adds a second piece (plugin installed in Amplifier) and a coupling to Amplifier's hook API. We save that complexity for when a real user need demands it.
-
-## Designed For: Local Store (not built, but accounted for)
-
-Canvas has no database in v1. All state is derived from Amplifier's files. `config.json` stores only what Canvas itself owns (project list, UI preferences).
+Canvas has no database in Phase 1. All state is derived from Amplifier's files. `config.json` stores only what Canvas itself owns (UI preferences).
 
 If users ask for features that require Canvas-specific data — session nicknames, starred sessions, notes, custom groupings — we add a small local store (SQLite or flat JSON). The Zustand store already separates "derived state" from "owned state" in its type definitions. Adding persisted Canvas data means extending the "owned" side without touching the "derived" side.
