@@ -4,9 +4,9 @@
 
 **Goal:** Implement the viewer layer (V1-V5) and integration layer (I1-I3), completing the Phase 1 app with a right panel for file inspection, full focus management, and design polish matching the component library.
 
-**Architecture:** The viewer is a read-only panel that appears when a session is selected in the sidebar. Selecting a session triggers an IPC call to the main process which reads the session's working directory via `fs`. The renderer receives a file list and renders it as a tree. Clicking a file triggers another IPC call to read its contents, which are then routed to the correct renderer (markdown, code, or image) based on file extension. The terminal must remain fully functional at all times — its xterm.js instance never unmounts, and focus management ensures keyboard input flows to the terminal by default.
+**Architecture:** The viewer is a read-only panel that appears when a session is selected in the sidebar. Selecting a session triggers an IPC call to the main process which reads the session's working directory via `fs`. The renderer receives a file list and renders it as a tree. Clicking a file triggers another IPC call to read its contents, which are then routed to the correct renderer (markdown, code, or image) based on file extension. Images are served via a `canvas://` custom Electron protocol — no base64 IPC. Markdown is sanitized through DOMPurify before rendering. The terminal must remain fully functional at all times — its xterm.js instance never unmounts, and focus management ensures keyboard input flows to the terminal by default.
 
-**Tech Stack:** Electron (from Plan 1A), React, TypeScript, Zustand 5, react-markdown (markdown rendering), shiki (syntax highlighting), Playwright (E2E testing)
+**Tech Stack:** Electron (from Plan 1A), React, TypeScript, Zustand 5, react-markdown (markdown rendering), highlight.js (syntax highlighting), DOMPurify (markdown sanitization), Playwright (E2E testing)
 
 **This is Plan 1C of 3.** Plans 1A (Scaffold + Terminal) and 1B (Sidebar) are prerequisites. This plan completes Phase 1.
 
@@ -57,6 +57,135 @@ The E2E tests use a `CANVAS_WORKDIR` env var to override the project working dir
 
 ---
 
+## Section 0: canvas:// Protocol Handler (Task 0)
+
+**Feature:** Register a custom Electron protocol that serves project files to the renderer securely. This replaces base64 IPC for images and provides a foundation for serving any file type.
+
+---
+
+### Task 0: Create canvas:// protocol handler
+
+**Files:**
+- Create: `src/main/protocol.ts`
+- Modify: `src/main/index.ts`
+
+**Step 1: Create `src/main/protocol.ts`**
+
+```typescript
+import { protocol, net } from 'electron'
+import { resolve, normalize } from 'path'
+import { existsSync } from 'fs'
+import { getProjects } from './state-store'
+
+// Sensitive paths that must never be served
+const BLOCKED_PATHS = [
+  '.ssh',
+  '.amplifier/keys.env',
+  '.env',
+  '.git/config',
+]
+
+function isBlockedPath(filePath: string): boolean {
+  const normalized = normalize(filePath)
+  return BLOCKED_PATHS.some(blocked => normalized.includes(blocked))
+}
+
+function isAllowedPath(filePath: string): boolean {
+  const normalized = normalize(filePath)
+
+  // Check against registered project paths in canvas.db
+  const projects = getProjects()
+  return projects.some(p => normalized.startsWith(normalize(p.path)))
+}
+
+/**
+ * Register the canvas:// custom protocol.
+ *
+ * Usage in renderer: <img src="canvas:///absolute/path/to/file.png" />
+ *
+ * Security:
+ * - Path normalization eliminates ../ traversal
+ * - Allowlist: only serves files under registered project paths
+ * - Blocklist: explicit rejection of sensitive paths
+ * - Read-only: only serves files, never writes
+ */
+export function registerCanvasProtocol(): void {
+  protocol.handle('canvas', async (request) => {
+    // Extract file path from URL
+    // canvas:///Users/chris/project/file.png → /Users/chris/project/file.png
+    const url = new URL(request.url)
+    const filePath = decodeURIComponent(url.pathname)
+
+    // Security: normalize to eliminate ../ traversal
+    const normalizedPath = resolve(filePath)
+
+    // Security: check blocklist
+    if (isBlockedPath(normalizedPath)) {
+      return new Response('Forbidden', { status: 403 })
+    }
+
+    // Security: check allowlist (registered project paths)
+    if (!isAllowedPath(normalizedPath)) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    // Check file exists
+    if (!existsSync(normalizedPath)) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    // Serve the file using Electron's net module
+    return net.fetch(`file://${normalizedPath}`)
+  })
+}
+```
+
+**Step 2: Update `src/main/index.ts`**
+
+Add import at the top:
+
+```typescript
+import { registerCanvasProtocol } from './protocol'
+```
+
+Register protocol BEFORE app.whenReady() (protocols must be registered before the app is ready):
+
+```typescript
+// Register canvas:// protocol before app is ready
+registerCanvasProtocol()
+
+app.whenReady().then(async () => {
+  // ... existing code
+})
+```
+
+**Step 3: Update `electron.vite.config.ts`**
+
+The renderer needs permission to use the canvas:// protocol. No CSP changes needed because Electron's `protocol.handle` serves via the main process.
+
+**Step 4: Build and verify**
+
+```bash
+npm run build
+```
+
+Expected: Build succeeds. Protocol registered.
+
+**Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat(protocol): add canvas:// custom protocol for secure file serving
+
+- Serves project files to renderer without base64 IPC overhead
+- Path normalization eliminates directory traversal
+- Allowlist: only serves files under registered project paths
+- Blocklist: rejects sensitive paths (.ssh, keys.env, .env, .git/config)
+- Read-only: serves files, never writes"
+```
+
+---
+
 ## Section 1: V1 + I1 — Viewer Shell + Session Wiring (Tasks 1–5)
 
 **Features:** V1 (right panel shell) and I1 (session-viewer wiring). Clicking a session in the sidebar opens the viewer panel. Clicking the same session again closes it. This introduces the three-panel layout: sidebar | terminal | viewer.
@@ -66,15 +195,17 @@ The E2E tests use a `CANVAS_WORKDIR` env var to override the project working dir
 ### Task 1: Install dependencies, add shared types and IPC channels
 
 **Files:**
-- Modify: `package.json` (install react-markdown, shiki)
+- Modify: `package.json` (install react-markdown, highlight.js, dompurify)
 - Modify: `src/shared/types.ts` (add file types and IPC channels)
 - Modify: `src/main/state-aggregator.ts` (add `CANVAS_WORKDIR` override)
 
 **Step 1: Install new dependencies**
 
 ```bash
-npm install react-markdown@latest shiki@latest
+npm install react-markdown@latest highlight.js@latest dompurify@latest @types/dompurify@latest
 ```
+
+> **Why highlight.js over Shiki?** highlight.js is pure JavaScript (~30KB core + grammars), no WASM, zero build risk with electron-vite. DOMPurify sanitizes markdown HTML to prevent XSS.
 
 **Step 2: Update `src/shared/types.ts`**
 
@@ -91,7 +222,6 @@ export const IPC_CHANNELS = {
   // Renderer → Main (invoke/handle — request-response)
   FILES_LIST_DIR: 'files:list-dir',
   FILES_READ_TEXT: 'files:read-text',
-  FILES_READ_IMAGE: 'files:read-image',
 } as const
 
 // --- File types (new for Plan 1C) ---
@@ -118,20 +248,45 @@ export function getFileRenderType(extension: string): RenderableType {
   return 'text'
 }
 
-// Map file extensions to Shiki language IDs
-export function getShikiLanguage(extension: string): string {
+/**
+ * Map file extensions to highlight.js language identifiers.
+ * highlight.js auto-detects in many cases, but explicit mapping is more reliable.
+ */
+export function getHighlightLanguage(extension: string): string | undefined {
+  const ext = extension.startsWith('.') ? extension : `.${extension}`
   const map: Record<string, string> = {
-    '.ts': 'typescript', '.tsx': 'tsx', '.js': 'javascript', '.jsx': 'jsx',
-    '.py': 'python', '.rs': 'rust', '.go': 'go', '.java': 'java',
-    '.c': 'c', '.cpp': 'cpp', '.h': 'c',
-    '.css': 'css', '.scss': 'scss', '.html': 'html',
-    '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
-    '.toml': 'toml', '.xml': 'xml', '.sql': 'sql',
-    '.sh': 'bash', '.bash': 'bash', '.zsh': 'bash', '.fish': 'fish',
-    '.rb': 'ruby', '.php': 'php', '.swift': 'swift',
-    '.kt': 'kotlin', '.lua': 'lua', '.md': 'markdown',
+    '.ts': 'typescript',
+    '.tsx': 'typescript',
+    '.js': 'javascript',
+    '.jsx': 'javascript',
+    '.py': 'python',
+    '.rs': 'rust',
+    '.go': 'go',
+    '.rb': 'ruby',
+    '.java': 'java',
+    '.c': 'c',
+    '.cpp': 'cpp',
+    '.h': 'c',
+    '.hpp': 'cpp',
+    '.cs': 'csharp',
+    '.swift': 'swift',
+    '.kt': 'kotlin',
+    '.sh': 'bash',
+    '.bash': 'bash',
+    '.zsh': 'bash',
+    '.json': 'json',
+    '.yaml': 'yaml',
+    '.yml': 'yaml',
+    '.toml': 'ini',
+    '.xml': 'xml',
+    '.html': 'xml',
+    '.css': 'css',
+    '.scss': 'scss',
+    '.sql': 'sql',
+    '.md': 'markdown',
+    '.dockerfile': 'dockerfile',
   }
-  return map[extension.toLowerCase()] || 'text'
+  return map[ext]
 }
 ```
 
@@ -176,7 +331,6 @@ import { join, extname, basename } from 'path'
 import type { FileEntry } from '../shared/types'
 
 const MAX_TEXT_SIZE = 1024 * 1024  // 1MB
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024  // 5MB
 
 /**
  * List files and directories in the given path.
@@ -253,40 +407,8 @@ export function readTextFile(filePath: string): { content: string; error?: strin
   }
 }
 
-/**
- * Read an image file and return it as a base64 data URL.
- * Avoids needing to register custom protocols in Electron.
- */
-export function readImageFile(filePath: string): { dataUrl: string; error?: string } {
-  if (!existsSync(filePath)) {
-    return { dataUrl: '', error: `File not found: ${filePath}` }
-  }
-
-  try {
-    const stats = statSync(filePath)
-    if (stats.size > MAX_IMAGE_SIZE) {
-      return { dataUrl: '', error: 'Image too large (>5MB)' }
-    }
-
-    const ext = extname(filePath).toLowerCase()
-    const mimeMap: Record<string, string> = {
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif',
-      '.svg': 'image/svg+xml',
-      '.webp': 'image/webp',
-      '.ico': 'image/x-icon',
-    }
-    const mime = mimeMap[ext] || 'application/octet-stream'
-    const buffer = readFileSync(filePath)
-    const base64 = buffer.toString('base64')
-    const dataUrl = `data:${mime};base64,${base64}`
-    return { dataUrl }
-  } catch (err) {
-    return { dataUrl: '', error: `Failed to read image: ${err}` }
-  }
-}
+// Images are served via canvas:// custom protocol — no IPC needed.
+// Usage in renderer: <img src={`canvas://${filePath}`} />
 ```
 
 **Step 2: Update `src/main/ipc.ts`**
@@ -294,7 +416,7 @@ export function readImageFile(filePath: string): { dataUrl: string; error?: stri
 Add file operation IPC handlers. Keep all existing terminal and session handlers. Add after the session handlers section:
 
 ```typescript
-import { listDirectory, readTextFile, readImageFile } from './file-reader'
+import { listDirectory, readTextFile } from './file-reader'
 ```
 
 Add inside `registerIpcHandlers` function, after the existing session handlers:
@@ -308,10 +430,6 @@ Add inside `registerIpcHandlers` function, after the existing session handlers:
 
   ipcMain.handle(IPC_CHANNELS.FILES_READ_TEXT, async (_event, filePath: string) => {
     return readTextFile(filePath)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.FILES_READ_IMAGE, async (_event, filePath: string) => {
-    return readImageFile(filePath)
   })
 ```
 
@@ -330,11 +448,6 @@ Add file operation methods to the preload bridge. Add after the existing `onSess
   // Files: read text file content
   readFileText: (filePath: string): Promise<{ content: string; error?: string; truncated?: boolean }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.FILES_READ_TEXT, filePath)
-  },
-
-  // Files: read image as base64 data URL
-  readFileImage: (filePath: string): Promise<{ dataUrl: string; error?: string }> => {
-    return ipcRenderer.invoke(IPC_CHANNELS.FILES_READ_IMAGE, filePath)
   },
 ```
 
@@ -1414,8 +1527,9 @@ Expected: FAIL — no `[data-testid="markdown-renderer"]` exists yet.
 **Step 1: Create `src/renderer/src/components/MarkdownRenderer.tsx`**
 
 ```tsx
-import { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import DOMPurify from 'dompurify'
 
 interface MarkdownRendererProps {
   filePath: string
@@ -1428,51 +1542,57 @@ function MarkdownRenderer({ filePath }: MarkdownRendererProps): React.ReactEleme
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(null)
 
-    if (!window.electronAPI?.readFileText) {
-      setError('File API not available')
-      setLoading(false)
-      return
+    async function loadFile(): Promise<void> {
+      try {
+        setLoading(true)
+        setError(null)
+        const result = await window.api.readFileText(filePath)
+        if (!cancelled) {
+          if (result.error) {
+            setError(result.error)
+          } else {
+            setContent(result.content)
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load file')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
     }
 
-    window.electronAPI.readFileText(filePath).then((result) => {
-      if (cancelled) return
-      if (result.error) {
-        setError(result.error)
-      } else {
-        setContent(result.content)
-      }
-      setLoading(false)
-    })
-
+    loadFile()
     return () => { cancelled = true }
   }, [filePath])
 
   if (loading) {
-    return <div style={{ padding: 16, fontSize: 12, color: '#A09888' }}>Loading...</div>
+    return <div data-testid="markdown-renderer" style={{ padding: 16, color: 'var(--text-muted)' }}>Loading...</div>
   }
 
   if (error) {
-    return <div style={{ padding: 16, fontSize: 12, color: '#CC5555' }}>{error}</div>
+    return <div data-testid="markdown-renderer" style={{ padding: 16, color: 'var(--red)' }}>{error}</div>
   }
 
   return (
-    <div
-      data-testid="markdown-renderer"
-      style={{
-        padding: '16px 20px',
-        fontSize: '14px',
-        lineHeight: '1.6',
-        color: '#1C1A16',
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-        overflowY: 'auto',
-        height: '100%',
-      }}
-      className="markdown-content"
-    >
-      <ReactMarkdown>{content}</ReactMarkdown>
+    <div data-testid="markdown-renderer" style={{ padding: '16px 20px', overflowY: 'auto', height: '100%' }}>
+      <div className="markdown-content">
+        <ReactMarkdown
+          components={{
+            // Sanitize any raw HTML in markdown
+            html: ({ node, ...props }) => {
+              const sanitized = DOMPurify.sanitize(String(props.children || ''))
+              return <span dangerouslySetInnerHTML={{ __html: sanitized }} />
+            },
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
     </div>
   )
 }
@@ -1704,7 +1824,7 @@ git commit -m "feat(V3): markdown rendering — react-markdown with styled outpu
 
 ## Section 4: V4 — Code Syntax Highlighting (Tasks 12–14)
 
-**Feature:** Clicking a code file (`.ts`, `.py`, `.css`, etc.) in the file browser shows syntax-highlighted code with line numbers via Shiki.
+**Feature:** Clicking a code file (`.ts`, `.py`, `.css`, etc.) in the file browser shows syntax-highlighted code with line numbers via highlight.js.
 
 ---
 
@@ -1752,12 +1872,12 @@ test('V4: code renderer shows line numbers', async () => {
   expect(count).toBeGreaterThanOrEqual(5)
 })
 
-test('V4: code is syntax-highlighted (contains styled spans)', async () => {
+test('V4: code is syntax-highlighted (contains hljs class spans)', async () => {
   const renderer = page.locator('[data-testid="code-renderer"]')
-  // Shiki produces <span style="color:..."> elements
-  const coloredSpans = renderer.locator('span[style*="color"]')
+  // highlight.js produces <span class="hljs-..."> elements
+  const coloredSpans = renderer.locator('span[class*="hljs-"]')
   const count = await coloredSpans.count()
-  // Should have multiple colored spans (keywords, strings, etc.)
+  // Should have multiple highlighted spans (keywords, strings, etc.)
   expect(count).toBeGreaterThanOrEqual(3)
 })
 
@@ -1804,7 +1924,7 @@ Expected: FAIL — no `[data-testid="code-renderer"]` exists yet.
 
 ---
 
-### Task 13: Implement CodeRenderer with Shiki
+### Task 13: Implement CodeRenderer with highlight.js
 
 **Files:**
 - Create: `src/renderer/src/components/CodeRenderer.tsx`
@@ -1813,146 +1933,170 @@ Expected: FAIL — no `[data-testid="code-renderer"]` exists yet.
 **Step 1: Create `src/renderer/src/components/CodeRenderer.tsx`**
 
 ```tsx
-import { useState, useEffect } from 'react'
-import { codeToHtml } from 'shiki'
-import { getShikiLanguage } from '../../../../shared/types'
+import React, { useEffect, useState, useMemo } from 'react'
+import hljs from 'highlight.js/lib/core'
+import { getHighlightLanguage } from '../../../../shared/types'
+
+// Register only common languages to keep bundle small
+import typescript from 'highlight.js/lib/languages/typescript'
+import javascript from 'highlight.js/lib/languages/javascript'
+import python from 'highlight.js/lib/languages/python'
+import json from 'highlight.js/lib/languages/json'
+import yaml from 'highlight.js/lib/languages/yaml'
+import bash from 'highlight.js/lib/languages/bash'
+import css from 'highlight.js/lib/languages/css'
+import xml from 'highlight.js/lib/languages/xml'
+import markdown from 'highlight.js/lib/languages/markdown'
+import rust from 'highlight.js/lib/languages/rust'
+import go from 'highlight.js/lib/languages/go'
+import sql from 'highlight.js/lib/languages/sql'
+
+// Register languages
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('sql', sql)
 
 interface CodeRendererProps {
   filePath: string
 }
 
 function CodeRenderer({ filePath }: CodeRendererProps): React.ReactElement {
-  const [html, setHtml] = useState<string>('')
-  const [rawLines, setRawLines] = useState<string[]>([])
+  const [content, setContent] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const ext = useMemo(() => {
+    const parts = filePath.split('.')
+    return parts.length > 1 ? `.${parts[parts.length - 1]}` : ''
+  }, [filePath])
+
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(null)
 
-    if (!window.electronAPI?.readFileText) {
-      setError('File API not available')
-      setLoading(false)
-      return
-    }
-
-    const ext = filePath.includes('.') ? '.' + filePath.split('.').pop() : ''
-    const lang = getShikiLanguage(ext)
-
-    window.electronAPI.readFileText(filePath).then(async (result) => {
-      if (cancelled) return
-      if (result.error) {
-        setError(result.error)
-        setLoading(false)
-        return
-      }
-
-      const content = result.content
-      setRawLines(content.split('\n'))
-
+    async function loadFile(): Promise<void> {
       try {
-        const highlighted = await codeToHtml(content, {
-          lang,
-          theme: 'github-light',
-        })
+        setLoading(true)
+        setError(null)
+        const result = await window.api.readFileText(filePath)
         if (!cancelled) {
-          setHtml(highlighted)
+          if (result.error) {
+            setError(result.error)
+          } else {
+            setContent(result.content)
+          }
         }
       } catch (err) {
         if (!cancelled) {
-          // Fallback: show raw code if Shiki fails for this language
-          setHtml(`<pre><code>${escapeHtml(content)}</code></pre>`)
+          setError(err instanceof Error ? err.message : 'Failed to load file')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
         }
       }
-      if (!cancelled) setLoading(false)
-    })
+    }
 
+    loadFile()
     return () => { cancelled = true }
   }, [filePath])
 
+  const highlighted = useMemo(() => {
+    if (!content) return ''
+    const lang = getHighlightLanguage(ext)
+    try {
+      if (lang) {
+        return hljs.highlight(content, { language: lang }).value
+      }
+      // Auto-detect if no explicit mapping
+      return hljs.highlightAuto(content).value
+    } catch {
+      // Fallback: return raw content (no highlighting)
+      return content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+    }
+  }, [content, ext])
+
+  const lines = useMemo(() => {
+    return highlighted.split('\n')
+  }, [highlighted])
+
   if (loading) {
-    return <div style={{ padding: 16, fontSize: 12, color: '#A09888' }}>Loading...</div>
+    return <div data-testid="code-renderer" style={{ padding: 16, color: 'var(--text-muted)' }}>Loading...</div>
   }
 
   if (error) {
-    return <div style={{ padding: 16, fontSize: 12, color: '#CC5555' }}>{error}</div>
+    return <div data-testid="code-renderer" style={{ padding: 16, color: 'var(--red)' }}>{error}</div>
   }
 
+  const fileName = filePath.split('/').pop() || filePath
+
   return (
-    <div
-      data-testid="code-renderer"
-      style={{
-        display: 'flex',
-        overflowY: 'auto',
-        overflowX: 'auto',
-        height: '100%',
-        fontFamily: "'SFMono-Regular', Menlo, Consolas, monospace",
-        fontSize: '13px',
-        lineHeight: '1.5',
-      }}
-    >
-      {/* Line numbers */}
-      <div
-        style={{
-          padding: '12px 0',
-          textAlign: 'right',
-          userSelect: 'none',
-          flexShrink: 0,
-          borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-          backgroundColor: 'rgba(0, 0, 0, 0.02)',
-        }}
-      >
-        {rawLines.map((_, i) => (
-          <div
-            key={i}
-            data-testid="line-number"
-            style={{
-              padding: '0 12px 0 12px',
-              color: '#A09888',
-              fontSize: '12px',
-              lineHeight: '1.5',
-            }}
-          >
-            {i + 1}
-          </div>
-        ))}
+    <div data-testid="code-renderer" style={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg-terminal)',
+      color: 'var(--text-terminal)',
+    }}>
+      {/* File header */}
+      <div style={{
+        padding: '8px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        fontSize: 12,
+        fontFamily: 'var(--font-mono)',
+        color: 'var(--text-muted)',
+      }}>
+        {fileName}
       </div>
 
-      {/* Highlighted code */}
-      <div
-        style={{ flex: 1, padding: '12px 16px', overflow: 'auto' }}
-        className="shiki-code"
-        dangerouslySetInnerHTML={{ __html: stripShikiWrapper(html) }}
-      />
+      {/* Code with line numbers */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: '20px' }}>
+          <tbody>
+            {lines.map((line, i) => (
+              <tr key={i}>
+                <td
+                  data-testid="line-number"
+                  style={{
+                    padding: '0 12px 0 16px',
+                    textAlign: 'right',
+                    color: 'rgba(255,255,255,0.2)',
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'top',
+                  }}>
+                  {i + 1}
+                </td>
+                <td style={{
+                  padding: '0 16px 0 12px',
+                  whiteSpace: 'pre',
+                }}>
+                  <span dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
-}
-
-/**
- * Strip Shiki's outer <pre><code> wrapper since we provide our own layout.
- * Shiki outputs: <pre class="shiki" style="..."><code><span class="line">...</span></code></pre>
- * We want just the inner spans.
- */
-function stripShikiWrapper(html: string): string {
-  // Remove outer <pre> and <code> tags, keep the content
-  return html
-    .replace(/^<pre[^>]*><code[^>]*>/, '')
-    .replace(/<\/code><\/pre>$/, '')
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
 }
 
 export default CodeRenderer
 ```
 
-> **Potential issue:** Shiki's WASM loading may need configuration in electron-vite. If the build fails with Shiki-related errors, add `shiki` to the `ssr.noExternal` list in `electron.vite.config.ts` renderer section, or try importing from `shiki/bundle/web`.
+> **Note:** highlight.js is synchronous and pure JavaScript — no WASM, no async loading issues. `hljs.highlight()` returns escaped HTML with class-based spans. `dangerouslySetInnerHTML` is safe here because highlight.js escapes HTML entities before applying highlighting.
 
 **Step 2: Update `src/renderer/src/components/FileRenderer.tsx`**
 
@@ -2051,16 +2195,21 @@ Add the required imports at the top:
 import { useState, useEffect } from 'react'
 ```
 
-**Step 3: Add Shiki output styling to `src/renderer/src/App.css`**
+**Step 3: Add highlight.js styling to `src/renderer/src/App.css`**
 
 Append:
 
 ```css
-/* Shiki code styling — override Shiki's default backgrounds */
-.shiki-code .line { display: block; }
-.shiki-code pre { background: transparent !important; margin: 0; padding: 0; }
-.shiki-code code { background: transparent !important; }
+/* highlight.js code styling */
+/* Import a highlight.js theme that matches our terminal aesthetic */
+/* We use inline styles via the component, but override defaults here */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
 ```
+
+> **Note:** highlight.js generates `<span class="hljs-keyword">`, `<span class="hljs-string">`, etc. The colors come from highlight.js's built-in styling. Since we use `dangerouslySetInnerHTML`, the output is pre-sanitized by highlight.js (it escapes HTML entities before highlighting).
 
 **Step 4: Build and run all tests**
 
@@ -2069,10 +2218,6 @@ npm run build && npx playwright test
 ```
 
 Expected: All tests pass, including V4 code highlighting tests.
-
-> **Troubleshooting:** If Shiki fails to load in the renderer, try:
-> 1. Add to `electron.vite.config.ts` renderer section: `resolve: { alias: { 'shiki': 'shiki/bundle/web' } }`
-> 2. Or change the import to: `import { codeToHtml } from 'shiki/bundle/web'`
 
 ---
 
@@ -2100,7 +2245,7 @@ npm run build && npx playwright test
 
 ```bash
 git add -A
-git commit -m "feat(V4): code syntax highlighting — Shiki-powered highlighting with line numbers, monospace font, github-light theme"
+git commit -m "feat(V4): code syntax highlighting — highlight.js with line numbers, 12 registered languages"
 ```
 
 ---
@@ -2155,12 +2300,12 @@ test('V5: image renderer contains an img element', async () => {
   await expect(img).toBeVisible()
 })
 
-test('V5: image has a data URL src (loaded via IPC)', async () => {
+test('V5: image has a canvas:// protocol src', async () => {
   const renderer = page.locator('[data-testid="image-renderer"]')
   const img = renderer.locator('img')
   const src = await img.getAttribute('src')
   expect(src).toBeTruthy()
-  expect(src!).toMatch(/^data:image\//)
+  expect(src!).toMatch(/^canvas:\/\//)
 })
 ```
 
@@ -2183,98 +2328,70 @@ Expected: FAIL — no `[data-testid="image-renderer"]` exists yet.
 **Step 1: Create `src/renderer/src/components/ImageRenderer.tsx`**
 
 ```tsx
-import { useState, useEffect } from 'react'
+import React, { useMemo } from 'react'
 
 interface ImageRendererProps {
   filePath: string
 }
 
+/**
+ * Image renderer using canvas:// custom protocol.
+ * No IPC needed — the protocol handler serves the file directly.
+ */
 function ImageRenderer({ filePath }: ImageRendererProps): React.ReactElement {
-  const [dataUrl, setDataUrl] = useState<string>('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    if (!window.electronAPI?.readFileImage) {
-      setError('File API not available')
-      setLoading(false)
-      return
-    }
-
-    window.electronAPI.readFileImage(filePath).then((result) => {
-      if (cancelled) return
-      if (result.error) {
-        setError(result.error)
-      } else {
-        setDataUrl(result.dataUrl)
-      }
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [filePath])
-
-  if (loading) {
-    return <div style={{ padding: 16, fontSize: 12, color: '#A09888' }}>Loading image...</div>
-  }
-
-  if (error) {
-    return (
-      <div
-        data-testid="image-renderer"
-        style={{ padding: 16, fontSize: 12, color: '#CC5555' }}
-      >
-        {error}
-      </div>
-    )
-  }
-
-  const fileName = filePath.split('/').pop() || 'image'
+  const fileName = useMemo(() => filePath.split('/').pop() || filePath, [filePath])
+  const canvasUrl = useMemo(() => `canvas://${filePath}`, [filePath])
 
   return (
     <div
       data-testid="image-renderer"
       style={{
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
-        height: '100%',
-        overflowY: 'auto',
       }}
     >
+      <div style={{
+        fontSize: 12,
+        fontFamily: 'var(--font-mono)',
+        color: 'var(--text-muted)',
+        marginBottom: 12,
+      }}>
+        {fileName}
+      </div>
       <img
-        src={dataUrl}
+        src={canvasUrl}
         alt={fileName}
         style={{
           maxWidth: '100%',
           maxHeight: 'calc(100% - 40px)',
           objectFit: 'contain',
-          borderRadius: 4,
-          border: '1px solid rgba(0, 0, 0, 0.06)',
+        }}
+        onError={(e) => {
+          // Replace with error message if image fails to load
+          const target = e.currentTarget
+          target.style.display = 'none'
+          const parent = target.parentElement
+          if (parent) {
+            const errorDiv = document.createElement('div')
+            errorDiv.style.color = 'var(--red)'
+            errorDiv.style.fontSize = '13px'
+            errorDiv.textContent = `Failed to load image: ${fileName}`
+            parent.appendChild(errorDiv)
+          }
         }}
       />
-      <div
-        style={{
-          marginTop: 8,
-          fontSize: '11px',
-          color: '#A09888',
-          textAlign: 'center',
-        }}
-      >
-        {fileName}
-      </div>
     </div>
   )
 }
 
 export default ImageRenderer
 ```
+
+> **Note:** This is dramatically simpler than a base64 IPC version — no useState, no useEffect, no loading state, no IPC call. The canvas:// protocol handler serves the file directly from the main process. The `<img>` tag handles loading natively.
 
 **Step 2: Update `src/renderer/src/components/FileRenderer.tsx`**
 
@@ -2405,7 +2522,7 @@ npm run build && npx playwright test
 
 ```bash
 git add -A
-git commit -m "feat(V5): image preview — renders PNG/JPG/SVG/GIF inline via base64 data URL, responsive sizing"
+git commit -m "feat(V5): image preview — renders PNG/JPG/SVG/GIF/WebP via canvas:// protocol, zero IPC overhead"
 ```
 
 ---
@@ -3109,7 +3226,7 @@ Expected: ALL tests pass. The output should show terminal tests (T1-T5), sidebar
   ✓ V4: clicking a .css file also shows highlighted code
   ✓ V5: clicking a .png file shows the image
   ✓ V5: image renderer contains an img element
-  ✓ V5: image has a data URL src
+  ✓ V5: image has a canvas:// protocol src
   ✓ I2: terminal accepts input before any viewer interaction
   ✓ I2: opening viewer does not break terminal
   ✓ I2: browsing files does not break terminal
@@ -3155,7 +3272,7 @@ Cross-reference with the design document's checklist:
 | Shows files from session's working directory | V2: file browser | Covered |
 | Renders markdown with basic styling | V3: markdown rendering | Covered |
 | Renders code with syntax highlighting | V4: code highlighting | Covered |
-| Shows images inline | V5: image preview | Covered |
+| Shows images inline | V5: image preview — canvas:// protocol | Covered |
 | Appears/disappears without disrupting terminal | I2: terminal persistence + V1: toggle | Covered |
 
 **Visual:**

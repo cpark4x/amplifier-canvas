@@ -6,7 +6,7 @@
 
 **Architecture:** Electron two-process model — main process (Node.js) owns all OS interaction (PTY, filesystem), renderer process (Chromium) owns all UI (React + xterm.js). They communicate over Electron IPC. For Plan 1A, only the terminal channel matters: keystrokes flow from xterm.js → IPC → node-pty, and output flows back the same way.
 
-**Tech Stack:** Electron 41, React 18, TypeScript, electron-vite 5, xterm.js 6, node-pty 1.1, Playwright (E2E testing), electron-builder 26 (packaging), Zustand 5 (state — minimal in Plan 1A)
+**Tech Stack:** Electron 41, React 18, TypeScript, electron-vite 5, xterm.js 6, node-pty 1.1, better-sqlite3 (installed, used in Plan 1B), highlight.js (installed, used in Plan 1C), DOMPurify (installed, used in Plan 1C), Playwright (E2E testing), electron-builder 26 (packaging), Zustand 5 (state — minimal in Plan 1A)
 
 **This is Plan 1A of 3.** Plan 1B covers the sidebar layer. Plan 1C covers the viewer and integration layer. Each plan ends with an antagonistic review.
 
@@ -41,8 +41,8 @@ npm init -y
 **Step 2: Install all dependencies**
 
 ```bash
-npm install --save electron-vite@latest react@18 react-dom@18 @xterm/xterm@latest @xterm/addon-fit@latest zustand@latest
-npm install --save-dev electron@latest typescript@latest @types/react@18 @types/react-dom@18 vite@latest electron-builder@latest @playwright/test@latest
+npm install --save electron-vite@latest react@18 react-dom@18 @xterm/xterm@latest @xterm/addon-fit@latest zustand@latest better-sqlite3@latest
+npm install --save-dev electron@latest typescript@latest @types/react@18 @types/react-dom@18 @types/better-sqlite3@latest vite@latest electron-builder@latest @playwright/test@latest @electron/rebuild@latest
 ```
 
 **Step 3: Replace `package.json` with correct content**
@@ -61,17 +61,21 @@ Overwrite the generated `package.json` with:
     "preview": "electron-vite preview",
     "test": "npx playwright test",
     "prebuild": "electron-vite build",
-    "package": "electron-builder"
+    "package": "electron-builder",
+    "postinstall": "electron-rebuild -f -w node-pty better-sqlite3"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.0",
     "@playwright/test": "^1.59.1",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "electron": "^41.1.1",
@@ -84,6 +88,8 @@ Overwrite the generated `package.json` with:
 ```
 
 > **Note:** node-pty requires native compilation and will be added in Task 19 (T3: PTY Pipe) when it's actually needed. Adding it now would complicate the scaffold with native build issues before we need it.
+
+> **Note:** better-sqlite3 also requires native compilation. The `postinstall` script runs `electron-rebuild` for both native deps (node-pty + better-sqlite3) together. highlight.js and DOMPurify are installed now but not used until Plans 1B and 1C — installing them early avoids dependency churn later.
 
 **Step 4: Create `electron.vite.config.ts`**
 
@@ -1418,22 +1424,15 @@ And add the import at the top of the file:
 import { registerIpcHandlers } from './ipc'
 ```
 
-**Step 4: Rebuild node-pty for Electron**
+**Step 4: Rebuild node-pty and better-sqlite3 for Electron**
 
-node-pty must be rebuilt against Electron's Node.js headers:
-
-```bash
-npx electron-rebuild -f -w node-pty
-```
-
-If `electron-rebuild` is not installed:
+node-pty and better-sqlite3 are rebuilt automatically via the `postinstall` script. If you need to rebuild manually:
 
 ```bash
-npm install --save-dev @electron/rebuild@latest
-npx electron-rebuild -f -w node-pty
+npx electron-rebuild -f -w node-pty better-sqlite3
 ```
 
-> **Important:** If rebuild fails, try: `npm install --save-dev electron-rebuild@latest && npx electron-rebuild`
+> **Note:** node-pty and better-sqlite3 both require native compilation. The rebuild step handles both.
 
 **Step 5: Configure electron-vite to externalize node-pty**
 
@@ -1449,7 +1448,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        external: ['node-pty']
+        external: ['node-pty', 'better-sqlite3']
       }
     }
   },
@@ -1590,7 +1589,7 @@ import { existsSync } from 'fs'
 
 test('T4: bin entry point exists and app launches via it', async () => {
   // Verify the bin script exists
-  const binPath = resolve(__dirname, '..', 'bin', 'amplifier-canvas.js')
+  const binPath = resolve(__dirname, '..', 'bin', 'canvas.js')
   expect(existsSync(binPath)).toBe(true)
 })
 
@@ -1619,10 +1618,10 @@ Expected: First test FAILS (no bin directory exists yet).
 ### Task 19: Implement CLI bin script
 
 **Files:**
-- Create: `bin/amplifier-canvas.js`
+- Create: `bin/canvas.js`
 - Modify: `package.json`
 
-**Step 1: Create `bin/amplifier-canvas.js`**
+**Step 1: Create `bin/canvas.js`**
 
 ```javascript
 #!/usr/bin/env node
@@ -1653,7 +1652,7 @@ process.exit(0)
 **Step 2: Make the bin script executable**
 
 ```bash
-chmod +x bin/amplifier-canvas.js
+chmod +x bin/canvas.js
 ```
 
 **Step 3: Add bin entry to `package.json`**
@@ -1662,7 +1661,7 @@ Add this to `package.json` at the top level (after `"main"`):
 
 ```json
 "bin": {
-  "amplifier-canvas": "./bin/amplifier-canvas.js"
+  "canvas": "./bin/canvas.js"
 },
 ```
 
@@ -1677,7 +1676,7 @@ Expected: All tests pass.
 **Step 5: Test the bin script manually (optional verification)**
 
 ```bash
-node bin/amplifier-canvas.js
+node bin/canvas.js
 ```
 
 Expected: Electron window opens with the terminal. The CLI exits immediately (detached). Close the Electron window manually.
@@ -1713,7 +1712,7 @@ npm run build && npx playwright test
 
 ```bash
 git add -A
-git commit -m "feat(T4): CLI launch command — bin/amplifier-canvas.js entry point"
+git commit -m "feat(T4): CLI launch command — bin/canvas.js entry point"
 ```
 
 ---
@@ -2020,7 +2019,7 @@ amplifier-canvas/
   build/
     entitlements.mac.plist              (Task 3)
   bin/
-    amplifier-canvas.js                 (Task 19)
+    canvas.js                           (Task 19)
   src/
     main/
       index.ts                          (Task 2, modified Task 9, Task 15)

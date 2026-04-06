@@ -15,8 +15,8 @@ Phase 1 delivers the core experience: see your sessions, work in the terminal, i
 | Layer | Features |
 |-------|----------|
 | **Terminal** | xterm.js + node-pty, bidirectional PTY pipe, `amplifier canvas` CLI launch, keyboard fidelity (Ctrl+C, Ctrl+D, arrows, tab) |
-| **Sidebar** | Session list, status dots (running/needs_input/done/failed/paused), project grouping from disk structure, real-time updates via chokidar |
-| **Viewer** | File browser, markdown rendering (react-markdown), code syntax highlighting (shiki), image preview |
+| **Sidebar** | Session list, status dots (running/needs_input/done/failed/paused), project grouping from disk structure, real-time updates via hook module (Canvas-started sessions) + chokidar file watchers (external sessions), SQLite-backed session lifecycle |
+| **Viewer** | File browser, markdown rendering (react-markdown), code syntax highlighting (highlight.js), image preview |
 | **Integration** | Session-viewer wiring, terminal persistence across session switches, design token alignment with component library |
 
 **Phase 2 — Designed for, not built:**
@@ -25,8 +25,6 @@ Phase 1 delivers the core experience: see your sessions, work in the terminal, i
 |---------|-------------|
 | Git Poller (5s per project) | No Phase 1 feature depends on git state. Architecture has a slot for it in the State Aggregator. |
 | AppHeader (logo, breadcrumb, settings) | Chrome, not core. Phase 1 uses the window title bar. |
-| Reverse channel hook (Amplifier → Canvas) | File watching is sufficient for the glanceable sidebar. Adds coupling to Amplifier's hook API. |
-| Local store / database | All state derives from Amplifier's files. config.json covers Canvas preferences. |
 | Multi-session terminals | Phase 1 supports one PTY terminal. Multiple tabs are a Phase 2 UX decision. |
 | Project archive/unarchive | Project management is Phase 2. Phase 1 shows what's on disk. |
 
@@ -42,6 +40,9 @@ The architecture accounts for all Phase 2 items — adding them means extending 
 | React | Component model maps to our UI: sidebar, terminal, viewer. Ecosystem for xterm.js, syntax highlighting, markdown rendering. |
 | TypeScript | Type safety across the IPC boundary between main and renderer. |
 | Zustand | Proven in Grove's identical use case (React + Electron + session state). Flat store, no boilerplate, works with React devtools. |
+| better-sqlite3 | Session lifecycle persistence (projects, sessions, byte offsets). Sync API — no async overhead in Electron main process. Already paying electron-rebuild tax for node-pty. |
+| highlight.js | Code syntax highlighting. Pure JS, no WASM — eliminates Shiki's build risk with electron-vite. Good enough for read-only viewer. |
+| DOMPurify | HTML sanitization for markdown rendering. Defense-in-depth against XSS in the viewer. |
 
 **Why not Tauri?** xterm.js requires a full browser runtime. Tauri uses native webviews that don't guarantee this. The terminal is the primary workspace — can't compromise.
 
@@ -50,6 +51,8 @@ The architecture accounts for all Phase 2 items — adding them means extending 
 **Why not amplifierd (Distro's server)?** Different product. Distro is a multi-user server with REST+SSE. Canvas is a local desktop app. We don't need auth, HTTP APIs, or a daemon. If amplifierd matures into the standard way to run Amplifier, Canvas could adopt it later — the architecture allows this because Canvas never couples to *how* it gets data, only *what shape* the data is.
 
 **Build tooling:** electron-vite (handles the main/preload/renderer split cleanly with one config file) + electron-builder (packages the app for macOS). Single app, no monorepo needed.
+
+**Native dependencies:** Both node-pty and better-sqlite3 require native compilation via electron-rebuild. Pin exact Electron + node-pty + better-sqlite3 versions. electron-rebuild runs as a postinstall script.
 
 ## The Two-Process Architecture
 
@@ -61,25 +64,30 @@ Electron apps have two processes. This isn't a choice — it's how Electron work
 │  Everything that touches the OS                            │
 │                                                            │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │ PTY Manager  │  │ File Watcher │  │ Git Poller   │     │
-│  │              │  │              │  │  (Phase 2)   │     │
-│  │ Spawns       │  │ Watches      │  │              │     │
-│  │ amplifier run│  │ events.jsonl │  │ Polls every  │     │
-│  │ via node-pty │  │ via chokidar │  │ 5s per       │     │
-│  │              │  │              │  │ project      │     │
+│  │ PTY Manager  │  │ File Watcher │  │Hook Receiver │     │
+│  │              │  │ (sparse —    │  │              │     │
+│  │ Spawns       │  │  external    │  │ HTTP server, │     │
+│  │ amplifier run│  │  sessions    │  │ localhost;   │     │
+│  │ via node-pty │  │  only)       │  │ canvas-relay │     │
+│  │              │  │              │  │ hook events  │     │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
 │         │                 │                 │              │
-│         └────────┬────────┴────────┬────────┘              │
-│                  ▼                 │                        │
-│  ┌───────────────────────────────┐ │                       │
-│  │ State Aggregator              │◄┘                       │
-│  │                               │                         │
-│  │ Merges PTY process state      │                         │
-│  │ + parsed events.jsonl         │                         │
-│  │ + git status (Phase 2)        │                         │
-│  │ into canonical shape          │                         │
-│  └─────────────┬─────────────────┘                         │
+│         └────────┬────────┴─────────────────┬────────┘         │
+│                  ▼                                 │          │
+│  ┌───────────────────────────────┐  ┌─────────────┐ │  │
+│  │ State Aggregator              │  │ State Store │◄┘  │
+│  │                               │  │ SQLite via  │     │
+│  │ Merges: PTY state             │  │ better-     │     │
+│  │ + hook events (Canvas)        │  │ sqlite3     │     │
+│  │ + file watcher (external)     │  │ (canvas.db) │     │
+│  │ + SQLite lifecycle data       │  │             │     │
+│  │                               │  │ Git Poller  │     │
+│  │                               │  │ (Phase 2)   │     │
+│  └─────────────┬─────────────────┘  └─────────────┘     │
 │                │ IPC (ipcMain.handle)                       │
+│  ┌─────────────┴───────────────────────────────┐             │
+│  │ canvas:// Protocol (serves project files to renderer) │             │
+│  └─────────────┬───────────────────────────────┘             │
 ├────────────────┼───────────────────────────────────────────┤
 │                ▼                                           │
 │  RENDERER PROCESS (Chromium)                               │
@@ -122,10 +130,13 @@ The main→renderer channel is the real API of this app:
 // Renderer → Main (invoke/handle: request-response)
 'files:list-dir'             → { path: string } → FileEntry[]
 'files:read-text'            → { path: string } → string
-'files:read-image'           → { path: string } → string (base64)
+// Images served via canvas:// custom protocol — no IPC needed for binary files
+
+// Hook event ingestion (Phase 1)
+'hook:event'                 → { sessionId: string, event: string, data: any }
 ```
 
-Phase 2 additions (slots exist, not wired):
+Phase 2 reserved channels (slots defined, not wired):
 ```typescript
 'state:git-changed'          → GitState[]
 'session:start'              → { projectPath: string } → sessionId
@@ -133,41 +144,62 @@ Phase 2 additions (slots exist, not wired):
 'session:resume'             → { sessionId: string }
 'project:add'                → { path: string }
 'project:archive'            → { projectId: string }
+
+// Reserved — Session → UI intent signals (Phase 2, slots defined)
+'session:open-file'          → { sessionId: string, filePath: string }
+'session:notification'       → { sessionId: string, message: string, type: string }
+'session:tool-output'        → { sessionId: string, toolName: string, output: string }
 ```
 
 ## Data Architecture
 
-### Three Read-Only Sources
+### Data Sources
 
 Canvas reads — it never writes to Amplifier's data.
 
-| Source | What it gives us | How we read it | Update mechanism |
-|--------|-----------------|----------------|-----------------|
-| **Session files** (`~/.amplifier/projects/<slug>/sessions/<id>/events.jsonl`) | Session state, tool calls, agent output, status | Tail-read (track file offset, parse only new bytes) | chokidar file watcher |
-| **Git state** (`.git/` in each project) | Branch, recent commits, PR status | `git` CLI commands | Poll every 5 seconds *(Phase 2)* |
-| **File system** (project working directory) | Files created/modified by sessions | Directory listing | On-demand (when viewer opens) |
+| Source | What it gives us | How we read it | Update mechanism | Owner |
+|--------|-----------------|----------------|-----------------|-------|
+| **Session files** (`events.jsonl`) | Session events, tool calls, agent output | Tail-read (track byte offset in SQLite, parse only new bytes) | Hook events (Canvas-started) or chokidar watcher (external) | Amplifier (read-only) |
+| **File system** (project working directory) | Files created/modified by sessions | canvas:// custom protocol (renderer) or fs (main) | On-demand (when viewer opens) | Amplifier (read-only) |
+| **Git state** (`.git/` in each project) | Branch, recent commits | `git` CLI commands | Poll every 5s *(Phase 2)* | Git (read-only) |
+| **canvas.db** (`~/.amplifier/canvas/canvas.db`) | Project registry, session lifecycle, byte offsets, startedBy flags, UI preferences | better-sqlite3 sync API | Written by Canvas main process | Canvas (read-write) |
 
-**Why tail-read for events.jsonl?** These files grow to megabytes. We track the byte offset of our last read and only parse new content. On startup, we read the last ~50 events (enough to derive current status) not the full file. Learned from both Grove and Distro — neither reads full event files.
+Canvas maintains a read-only relationship with Amplifier's data — it never writes to events.jsonl, session directories, or Amplifier config. canvas.db is Canvas's own data store for lifecycle metadata that doesn't exist in Amplifier's files.
+
+### Event Ingestion (Dual Path)
+
+Canvas receives session events through two paths:
+
+**Primary path — Hook module (Canvas-started sessions):**
+When Canvas auto-starts `amplifier run` in a PTY, it injects the `canvas-relay` hook via the PTY environment. The hook POSTs lifecycle events (`session:start`, `session:end`, tool calls) to Canvas's localhost HTTP receiver. Latency: ~10ms. This provides session-to-PTY association without banner regex.
+
+**Fallback path — File watchers (external sessions):**
+Sessions started outside Canvas (in a regular terminal) have no hook. Canvas discovers them via sparse chokidar watchers on `~/.amplifier/projects/` and tail-reads their events.jsonl for status. Latency: ~500ms.
+
+**Ownership rule:** Each session has exactly one primary event source. Canvas-started sessions use hook events. External sessions use file watchers. No session is ever dual-sourced. When both paths deliver the same event (hook first, watcher later), the state aggregator deduplicates by byte offset.
+
+**Graceful degradation:** Every Canvas feature must work on the file watcher path alone. The hook module enhances speed and precision but is never required. If the hook fails to load, Canvas falls back to file watching automatically.
 
 ### Session Discovery
 
-**On startup:** Scan `~/.amplifier/projects/` for all session directories. Parse metadata (not full events). Group by working directory → project. This finds sessions from before Canvas was installed.
+**On startup:** Read known projects and sessions from canvas.db. If canvas.db is empty or corrupt (first launch, or database deleted), perform a full scan of `~/.amplifier/projects/` to discover all session directories. Parse metadata (not full events). Group by working directory → project. Populate canvas.db. Subsequent startups read canvas.db directly — no full scan.
 
-**During runtime:** Two signals for new sessions:
-1. **PTY sessions** (started by Canvas): We know immediately because we spawned the process. Capture the session ID from Amplifier's startup banner in the PTY output (regex match, like Grove does).
-2. **External sessions** (started from a regular terminal): chokidar watches `~/.amplifier/projects/` for new session directories.
+**Canvas-started sessions:** Hook module sends `session:start` with the session ID. Canvas records it in canvas.db with `startedBy: 'canvas'` and associates it with the PTY that spawned it. Immediate, reliable.
+
+**External sessions:** Sparse chokidar watcher on `~/.amplifier/projects/` detects new session directories. Canvas adds them to canvas.db with `startedBy: 'external'`. Status derived from events.jsonl via tail-read.
+
+**After /exit:** When a user `/exit`s an Amplifier session and drops to a bare shell, then manually runs `amplifier run` again, the new session appears via the external path (file watcher). Canvas does not try to inject hooks into manual re-runs.
 
 ### Status Derivation
 
 | Status | Visual | How derived |
-|--------|--------|------------|
-| `running` | Amber pulsing dot | PTY process alive AND producing output |
-| `needs_input` | Blue pulsing dot | Last event is `prompt:complete` (AI finished, waiting for user) |
-| `done` | Green dot + checkmark | `session:end` event present |
+|--------|--------|-------------|
+| `running` | Amber pulsing dot | Hook: events arriving. File watcher: new bytes in events.jsonl within last 30s |
+| `needs_input` | Blue pulsing dot | Hook: `prompt:complete` event. File watcher: last event is assistant message with no pending tool calls |
+| `done` | Green dot + checkmark | Hook or file watcher: `session:end` event present |
 | `failed` | Red dot | PTY process exited non-zero, or last event indicates error |
-| `paused` | Gray dot | Session file exists on disk but no PTY process running. Can be resumed. |
-
-**The `needs_input` challenge:** This is the hardest status to derive. Amplifier emits an event when it's waiting for user input, but there's a lag between the event being written to disk and our file watcher firing. For sessions started by Canvas (PTY-owned), we can detect this faster by watching the terminal output stream directly. For external sessions, we rely on events.jsonl.
+| `active` | Gray dot | External session with recent events.jsonl activity but no Canvas PTY. Replaces `paused`. |
+| `terminal_active_no_session` | Terminal icon | PTY alive but no Amplifier session running (user at shell prompt) |
 
 ## Component Architecture
 
@@ -199,13 +231,13 @@ Learned from Grove: **never unmount xterm.js instances.**
 - Rolling buffer: 256KB per terminal, discards oldest lines when exceeded
 - On reconnect/restart: replay terminal output from a stored buffer (last screen-clear `\x1b[2J` forward)
 
-### Viewer: Shiki, Not Monaco
+### Viewer: highlight.js, Not Monaco
 
 Monaco is 5MB+ and designed for editing. We need read-only viewing.
 
-- **Code:** Shiki (same highlighter as VS Code, ~200KB, read-only, accurate)
-- **Markdown:** `react-markdown` with GitHub-flavored markdown
-- **Images:** Native `<img>` tag
+- **Code:** highlight.js (pure JavaScript, ~30KB core + language grammars, no WASM, zero build risk with electron-vite)
+- **Markdown:** `react-markdown` with GitHub-flavored markdown, sanitized with DOMPurify
+- **Images:** Served via `canvas://` custom protocol — no base64 IPC
 - **Other:** Raw text fallback with line numbers
 - **Error handling:** File type not recognized → raw text. File >1MB → truncated. File inaccessible → error state, don't crash.
 
@@ -231,30 +263,34 @@ interface SessionState {
   id: string;
   projectSlug: string;
   projectName: string;       // last segment of decoded slug
-  status: 'running' | 'needs_input' | 'done' | 'failed' | 'paused';
+  status: 'running' | 'needs_input' | 'done' | 'failed' | 'active';
   startedAt: string;
-  isPtyOwned: boolean;       // true = Canvas started it, false = found on disk
+  startedBy: 'canvas' | 'external';  // Persisted in canvas.db
+  byteOffset: number;                 // Last read position in events.jsonl
 }
 ```
 
 **State flow is unidirectional:**
-1. Main process detects change (file watcher, PTY event)
+1. Main process detects change (hook event, file watcher, or PTY event)
 2. Main process updates State Aggregator
-3. State Aggregator sends canonical state via IPC
-4. Renderer Zustand store updates
-5. React re-renders affected components
+3. State Aggregator persists lifecycle changes to canvas.db
+4. State Aggregator sends canonical state via IPC
+5. Renderer Zustand store updates
+6. React re-renders affected components
 
 The renderer never reads files or talks to processes. It renders state and dispatches user actions.
 
 ## What Canvas Owns vs. Derives
 
-| Canvas owns (persisted) | Canvas derives (in-memory, reconstructed on restart) |
-|------------------------|------------------------------------------------------|
-| UI preferences (sidebar width, theme) | Session state and status |
-| Window position and size | File trees and previews |
-| Active session selection | Session elapsed time |
+| Canvas owns (persisted in canvas.db) | Canvas derives (in-memory, from Amplifier files) |
+|--------------------------------------|--------------------------------------------------|
+| Project registry (paths, names) | Session content (events, tool outputs, agent messages) |
+| Session lifecycle (startedBy, startedAt, endedAt) | File tree for viewer |
+| Session byte offsets for tail-read | Git status (Phase 2) |
+| PTY-to-session association | Terminal output |
+| UI preferences (sidebar width, last selected session) | Current session status hints (running/needs_input) |
 
-**Persistence:** `~/.amplifier/canvas/config.json` — just the "owns" column. Everything else is re-derived from Amplifier's files on startup. No database.
+**Persistence:** `~/.amplifier/canvas/canvas.db` (SQLite). On corruption or deletion, Canvas re-derives from Amplifier's files via full disk scan (~5 seconds). No user data is lost because Canvas doesn't own the data — Amplifier's files are untouched.
 
 ## File Structure (Planned)
 
@@ -281,7 +317,10 @@ amplifier-canvas/
 │   │   ├── pty.ts                 # PTY spawning and lifecycle
 │   │   ├── watcher.ts             # chokidar on events.jsonl
 │   │   ├── state-aggregator.ts    # Merges all sources → canonical state
-│   │   └── file-reader.ts         # Read files for viewer (list-dir, read-text, read-image)
+│   │   ├── state-store.ts         # SQLite via better-sqlite3 (canvas.db)
+│   │   ├── hook-receiver.ts       # HTTP server for canvas-relay hook events
+│   │   ├── protocol.ts            # canvas:// custom protocol handler
+│   │   └── file-reader.ts         # Read files for viewer (list-dir, read-text)
 │   ├── renderer/                  # React app
 │   │   ├── index.html             # HTML shell
 │   │   └── src/
@@ -319,20 +358,17 @@ amplifier-canvas/
 
 ## Testing Strategy
 
-Phase 1 uses **E2E tests only** (Playwright + Electron). No unit tests, no component tests — yet.
+Phase 1 uses **E2E tests** (Playwright + Electron) with a **two-tier validation approach**:
 
 | What | How |
 |------|-----|
-| **Test runner** | Playwright with Electron support (`_electron.launch`) |
-| **Test count** | 10–15 E2E tests covering the 9 terminal regression requirements + sidebar + viewer |
+| **E2E tests** | Playwright with Electron support (`_electron.launch`). 10-15 scripted tests covering terminal, sidebar, viewer. |
+| **Per-feature validation** | Accessibility tree snapshots for sidebar and viewer components. PTY round-trip assertions for terminal (send command, verify output). |
+| **Per-milestone validation** | Playwright screenshots + nano-banana visual comparison against component library. Run at layer completion (after 1A, 1B, 1C). |
 | **Test data** | Fixture directories (`e2e/fixtures/`) with `AMPLIFIER_HOME` and `CANVAS_WORKDIR` env overrides |
 | **Pre-commit gate** | `npm run build && npx playwright test` — must pass before every commit |
 
-**When we add more testing layers:**
-- **Unit tests:** When data logic (state-aggregator, status derivation, slug decoding) exceeds ~2,000 LOC
-- **Component tests:** When component count exceeds ~15
-
-This is deliberate — E2E tests catch integration bugs that unit tests miss, and Phase 1 is small enough that E2E coverage is sufficient.
+**Terminal validation caveat:** xterm.js renders to an HTML canvas element, which is opaque to the accessibility tree. Terminal validation uses PTY round-trip assertions (functional) + screenshots at milestones (visual). Sidebar and viewer use accessibility tree snapshots for structural validation.
 
 ## Build Practices
 
@@ -353,9 +389,9 @@ These were validated through structured product review (not assumed):
 | # | Decision | Answer | Principle |
 |---|----------|--------|-----------|
 | 1 | Desktop vs web | Desktop. One app, double-click, done. | Simplicity of first experience. Web needs a local server + browser tab — two pieces. |
-| 2 | Reverse channel (Amplifier → Canvas) | Design for it, don't build it yet. File watching for v1. | Sidebar is a glanceable dashboard, not a real-time ticker. Half-second delay is invisible. |
+| 2 | Reverse channel (Amplifier → Canvas) | Hook module (canvas-relay) in Phase 1 for Canvas-started sessions. File watching as fallback for external sessions. Every feature works without the hook. | The hook enhances speed and precision. File watching ensures correctness. Dual path gives us both. |
 | 3 | What happens when session finishes | Nothing. Terminal stays with last output. User decides. | Visibility layer, not workflow layer. Don't automate what different users would do differently. |
-| 4 | Database | No database for v1. Design so we can add one later. | Core value is sidebar + terminal. Nobody skips Canvas because they can't rename a session. |
+| 4 | Database | SQLite (better-sqlite3) for session lifecycle. Canvas.db at `~/.amplifier/canvas/canvas.db`. | Crash-safe, query-capable, handles schema evolution. Already paying electron-rebuild tax for node-pty. Validated by Grove. |
 | 5 | Build tooling | electron-vite + electron-builder. Standard, boring, fast. | One config file handles main/preload/renderer split. |
 | 6 | Session lifecycle | User manages sessions. Exit or delete — Canvas doesn't auto-clean. | Sessions are the user's to manage. |
 | 7 | File viewer | Essential. Ships with v1. | The viewer is part of the core experience (Act 2), not a nice-to-have. |
@@ -378,17 +414,17 @@ Canvas never writes to Amplifier's data. Never calls Amplifier APIs. This means:
 
 Canvas spawns `amplifier run` in a pseudo-terminal. The terminal experience is identical to a regular terminal. When a session finishes, the terminal stays with the last output — Canvas doesn't decide what happens next. The user exits or deletes the session when they're done.
 
-### 4. File watchers + tail-read for reactivity
+### 4. Dual event ingestion: hook module + file watchers
 
-chokidar watches events.jsonl files. On change, we tail-read (parse only new bytes from last offset). Near-instant UI updates. 500ms debounce on watcher updates keeps things responsive without thrashing.
+Canvas receives session events through two paths. For sessions Canvas starts, it injects the canvas-relay hook module via the PTY environment. The hook POSTs lifecycle events directly to Canvas's localhost HTTP receiver (~10ms latency). For sessions started externally, Canvas uses sparse chokidar watchers on events.jsonl with tail-read (~500ms latency). Each session has exactly one primary source — no dual-sourcing, no conflicts. Deduplication by byte offset when both paths observe the same event.
 
-### 5. All state derived, nothing cached
+### 5. SQLite data layer for session lifecycle
 
-If Canvas restarts, it re-derives everything from Amplifier's files. No SQLite database, no index files. Just config.json for Canvas's own preferences. This means zero sync bugs, zero migration problems, zero stale state.
+Canvas persists project registry, session lifecycle, byte offsets, and UI preferences in canvas.db (SQLite via better-sqlite3). Session content (events, tool outputs) is still derived from Amplifier's files — never cached. If canvas.db is deleted, Canvas re-derives from a full disk scan (~5 seconds). SQLite provides crash safety (WAL journal), concurrent-read support, and schema migrations that a JSON file would not.
 
-### 6. Session ID capture from terminal banner
+### 6. Session-to-PTY association via hook module
 
-Like Grove, we regex-match Amplifier's startup banner in the PTY output to capture the session ID. This is faster than filesystem scanning and gives us immediate session-to-PTY association. We store the mapping in memory (not persisted — re-derived on restart).
+When Canvas auto-starts `amplifier run`, the canvas-relay hook sends `session:start` with the session ID. This provides immediate, reliable session-to-PTY association. For fallback (hook fails to load), Canvas uses before/after directory scan of the project's session directory. Banner regex is not used — it's fragile against terminal formatting changes, ANSI codes, and line wrapping.
 
 ### 7. Inactive terminals use visibility:hidden
 
@@ -403,25 +439,51 @@ How Canvas differs from the two reference projects:
 | Backend | Express + SQLite | FastAPI + filesystem | Electron main process (no server) |
 | Frontend | React + Zustand | Preact + HTM (no build) | React + Zustand |
 | Terminal | xterm.js + node-pty + WebSocket | None (chat UI) | xterm.js + node-pty + IPC |
-| Amplifier comms | PTY + hook module reverse channel | REST API + SSE | PTY + file watchers |
-| Session state | SQLite DB | In-memory SessionManager | In-memory, derived from files |
+| Amplifier comms | PTY + hook module reverse channel | REST API + SSE | PTY + hook module (canvas-relay) + file watchers |
+| Session state | SQLite DB | In-memory SessionManager | SQLite (lifecycle) + in-memory (content, derived from files) |
 | Multi-user | OAuth (GitHub, Google) | PAM auth, proxy trust | None (local desktop) |
 | Deployment | Web app + Electron wrapper | Server daemon | Desktop app only |
 
 **Key difference:** Grove and Distro both have backends because they serve web UIs. Canvas doesn't need a backend because Electron's main process handles all OS interaction natively.
 
-## Designed For: Reverse Channel (Phase 2 — not built, architecture accounts for it)
+## Hook Module: canvas-relay
 
-The State Aggregator accepts state from file watchers today. It is designed to accept state from additional sources without changing the renderer or any UI component. When any of these become necessary, we add an input — not a new architecture:
+Canvas includes a lightweight Amplifier hook module (~80 lines) that relays lifecycle events from Amplifier sessions to Canvas's main process.
 
-**Scenario 1: Instant status updates.** A lightweight Amplifier hook module (like Grove's `hooks-host-relay`) POSTs lifecycle events directly to Canvas. The State Aggregator accepts them alongside file watcher events. Status dots update instantly instead of within ~0.5s.
+**How it works:**
+1. Canvas spawns a PTY and sets `AMPLIFIER_HOOKS=canvas-relay` in the environment
+2. When the user runs `amplifier run`, the hook loads automatically
+3. On each lifecycle event (session:start, session:end, tool calls), the hook POSTs to Canvas's localhost HTTP receiver
+4. Canvas's state aggregator processes the event and updates canvas.db + Zustand store
 
-**Scenario 2: Amplifier opens a file in the viewer.** The AI decides you should see a file. File watching can detect this in events.jsonl, but a reverse channel makes it feel instant and intentional. The hook module sends `{action: "open-file", path: "VISION.md"}` and the State Aggregator routes it to the viewer.
+**What it provides:**
+- Immediate session-to-PTY association (no banner regex)
+- Real-time status updates (~10ms vs ~500ms file watching)
+- File activity tracking (which files the session created/modified)
+- Foundation for Phase 2 intent signals (e.g., "Amplifier wants to show you this file")
 
-**Why not build it now?** File watching is sufficient for Phase 1's glanceable sidebar. The reverse channel adds a second piece (plugin installed in Amplifier) and a coupling to Amplifier's hook API. We save that complexity for when a real user need demands it.
+**Graceful degradation:** If the hook fails to load (Amplifier version incompatibility, environment issue), Canvas falls back to file watching. Every feature works without the hook. The hook enhances speed and precision — it never gates functionality.
 
-## Designed For: Local Store (Phase 2 — not built, architecture accounts for it)
+**Scope:** The hook is read-only from Amplifier's perspective. It observes events and relays them. It never modifies Amplifier's behavior, data, or configuration.
 
-Canvas has no database in Phase 1. All state is derived from Amplifier's files. `config.json` stores only what Canvas itself owns (UI preferences).
+## Security
 
-If users ask for features that require Canvas-specific data — session nicknames, starred sessions, notes, custom groupings — we add a small local store (SQLite or flat JSON). The Zustand store already separates "derived state" from "owned state" in its type definitions. Adding persisted Canvas data means extending the "owned" side without touching the "derived" side.
+### canvas:// Custom Protocol
+
+The renderer accesses project files via a registered `canvas://` Electron protocol — not `file://` URLs (which would require disabling web security) and not base64 IPC (which bloats memory).
+
+**Security controls:**
+- **Path normalization:** `path.resolve()` eliminates `../` traversal before any file access
+- **Allowlist:** Only serves files under project paths registered in canvas.db
+- **Blocklist:** Explicit rejection of sensitive paths (`~/.ssh/`, `~/.amplifier/keys.env`, `/etc/`)
+- **Read-only:** Protocol handler only reads files, never writes
+
+### Markdown Sanitization
+
+The viewer renders markdown with `react-markdown`. All HTML in markdown is sanitized through DOMPurify before rendering. No raw HTML execution in the renderer. This prevents XSS from crafted markdown files in projects.
+
+### Electron Security
+
+- `webSecurity` remains enabled (default) — renderer cannot load `file://` URLs
+- `nodeIntegration` is disabled — renderer has no direct Node.js access
+- All main process access goes through the preload bridge (`contextBridge.exposeInMainWorld`)
