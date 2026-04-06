@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amplifier Canvas — Component Library</title>
+<style>
+
+/* ============================================================
+   FOUNDATION
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: var(--bg-page);
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  letter-spacing: -0.011em;
+}
+button { font-family: var(--font-ui); cursor: pointer; background: none; border: none; padding: 0; }
+ul { list-style: none; }
+a { text-decoration: none; color: inherit; }
+input { font-family: var(--font-ui); }
+::selection { background: rgba(245, 158, 11, 0.15); }
+
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --bg-page:           #F0EBE3;
+  --bg-header:         #E8E2D8;
+  --bg-sidebar:        #F0EBE3;
+  --bg-sidebar-active: #E8E0D4;
+  --bg-pane-title:     #DDD5C8;
+  --bg-terminal:       #0F0E0C;
+  --bg-right:          #F7F4EF;
+  --bg-modal:          #FAF8F4;
+  --border:            rgba(0, 0, 0, 0.08);
+  --text-primary:      #1C1A16;
+  --text-muted:        #8A8278;
+  --text-very-muted:   #A09888;
+  --text-terminal:     #C8C4BC;
+  --amber:             #F59E0B;
+  --amber-logo-bg:     #1A0F00;
+  --green:             #3D9A65;
+  --blue:              #5B8FD4;
+  --red:               #CC5555;
+  --font-ui:           -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  --font-mono:         'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* ============================================================
+   LAYOUT — 960px centered
+   ============================================================ */
+.page-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+/* ============================================================
+   HEADER — 48px functional strip
+   ============================================================ */
+.site-header { border-bottom: 1px solid var(--border); }
+.site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+}
+.wordmark { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
+.header-label { font-size: 12px; color: var(--text-very-muted); line-height: 16px; }
+
+/* ============================================================
+   PAGE TITLE
+   ============================================================ */
+.page-title-area { padding-top: 48px; }
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  line-height: 40px;
+}
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 24px;
+  margin-top: 8px;
+}
+
+/* ============================================================
+   STICKY NAV — 40px, blurred
+   ============================================================ */
+.nav-outer {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(240, 235, 227, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  margin-top: 24px;
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-inner::-webkit-scrollbar { display: none; }
+.nav-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-very-muted);
+  line-height: 16px;
+  white-space: nowrap;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.12s ease, border-bottom-color 0.15s ease;
+}
+.nav-link:hover { color: var(--text-primary); border-bottom-color: var(--amber); }
+.nav-sep {
+  font-size: 11px;
+  color: var(--border);
+  padding: 0 8px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.nav-tier-sep {
+  font-size: 11px;
+  color: var(--border);
+  padding: 0 16px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   TIER + COMPONENT STRUCTURE
+   ============================================================ */
+.tier { padding-top: 96px; }
+.tier-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+  line-height: 16px;
+}
+.comp { margin-top: 64px; }
+.comp:first-of-type { margin-top: 32px; }
+.comp-hd { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.comp-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+.comp-name { font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 24px; }
+.comp-desc { font-size: 13px; color: var(--text-muted); line-height: 24px; max-width: 480px; }
+.comp-display { margin-top: 24px; }
+
+/* ============================================================
+   ANNOTATIONS — connecting-line style
+   ============================================================ */
+.ann-rail { display: flex; flex-direction: column; }
+.ann-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ann-line {
+  width: 24px;
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.ann-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-very-muted);
+  line-height: 16px;
+  white-space: nowrap;
+}
+.ann-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-very-muted);
+  line-height: 16px;
+  text-align: center;
+}
+
+/* ============================================================
+   ANIMATIONS — exactly 3
+   ============================================================ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50%      { opacity: .7; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
+}
+@keyframes pulse-blue {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50%      { opacity: .7; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+}
+
+/* ============================================================
+   01 · SESSION DOT
+   ============================================================ */
+.dot-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 48px;
+  padding: 16px 24px;
+  background: var(--bg-sidebar-active);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.dot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.dot-label { font-size: 11px; color: var(--text-very-muted); font-weight: 500; line-height: 16px; white-space: nowrap; }
+.dot-divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+
+.sdot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.sdot.amber  { background: var(--amber); animation: pulse 2s ease-in-out infinite; }
+.sdot.blue   { background: var(--blue);  animation: pulse-blue 2s ease-in-out infinite; }
+.sdot.green  { background: var(--green); }
+.sdot.red    { background: var(--red); }
+.sdot.gray   { background: var(--text-very-muted); }
+
+.done-badge-lg {
+  width: 16px; height: 16px; border-radius: 50%; background: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 9px; font-weight: 700; line-height: 1; flex-shrink: 0;
+}
+
+/* ============================================================
+   02 · SESSION ROW (production CSS)
+   ============================================================ */
+.sidebar-frame {
+  width: 240px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-frame-sm {
+  width: 200px;
+  height: 360px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.project-label {
+  padding: 8px 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-very-muted);
+  line-height: 16px;
+  user-select: none;
+}
+.srow {
+  height: 32px;
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s ease;
+}
+.srow:hover { background: rgba(0,0,0,0.03); }
+.srow.active { background: var(--bg-sidebar-active); }
+.srow.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--amber);
+  border-radius: 0 1px 1px 0;
+}
+.srow-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.srow-dot.amber { background: var(--amber); animation: pulse 2s ease-in-out infinite; }
+.srow-dot.blue  { background: var(--blue);  animation: pulse-blue 2s ease-in-out infinite; }
+.srow-dot.green { background: var(--green); }
+.srow-dot.red   { background: var(--red); }
+.srow-dot.gray  { background: var(--text-very-muted); }
+
+.srow-done {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 8px; font-weight: 700; flex-shrink: 0; line-height: 1;
+}
+.srow-name {
+  font-size: 12px; color: var(--text-primary); line-height: 16px;
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.srow-name.bold { font-weight: 600; }
+.srow-name.muted { color: var(--text-muted); }
+.srow-age {
+  font-size: 11px; color: var(--text-very-muted); line-height: 16px; flex-shrink: 0;
+}
+.srow-age.amber { color: var(--amber); }
+.srow-age.green { color: var(--green); }
+.srow-age.blue  { color: var(--blue); }
+.srow-age.red   { color: var(--red); }
+
+.worktree-badge {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-very-muted);
+  line-height: 16px;
+  margin-top: -2px;
+  padding-left: 12px;
+}
+
+.session-sep { height: 1px; background: var(--border); margin: 8px 10px 0; }
+.new-session-link {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-very-muted);
+  line-height: 16px;
+  cursor: pointer;
+}
+.new-session-link:hover { color: var(--text-muted); }
+
+/* Sidebar section header */
+.sidebar-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 8px;
+}
+.sidebar-hd-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-very-muted);
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  line-height: 16px;
+}
+.sidebar-hd-btn { font-size: 14px; color: var(--text-very-muted); line-height: 1; }
+.sidebar-empty {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  text-align: center;
+  padding: 12px 16px;
+  line-height: 16px;
+}
+.project-collapsed-meta { padding: 4px 12px; font-size: 10px; color: var(--text-very-muted); line-height: 16px; }
+.archive-toggle { padding: 8px 12px; font-size: 10px; color: var(--text-very-muted); cursor: pointer; margin-top: auto; line-height: 16px; }
+
+/* ============================================================
+   04 · PANE TITLE BAR
+   ============================================================ */
+.ptitle {
+  height: 28px;
+  background: var(--bg-pane-title);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.ptitle-hint {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-very-muted);
+  line-height: 16px;
+}
+.ptitle-complete {
+  height: 28px;
+  background: rgba(76, 175, 116, 0.06);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--green);
+  line-height: 16px;
+  display: flex;
+  align-items: center;
+}
+.ptitle-meta { margin-left: auto; font-size: 11px; color: var(--text-muted); line-height: 16px; }
+
+/* ============================================================
+   05 · TAB ROW
+   ============================================================ */
+.tab-surface { background: var(--bg-right); width: 480px; }
+.tab-row-primary {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.tab-p {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  padding-bottom: 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-bottom-color 0.15s ease;
+}
+.tab-p:hover { color: var(--text-muted); }
+.tab-p.active { color: var(--text-primary); border-bottom-color: var(--amber); }
+
+.tab-row-file {
+  height: 30px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.browse-btn {
+  width: 22px; height: 22px;
+  color: var(--text-very-muted); font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border-radius: 3px;
+}
+.file-tab {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; line-height: 16px; padding: 3px 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; cursor: pointer; white-space: nowrap;
+  transition: color 0.12s ease, border-bottom-color 0.15s ease;
+}
+.file-tab:hover { color: var(--text-muted); }
+.file-tab.active { color: var(--text-primary); font-weight: 500; border-bottom-color: var(--amber); }
+.file-tab-close { font-size: 10px; color: var(--text-very-muted); line-height: 1; }
+
+/* ============================================================
+   06 · MODAL
+   ============================================================ */
+.modal-wrap { padding: 48px 0; background: radial-gradient(ellipse 600px 300px at center, rgba(28,26,22,0.06), transparent); }
+.modal {
+  width: 400px; margin: 0 auto;
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 24px;
+}
+.modal-hd { display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 16px; font-weight: 600; line-height: 24px; }
+.modal-close { font-size: 20px; color: var(--text-very-muted); line-height: 1; cursor: pointer; }
+.modal-rule { height: 1px; background: var(--border); margin: 16px 0; }
+.form-label {
+  display: block;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-very-muted); font-weight: 600; line-height: 16px;
+  margin-bottom: 8px;
+}
+.form-input {
+  width: 100%; height: 32px;
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 0 8px; font-size: 12px; line-height: 16px;
+  background: #fff; color: var(--text-primary);
+  outline: none;
+}
+.form-input:focus { border-color: rgba(0, 0, 0, 0.2); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08); }
+.form-input:disabled { opacity: 0.45; cursor: not-allowed; }
+.form-group { margin-top: 16px; }
+.radio-group { display: flex; gap: 16px; align-items: center; }
+.radio-opt { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.radio-filled {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--amber); background: var(--amber);
+  position: relative;
+}
+.radio-filled::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 4px; height: 4px; border-radius: 50%; background: #fff;
+}
+.radio-empty {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--border); background: transparent;
+}
+.radio-lbl { font-size: 12px; line-height: 16px; color: var(--text-primary); }
+.radio-lbl.muted { color: var(--text-muted); }
+.modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+.btn-cancel { font-size: 12px; color: var(--text-muted); line-height: 16px; cursor: pointer; }
+.btn-primary {
+  border: 1px solid #3A3530; background: var(--bg-modal);
+  padding: 6px 14px; font-size: 12px; font-weight: 500; line-height: 16px;
+  border-radius: 3px; cursor: pointer; color: var(--text-primary);
+  transition: background 0.12s ease;
+}
+.btn-primary:hover { background: var(--bg-header); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.btn-primary .arrow { color: var(--amber); }
+.btn-primary.disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============================================================
+   07 · BUTTON VARIANTS
+   ============================================================ */
+.btn-row { display: flex; align-items: flex-start; gap: 24px; }
+.btn-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.btn-text-action { font-size: 12px; color: var(--text-very-muted); line-height: 16px; cursor: pointer; }
+.btn-text-link { font-size: 11px; color: var(--text-very-muted); line-height: 16px; cursor: pointer; }
+
+/* ============================================================
+   08 · RIGHT PANEL
+   ============================================================ */
+.right-panel {
+  width: 340px; flex-shrink: 0;
+  background: var(--bg-right);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.panel-content { flex: 1; padding: 16px; overflow: hidden; }
+
+.doc-h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; line-height: 24px; }
+.doc-h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 16px; margin-bottom: 8px; line-height: 24px; }
+.doc-p  { font-size: 13px; color: var(--text-primary); line-height: 24px; }
+.doc-ul { padding-left: 16px; font-size: 13px; color: var(--text-primary); line-height: 24px; margin-top: 8px; }
+.doc-ul li { padding: 2px 0; }
+.doc-ul li::before { content: '—'; margin-right: 6px; color: var(--text-very-muted); }
+.doc-p-muted { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 16px; }
+
+/* ============================================================
+   09 · CODE VIEWER
+   ============================================================ */
+.code-frame {
+  width: 480px; height: 280px;
+  background: var(--bg-terminal);
+  border-radius: 4px;
+  display: flex; overflow: hidden;
+}
+.code-gutter {
+  width: 36px; text-align: right; padding: 12px 10px 12px 0;
+  color: var(--text-very-muted); opacity: 0.45;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.65;
+  user-select: none; flex-shrink: 0;
+}
+.code-gutter div { height: 1.65em; }
+.code-body {
+  flex: 1; padding: 12px 12px 12px 8px;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.65;
+  border-left: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.cl { display: block; height: 1.65em; white-space: pre; color: var(--text-terminal); }
+.cl-kw   { color: #C4784A; }
+.cl-type { color: var(--amber); }
+.cl-str  { color: var(--green); }
+.cl-punc { color: var(--text-very-muted); }
+
+/* ============================================================
+   10 · MARKDOWN VIEWER
+   ============================================================ */
+.md-frame {
+  width: 340px;
+  background: var(--bg-right);
+  padding: 16px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   11 · FILE BROWSER
+   ============================================================ */
+.fb-frame {
+  width: 340px;
+  background: var(--bg-right);
+  padding: 8px;
+  border-radius: 4px;
+}
+/* old .fb-folder removed — replaced below with chevron-aware version */
+.fb-row {
+  height: 28px; display: flex; align-items: center;
+  font-size: 13px; color: var(--text-primary); line-height: 24px;
+  padding: 0 6px; border-radius: 3px; cursor: pointer; gap: 8px;
+  transition: background 0.12s ease;
+}
+.fb-row:hover { background: var(--bg-sidebar-active); }
+.fb-row.hovered { background: var(--bg-sidebar-active); }
+.fb-icon {
+  width: 14px; height: 14px; flex-shrink: 0; color: var(--text-very-muted);
+  display: flex; align-items: center; justify-content: center;
+}
+.fb-icon svg { width: 14px; height: 14px; }
+.fb-icon.tsx { color: #5B8FD4; }
+.fb-icon.ts  { color: #5B8FD4; }
+.fb-icon.html { color: var(--amber); }
+.fb-icon.md  { color: var(--text-very-muted); }
+.fb-chevron {
+  width: 10px; height: 10px; flex-shrink: 0; color: var(--text-very-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.12s ease;
+}
+.fb-chevron svg { width: 10px; height: 10px; }
+.fb-chevron.open { transform: rotate(90deg); }
+.fb-folder {
+  height: 28px; display: flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 500; color: var(--text-muted);
+  line-height: 16px; padding: 0 6px; cursor: pointer;
+}
+.fb-indent { padding-left: 16px; }
+.fb-indent-2 { padding-left: 32px; }
+
+/* ============================================================
+   12 · APP PREVIEW
+   ============================================================ */
+.preview-frame {
+  width: 340px; height: 200px;
+  border-radius: 4px; border: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.preview-bar {
+  height: 30px; background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 8px; gap: 8px; flex-shrink: 0;
+}
+.preview-refresh { font-size: 13px; color: var(--text-muted); line-height: 1; }
+.preview-url { font-size: 12px; color: var(--text-primary); line-height: 16px; }
+.preview-body { flex: 1; background: #fff; padding: 16px; overflow: hidden; }
+.mini-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.mini-card {
+  flex: 1; border: 1px solid var(--border); border-radius: 3px;
+  padding: 8px; background: var(--bg-modal);
+}
+.mini-val { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 24px; }
+.mini-lbl { font-size: 10px; color: var(--text-muted); line-height: 16px; margin-top: 2px; }
+.mini-session {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.mini-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+.mini-name { font-size: 11px; color: var(--text-primary); font-weight: 500; line-height: 16px; flex: 1; }
+.mini-age { font-size: 11px; color: var(--text-muted); line-height: 16px; }
+
+/* ============================================================
+   13 · PROJECT OVERVIEW
+   ============================================================ */
+.on-track {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  background: rgba(76, 175, 116, 0.06);
+  border: 1px solid rgba(76, 175, 116, 0.18);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+.on-track-text { font-size: 12px; color: var(--green); font-weight: 500; line-height: 16px; }
+.on-track-ago { font-size: 11px; color: var(--text-very-muted); line-height: 16px; }
+.project-heading {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.3px;
+  line-height: 32px; color: var(--text-primary);
+}
+.field-label {
+  display: block; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-very-muted);
+  font-weight: 600; line-height: 16px; margin-top: 16px; margin-bottom: 4px;
+}
+.field-text { font-size: 13px; color: var(--text-primary); line-height: 24px; }
+
+/* ============================================================
+   14 · OUTCOME ROW
+   ============================================================ */
+.orow {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 16px 0; border-bottom: 1px solid var(--border);
+}
+.orow:last-child { border-bottom: none; }
+.orow-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.orow-done {
+  width: 16px; height: 16px; border-radius: 50%; background: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 9px; font-weight: 700; flex-shrink: 0; margin-top: 2px; line-height: 1;
+}
+.orow-body { flex: 1; }
+.orow-title { font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 24px; }
+.orow-evidence { font-size: 11px; color: var(--text-muted); line-height: 16px; margin-top: 4px; }
+.orow-badge {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: 3px; font-weight: 500;
+  white-space: nowrap; flex-shrink: 0; margin-top: 2px; line-height: 16px;
+}
+
+/* ============================================================
+   15 · LLM SECTION
+   ============================================================ */
+.llm-card {
+  width: 480px;
+  background: rgba(245, 158, 11, 0.04);
+  border: 1px solid rgba(245, 158, 11, 0.14);
+  border-radius: 4px;
+  padding: 16px 16px 12px;
+}
+.llm-header {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--amber); font-weight: 600; line-height: 16px; margin-bottom: 16px;
+}
+.llm-row { margin-top: 16px; }
+.llm-row:first-of-type { margin-top: 0; }
+.llm-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--amber); font-weight: 600; line-height: 16px;
+}
+.llm-text { font-size: 13px; color: var(--text-primary); line-height: 24px; margin-top: 4px; }
+.llm-text.danger { color: var(--red); }
+.llm-footer {
+  margin-top: 16px; padding-top: 8px;
+  border-top: 1px solid rgba(245, 158, 11, 0.14);
+  font-size: 10px; color: var(--text-very-muted); line-height: 16px;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.page-footer {
+  margin-top: 96px;
+  border-top: 1px solid var(--border);
+  padding: 24px 0 48px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-very-muted);
+  line-height: 16px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <div class="page-wrap site-header-inner">
+    <span class="wordmark">Amplifier Canvas</span>
+    <span class="header-label">Component Library</span>
+  </div>
+</header>
+
+<!-- ============================================================
+     TITLE + NAV
+     ============================================================ -->
+<div class="page-wrap">
+  <div class="page-title-area">
+    <h1 class="page-title">Components</h1>
+    <p class="page-subtitle">15 components across 3 tiers</p>
+  </div>
+</div>
+
+<div class="nav-outer">
+  <nav class="page-wrap nav-inner">
+    <a href="#c01" class="nav-link">Dot</a><span class="nav-sep">·</span>
+    <a href="#c02" class="nav-link">Row</a><span class="nav-sep">·</span>
+    <a href="#c03" class="nav-link">Sidebar</a><span class="nav-sep">·</span>
+    <a href="#c04" class="nav-link">Title</a><span class="nav-sep">·</span>
+    <a href="#c05" class="nav-link">Tabs</a><span class="nav-sep">·</span>
+    <a href="#c06" class="nav-link">Modal</a><span class="nav-sep">·</span>
+    <a href="#c07" class="nav-link">Button</a>
+    <span class="nav-tier-sep">|</span>
+    <a href="#c08" class="nav-link">Panel</a><span class="nav-sep">·</span>
+    <a href="#c09" class="nav-link">Code</a><span class="nav-sep">·</span>
+    <a href="#c10" class="nav-link">Markdown</a><span class="nav-sep">·</span>
+    <a href="#c11" class="nav-link">Files</a><span class="nav-sep">·</span>
+    <a href="#c12" class="nav-link">Preview</a>
+    <span class="nav-tier-sep">|</span>
+    <a href="#c13" class="nav-link">Overview</a><span class="nav-sep">·</span>
+    <a href="#c14" class="nav-link">Outcomes</a><span class="nav-sep">·</span>
+    <a href="#c15" class="nav-link">LLM</a>
+  </nav>
+</div>
+
+
+<main class="page-wrap">
+
+  <!-- ============================================================
+       TIER 1 · PRODUCT DNA
+       ============================================================ -->
+  <section class="tier">
+    <div class="tier-eyebrow">Tier 1 · Product DNA</div>
+
+    <!-- 01 · Session Dot -->
+    <div id="c01" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">01</span>
+        <span class="comp-name">Session Dot</span>
+      </div>
+      <p class="comp-desc">Six states. Amber and blue pulse to communicate activity. Production size is 6px — shown at 8px here for reference visibility.</p>
+      <div class="comp-display">
+        <div class="dot-strip">
+          <div class="dot-item"><div class="sdot amber"></div><span class="dot-label">running</span></div>
+          <div class="dot-item"><div class="sdot blue"></div><span class="dot-label">needs input</span></div>
+          <div class="dot-item"><div class="sdot green"></div><span class="dot-label">done</span></div>
+          <div class="dot-item"><div class="sdot red"></div><span class="dot-label">failed</span></div>
+          <div class="dot-item"><div class="sdot gray"></div><span class="dot-label">idle</span></div>
+          <div class="dot-divider"></div>
+          <div class="dot-item"><div class="done-badge-lg">✓</div><span class="dot-label">complete</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 · Session Row — HERO -->
+    <div id="c02" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">02</span>
+        <span class="comp-name">Session Row</span>
+      </div>
+      <p class="comp-desc">The primary interaction unit. Shown in its natural habitat — a real sidebar frame — with all five lifecycle states and the annotation rail.</p>
+      <div class="comp-display" style="display: flex; gap: 48px; align-items: flex-start;">
+
+        <!-- Left: Sidebar frame -->
+        <div class="sidebar-frame">
+          <div class="project-label">CANVAS-APP</div>
+
+          <!-- Active -->
+          <div class="srow active">
+            <div class="srow-dot amber"></div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center;">
+                <span class="srow-name bold">Fix Navigation</span>
+                <span class="srow-age amber" style="margin-left: auto;">48m</span>
+              </div>
+              <div class="worktree-badge">↟ feat/fix-nav</div>
+            </div>
+          </div>
+
+          <!-- Needs input -->
+          <div class="srow">
+            <div class="srow-dot blue"></div>
+            <span class="srow-name bold">Update auth</span>
+            <span class="srow-age blue">input</span>
+          </div>
+
+          <!-- Done -->
+          <div class="srow">
+            <div class="srow-done">✓</div>
+            <span class="srow-name">Add dark mode</span>
+            <span class="srow-age green">✓ PR #48</span>
+          </div>
+
+          <!-- Failed -->
+          <div class="srow">
+            <div class="srow-dot red"></div>
+            <span class="srow-name">Run E2E tests</span>
+            <span class="srow-age red">failed</span>
+          </div>
+
+          <!-- Idle -->
+          <div class="srow">
+            <div class="srow-dot gray"></div>
+            <span class="srow-name muted">Refactor utils</span>
+            <span class="srow-age">idle</span>
+          </div>
+
+          <div class="session-sep"></div>
+          <div class="new-session-link">+ New session</div>
+        </div>
+
+        <!-- Right: Annotation rail -->
+        <div class="ann-rail" style="padding-top: 36px;">
+          <div class="ann-item" style="height: 32px; display: flex; align-items: center;">
+            <span class="ann-line"></span>
+            <span class="ann-text">active — amber accent, pulsing dot, highlighted bg</span>
+          </div>
+          <div style="padding-left: 32px; height: 16px; display: flex; align-items: center;">
+            <span class="ann-text" style="font-size: 10px; opacity: 0.7;">worktree badge shows git branch</span>
+          </div>
+          <div class="ann-item" style="height: 32px; display: flex; align-items: center;">
+            <span class="ann-line"></span>
+            <span class="ann-text">needs input — blue pulse, bold name</span>
+          </div>
+          <div class="ann-item" style="height: 32px; display: flex; align-items: center;">
+            <span class="ann-line"></span>
+            <span class="ann-text">done — badge replaces dot, status replaces age</span>
+          </div>
+          <div class="ann-item" style="height: 32px; display: flex; align-items: center;">
+            <span class="ann-line"></span>
+            <span class="ann-text">failed — static red dot, red status</span>
+          </div>
+          <div class="ann-item" style="height: 32px; display: flex; align-items: center;">
+            <span class="ann-line"></span>
+            <span class="ann-text">idle — gray dot, muted text</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 · Sidebar Configurations -->
+    <div id="c03" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">03</span>
+        <span class="comp-name">Sidebar Configurations</span>
+      </div>
+      <p class="comp-desc">Three sidebar states at production width. Empty, single project with live session rows, and multi-project with a collapsed section.</p>
+      <div class="comp-display" style="display: flex; gap: 32px; align-items: flex-start;">
+
+        <!-- A: Empty -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+          <div class="sidebar-frame-sm">
+            <div class="sidebar-hd">
+              <span class="sidebar-hd-label">Projects</span>
+              <button class="sidebar-hd-btn">+</button>
+            </div>
+            <div class="sidebar-empty">No projects yet</div>
+          </div>
+          <span class="ann-label">empty</span>
+        </div>
+
+        <!-- B: Single project -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+          <div class="sidebar-frame-sm">
+            <div class="project-label">CANVAS-APP</div>
+            <div class="srow active">
+              <div class="srow-dot amber"></div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center;">
+                  <span class="srow-name bold">Fix Navigation</span>
+                  <span class="srow-age amber" style="margin-left: auto;">48m</span>
+                </div>
+                <div class="worktree-badge">↟ feat/fix-nav</div>
+              </div>
+            </div>
+            <div class="srow">
+              <div class="srow-done">✓</div>
+              <span class="srow-name">Add dark mode</span>
+              <span class="srow-age green">✓ PR #48</span>
+            </div>
+            <div class="srow">
+              <div class="srow-dot gray"></div>
+              <span class="srow-name muted">Refactor utils</span>
+              <span class="srow-age">idle</span>
+            </div>
+            <div class="session-sep"></div>
+            <div class="new-session-link">+ New session</div>
+          </div>
+          <span class="ann-label">single project</span>
+        </div>
+
+        <!-- C: Multi-project -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+          <div class="sidebar-frame-sm">
+            <div class="project-label">CANVAS-APP</div>
+            <div class="srow active">
+              <div class="srow-dot amber"></div>
+              <span class="srow-name bold">Fix Navigation</span>
+              <span class="srow-age amber">48m</span>
+            </div>
+            <div class="srow">
+              <div class="srow-dot blue"></div>
+              <span class="srow-name">Update auth</span>
+              <span class="srow-age blue">input</span>
+            </div>
+            <div style="margin-top: 8px;">
+              <div class="project-label" style="opacity: 0.52;">API-SERVER</div>
+              <div class="project-collapsed-meta">3 sessions · 2d ago</div>
+            </div>
+            <div class="archive-toggle">▶ Archived (3)</div>
+          </div>
+          <span class="ann-label">multi-project</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 · Pane Title Bar -->
+    <div id="c04" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">04</span>
+        <span class="comp-name">Pane Title Bar</span>
+      </div>
+      <p class="comp-desc">A 28px strip anchoring the terminal zone. Carries session context, keyboard hints, and completion state.</p>
+      <div class="comp-display" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="ptitle">Fix Navigation · Canvas-App</div>
+        <div class="ptitle">Fix Navigation · Canvas-App<span class="ptitle-hint">⌃C to return to shell</span></div>
+        <div class="ptitle-complete">✓ Session complete<span class="ptitle-meta">1h 12m · 14,230 tokens</span></div>
+      </div>
+    </div>
+
+    <!-- 05 · Tab Row -->
+    <div id="c05" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">05</span>
+        <span class="comp-name">Tab Row</span>
+      </div>
+      <p class="comp-desc">Primary tabs switch between panel modes. File tabs track open documents. Amber underline on active; hover fades in on inactive.</p>
+      <div class="comp-display" style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="tab-surface">
+          <div class="tab-row-primary">
+            <span class="tab-p active">FILES</span>
+            <span class="tab-p">APP</span>
+            <span class="tab-p">ANALYSIS</span>
+            <span class="tab-p">HISTORY</span>
+          </div>
+        </div>
+        <div class="tab-surface">
+          <div class="tab-row-file">
+            <button class="browse-btn" title="Browse">⊞</button>
+            <div class="file-tab active">VISION.md <span class="file-tab-close">×</span></div>
+            <div class="file-tab">OUTCOMES.md</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 · Modal -->
+    <div id="c06" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">06</span>
+        <span class="comp-name">Modal</span>
+      </div>
+      <p class="comp-desc">400px wide, elevated with shadow. Amber radio fill signals selection. Disabled inputs suppress when that option is inactive.</p>
+      <div class="comp-display">
+        <div class="modal-wrap">
+          <div class="modal">
+            <div class="modal-hd">
+              <span class="modal-title">New project</span>
+              <button class="modal-close">×</button>
+            </div>
+            <div class="modal-rule"></div>
+            <label class="form-label">Project root</label>
+            <input class="form-input" type="text" value="/Users/chris/canvas-app">
+            <div class="form-group">
+              <label class="form-label">Initialize</label>
+              <div class="radio-group">
+                <label class="radio-opt"><div class="radio-filled"></div><span class="radio-lbl">Create new</span></label>
+                <label class="radio-opt"><div class="radio-empty"></div><span class="radio-lbl muted">Open existing</span></label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="opacity: 0.45;">Git branch</label>
+              <input class="form-input" type="text" placeholder="main" disabled>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-cancel">Cancel</button>
+              <button class="btn-primary">Create project <span class="arrow">→</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 07 · Button -->
+    <div id="c07" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">07</span>
+        <span class="comp-name">Button</span>
+      </div>
+      <p class="comp-desc">Five button types. Primary carries the action; everything else recedes.</p>
+      <div class="comp-display">
+        <div class="btn-row">
+          <div class="btn-col">
+            <button class="btn-primary">Create project <span class="arrow">→</span></button>
+            <span class="ann-label">primary</span>
+          </div>
+          <div class="btn-col">
+            <button class="btn-primary disabled" disabled>Create project <span class="arrow">→</span></button>
+            <span class="ann-label">disabled</span>
+          </div>
+          <div class="btn-col">
+            <button class="btn-cancel">Cancel</button>
+            <span class="ann-label">cancel</span>
+          </div>
+          <div class="btn-col">
+            <span class="btn-text-action">↻ Regenerate</span>
+            <span class="ann-label">action</span>
+          </div>
+          <div class="btn-col">
+            <span class="btn-text-link">+ New session</span>
+            <span class="ann-label">link</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       TIER 2 · VIEWER
+       ============================================================ -->
+  <section class="tier">
+    <div class="tier-eyebrow">Tier 2 · Viewer</div>
+
+    <!-- 08 · Right Panel -->
+    <div id="c08" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">08</span>
+        <span class="comp-name">Right Panel</span>
+      </div>
+      <p class="comp-desc">The 340px viewer with primary tabs, file tabs, and content area. Shown at production dimensions.</p>
+      <div class="comp-display">
+        <div class="right-panel" style="height: 400px;">
+          <div class="tab-row-primary">
+            <span class="tab-p active">FILES</span>
+            <span class="tab-p">APP</span>
+            <span class="tab-p">ANALYSIS</span>
+            <span class="tab-p">HISTORY</span>
+          </div>
+          <div class="tab-row-file">
+            <button class="browse-btn" title="Browse">⊞</button>
+            <div class="file-tab active">VISION.md <span class="file-tab-close">×</span></div>
+            <div class="file-tab">OUTCOMES.md</div>
+          </div>
+          <div class="panel-content">
+            <div class="doc-h2">Project Vision</div>
+            <p class="doc-p">Canvas gives every Amplifier user a visual command center. Instead of living entirely in the terminal, users get a sidebar that tracks all their sessions across projects.</p>
+            <div class="doc-h3">Goal</div>
+            <p class="doc-p">A desktop companion that makes the terminal more productive, not less terminal.</p>
+            <div class="doc-h3">Principles</div>
+            <ul class="doc-ul">
+              <li>Visibility, not action</li>
+              <li>Complement the CLI, never replace it</li>
+              <li>One app, one window</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 09 · Code Viewer -->
+    <div id="c09" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">09</span>
+        <span class="comp-name">Code Viewer</span>
+      </div>
+      <p class="comp-desc">Dark terminal background with line numbers and syntax highlighting. The viewer's source mode.</p>
+      <div class="comp-display">
+        <div class="code-frame">
+          <div class="code-gutter">
+            <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div>
+            <div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div>
+            <div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div>
+          </div>
+          <div class="code-body">
+            <span class="cl"><span class="cl-kw">interface</span> <span class="cl-type">Session</span> <span class="cl-punc">{</span></span>
+            <span class="cl">  id<span class="cl-punc">:</span> <span class="cl-type">string</span></span>
+            <span class="cl">  projectId<span class="cl-punc">:</span> <span class="cl-type">string</span></span>
+            <span class="cl">  status<span class="cl-punc">:</span> <span class="cl-str">'running'</span> <span class="cl-punc">|</span> <span class="cl-str">'needs_input'</span> <span class="cl-punc">|</span> <span class="cl-str">'done'</span> <span class="cl-punc">|</span> <span class="cl-str">'failed'</span></span>
+            <span class="cl">  startedAt<span class="cl-punc">:</span> <span class="cl-type">Date</span></span>
+            <span class="cl">  name<span class="cl-punc">:</span> <span class="cl-type">string</span></span>
+            <span class="cl">  worktree<span class="cl-punc">?:</span> <span class="cl-type">string</span></span>
+            <span class="cl"><span class="cl-punc">}</span></span>
+            <span class="cl"> </span>
+            <span class="cl"><span class="cl-kw">function</span> getStatusColor<span class="cl-punc">(</span>status<span class="cl-punc">:</span> <span class="cl-type">Session</span><span class="cl-punc">[</span><span class="cl-str">'status'</span><span class="cl-punc">]</span><span class="cl-punc">):</span> <span class="cl-type">string</span> <span class="cl-punc">{</span></span>
+            <span class="cl">  <span class="cl-kw">const</span> colors <span class="cl-punc">=</span> <span class="cl-punc">{</span></span>
+            <span class="cl">    running<span class="cl-punc">:</span> <span class="cl-str">'var(--amber)'</span><span class="cl-punc">,</span></span>
+            <span class="cl">    needs_input<span class="cl-punc">:</span> <span class="cl-str">'var(--blue)'</span><span class="cl-punc">,</span></span>
+            <span class="cl">    done<span class="cl-punc">:</span> <span class="cl-str">'var(--green)'</span><span class="cl-punc">,</span></span>
+            <span class="cl">    failed<span class="cl-punc">:</span> <span class="cl-str">'var(--red)'</span><span class="cl-punc">,</span></span>
+            <span class="cl">  <span class="cl-punc">}</span></span>
+            <span class="cl">  <span class="cl-kw">return</span> colors<span class="cl-punc">[</span>status<span class="cl-punc">]</span></span>
+            <span class="cl"><span class="cl-punc">}</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10 · Markdown Viewer -->
+    <div id="c10" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">10</span>
+        <span class="comp-name">Markdown Viewer</span>
+      </div>
+      <p class="comp-desc">Rendered markdown in the right panel content area. Document typography for project files.</p>
+      <div class="comp-display">
+        <div class="md-frame">
+          <div class="doc-h2">Weekly Status</div>
+          <div class="doc-h3">Outcomes</div>
+          <p class="doc-p">Build completion is on track. The sidebar and terminal integration are functional.</p>
+          <ul class="doc-ul">
+            <li>File viewer ships with v1</li>
+            <li>Session lifecycle is user-managed</li>
+            <li>No database for v1</li>
+          </ul>
+          <p class="doc-p-muted">Opened by Amplifier · 2 min ago</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11 · File Browser -->
+    <div id="c11" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">11</span>
+        <span class="comp-name">File Browser</span>
+      </div>
+      <p class="comp-desc">Tree navigation with file-type icons and folder chevrons. TypeScript files get blue accents, HTML gets amber.</p>
+      <div class="comp-display">
+        <div class="fb-frame">
+          <div class="fb-folder"><span class="fb-chevron open"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M3 1.5L7.5 5 3 8.5z"/></svg></span> src</div>
+          <div class="fb-row fb-indent"><span class="fb-icon tsx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h5.5L13 4.5V14a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9.5 1v4H13"/></svg></span> App.tsx</div>
+          <div class="fb-row fb-indent"><span class="fb-icon ts"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h5.5L13 4.5V14a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9.5 1v4H13"/></svg></span> main.ts</div>
+          <div class="fb-folder fb-indent"><span class="fb-chevron open"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M3 1.5L7.5 5 3 8.5z"/></svg></span> components</div>
+          <div class="fb-row fb-indent-2 hovered"><span class="fb-icon tsx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h5.5L13 4.5V14a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9.5 1v4H13"/></svg></span> Sidebar.tsx</div>
+          <div class="fb-row fb-indent-2"><span class="fb-icon tsx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h5.5L13 4.5V14a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9.5 1v4H13"/></svg></span> SessionRow.tsx</div>
+          <div class="fb-row fb-indent-2"><span class="fb-icon tsx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h5.5L13 4.5V14a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9.5 1v4H13"/></svg></span> Viewer.tsx</div>
+          <div class="fb-folder"><span class="fb-chevron"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M3 1.5L7.5 5 3 8.5z"/></svg></span> public</div>
+          <div class="fb-row fb-indent"><span class="fb-icon html"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h5.5L13 4.5V14a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9.5 1v4H13"/></svg></span> index.html</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12 · App Preview -->
+    <div id="c12" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">12</span>
+        <span class="comp-name">App Preview</span>
+      </div>
+      <p class="comp-desc">Embedded web preview with address bar. Shows the running application.</p>
+      <div class="comp-display">
+        <div class="preview-frame">
+          <div class="preview-bar">
+            <span class="preview-refresh">↻</span>
+            <span class="preview-url">localhost:3000</span>
+          </div>
+          <div class="preview-body">
+            <div class="mini-row">
+              <div class="mini-card">
+                <div class="mini-val">12</div>
+                <div class="mini-lbl">sessions</div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-val">3.2/day</div>
+                <div class="mini-lbl">velocity</div>
+              </div>
+            </div>
+            <div class="mini-session">
+              <div class="mini-dot"></div>
+              <span class="mini-name">Fix Navigation</span>
+              <span class="mini-age">48m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       TIER 3 · PROJECT VIEW
+       ============================================================ -->
+  <section class="tier">
+    <div class="tier-eyebrow">Tier 3 · Project View</div>
+
+    <!-- 13 · Project Overview -->
+    <div id="c13" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">13</span>
+        <span class="comp-name">Project Overview</span>
+      </div>
+      <p class="comp-desc">The project header with health status, name, and key fields.</p>
+      <div class="comp-display">
+        <div class="on-track">
+          <div class="sdot green" style="width: 8px; height: 8px;"></div>
+          <span class="on-track-text">On track</span>
+          <span class="on-track-ago">Updated 3h ago</span>
+        </div>
+        <div class="project-heading">Amplifier-Canvas</div>
+        <span class="field-label">Vision</span>
+        <p class="field-text">A visual command center for Amplifier CLI users. Sidebar tracks sessions, viewer shows project files, terminal stays the primary workspace.</p>
+        <span class="field-label">Status</span>
+        <p class="field-text">Building v1 — sidebar and terminal integration functional, viewer in progress.</p>
+      </div>
+    </div>
+
+    <!-- 14 · Outcome Row -->
+    <div id="c14" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">14</span>
+        <span class="comp-name">Outcome Row</span>
+      </div>
+      <p class="comp-desc">Outcome tracking with status dots, evidence lines, and progress badges.</p>
+      <div class="comp-display">
+        <div class="orow">
+          <div class="orow-dot" style="background: var(--amber);"></div>
+          <div class="orow-body">
+            <div class="orow-title">Ship sidebar with session management</div>
+            <div class="orow-evidence">3 of 5 sessions use sidebar daily — based on 12 sessions</div>
+          </div>
+          <span class="orow-badge" style="background: rgba(245,158,11,0.08); color: var(--amber);">In progress</span>
+        </div>
+        <div class="orow">
+          <div class="orow-dot" style="background: var(--text-very-muted);"></div>
+          <div class="orow-body">
+            <div class="orow-title">Achieve &lt;2s launch time</div>
+          </div>
+          <span class="orow-badge" style="background: rgba(0,0,0,0.04); color: var(--text-very-muted);">Not started</span>
+        </div>
+        <div class="orow">
+          <div class="orow-done">✓</div>
+          <div class="orow-body">
+            <div class="orow-title">File viewer integrated</div>
+            <div class="orow-evidence">Viewer used in 89% of sessions</div>
+          </div>
+          <span class="orow-badge" style="background: rgba(76,175,116,0.08); color: var(--green);">Done</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 15 · LLM Section -->
+    <div id="c15" class="comp">
+      <div class="comp-hd">
+        <span class="comp-num">15</span>
+        <span class="comp-name">LLM Section</span>
+      </div>
+      <p class="comp-desc">AI-generated insights with amber accent. Labeled fields for velocity, alignment, and risk signals.</p>
+      <div class="comp-display">
+        <div class="llm-card">
+          <div class="llm-header">✦ LLM-Generated</div>
+          <div class="llm-row">
+            <div class="llm-label">Velocity</div>
+            <div class="llm-text">Completing 3.2 sessions/day, up from 1.8 last week</div>
+          </div>
+          <div class="llm-row">
+            <div class="llm-label">Alignment</div>
+            <div class="llm-text">Sidebar engagement correlates with session completion</div>
+          </div>
+          <div class="llm-row">
+            <div class="llm-label">Risk</div>
+            <div class="llm-text danger">E2E test coverage at 34% — below 60% threshold</div>
+          </div>
+          <div class="llm-footer">Generated 3 min ago · ↻ Regenerate</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page-footer">15 components · 3 tiers · Amplifier Canvas</footer>
+
+</main>
+
+</body>
+</html>

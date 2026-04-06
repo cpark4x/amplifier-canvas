@@ -26,6 +26,7 @@
   --amber:             #F59E0B;
   --amber-logo-bg:     #1A0F00;
   --green:             #4CAF74;
+  --blue:              #3B82F6;
   --font-ui:           -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
   --font-mono:         'SFMono-Regular', Menlo, Consolas, monospace;
 }
@@ -299,7 +300,11 @@ body {
   flex-shrink: 0;
 }
 .session-dot.gray  { background: var(--text-very-muted); }
-.session-dot.amber { background: var(--amber); }
+.session-dot.amber { background: var(--amber); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { opacity: .7; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
+}
 .session-name {
   font-size: 12px;
   color: var(--text-primary);
@@ -1058,6 +1063,21 @@ body {
 .edit-link { font: 11px/1 var(--font-ui); color: var(--text-very-muted); cursor: pointer; }
 .edit-link:hover { color: var(--text-muted); }
 
+/* ---- Act 4 multi-project additions ---- */
+.session-dot.green { background: var(--green); }
+.session-dot.red   { background: #E55B5B; }
+.session-dot.blue  { background: var(--blue); animation: pulse-blue 2s ease-in-out infinite; }
+@keyframes pulse-blue {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { opacity: .7; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+}
+.session-age.green { color: var(--green); }
+.session-age.red   { color: #E55B5B; }
+.session-age.blue  { color: var(--blue); font-weight: 600; }
+.project-section { margin-bottom: 4px; }
+.project-section + .project-section { border-top: 1px solid var(--border); padding-top: 4px; }
+.project-collapsed-meta { padding: 2px 14px 6px 22px; font: 11px var(--font-ui); color: var(--text-very-muted); }
+
 /* Amplifier CLI — in-session elements */
 .t-user-prompt { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
 .t-thinking { display: block; padding: 0 14px; font: 10px/1.45 var(--font-mono); color: #6A5A7A; }
@@ -1183,6 +1203,42 @@ body {
 </style>
 </head>
 <body>
+
+<!-- ====================================================================
+     STORYBOARD TABLE OF CONTENTS
+     ==================================================================== -->
+<div style="max-width:1440px; margin:0 auto 48px; padding:32px 40px; background:var(--bg-right); border:1px solid var(--border); border-radius:8px;">
+  <div style="font-size:24px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Amplifier Canvas — Product Storyboard</div>
+  <div style="font-size:13px; color:var(--text-muted); margin-bottom:24px;">22 screens across 4 acts. Emotional arc: skepticism → utility → trust → ownership.</div>
+
+  <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Act 1 — Getting Started</div>
+  <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">JTBD: Get from zero to a running session in under a minute.</div>
+  <div style="font-size:13px; color:var(--text-primary); line-height:1.9; margin-bottom:20px; padding-left:8px;">
+    1.1 Welcome &nbsp;&middot;&nbsp; 1.2 New Project &nbsp;&middot;&nbsp; 1.3 Session Started
+  </div>
+
+  <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Act 2 — Running my Amplifier CLI session</div>
+  <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">JTBD: Discover that Canvas adds value on top of the CLI.</div>
+  <div style="font-size:13px; color:var(--text-primary); line-height:1.9; margin-bottom:20px; padding-left:8px;">
+    2.1 Reading the Codebase &nbsp;&middot;&nbsp; 2.2 Reviewing the Vision &nbsp;&middot;&nbsp; 2.3 Opening a File &nbsp;&middot;&nbsp; 2.4 Multiple Files Open &nbsp;&middot;&nbsp; 2.5 App Preview
+  </div>
+
+  <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Act 3 — Managing my entire project</div>
+  <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">JTBD: Parallel sessions, stay informed, project-level memory.</div>
+  <div style="font-size:13px; color:var(--text-primary); line-height:1.9; margin-bottom:20px; padding-left:8px;">
+    3.1 Start a second session &nbsp;&middot;&nbsp; 3.2 Session completes &nbsp;&middot;&nbsp; 3.3 Review completed session &nbsp;&middot;&nbsp; 3.4 Commit the changes &nbsp;&middot;&nbsp; 3.5 Exit Session &nbsp;&middot;&nbsp; 3.6 Project overview &nbsp;&middot;&nbsp; 3.7 Project stats &nbsp;&middot;&nbsp; 3.8 Session history
+  </div>
+
+  <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Act 4 — Managing multiple projects</div>
+  <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">JTBD: Cross-project triage, context-switch without losing your place.</div>
+  <div style="font-size:13px; color:var(--text-primary); line-height:1.9; margin-bottom:0; padding-left:8px;">
+    4.1 A second project arrives &nbsp;&middot;&nbsp; 4.2 Two worlds, one sidebar &nbsp;&middot;&nbsp; 4.3 Switching without losing your place &nbsp;&middot;&nbsp; 4.4 The sidebar grows up &nbsp;&middot;&nbsp; 4.5 Something needs you &nbsp;&middot;&nbsp; 4.6 Cleaning house
+  </div>
+
+  <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--text-very-muted);">
+    Act 5 (Team & Settings) — not yet designed. Acknowledged as future scope.
+  </div>
+</div>
 
 <!-- ====================================================================
      ACT 1 HEADER
@@ -1398,7 +1454,7 @@ body {
      ACT 2 HEADER
      ==================================================================== -->
 <div class="act-header" style="margin-top: 8px;">
-  <div class="act-header-label">Act 2 &mdash; Your First Session</div>
+  <div class="act-header-label">Act 2 &mdash; Running my Amplifier CLI session</div>
   <div class="act-header-subtitle">From blank terminal to running app. The viewer earns its place.</div>
 </div>
 
@@ -1855,7 +1911,7 @@ body {
      ACT 3 &mdash; CANVAS KNOWS WHAT YOU&rsquo;VE BUILT
      ==================================================================== -->
 <div class="act-header" style="margin-top:8px;">
-  <div class="act-header-label">Act 3 &mdash; Canvas knows what you&rsquo;ve built</div>
+  <div class="act-header-label">Act 3 &mdash; Managing my entire project</div>
   <div class="act-header-subtitle">8 screens &middot; parallel sessions without conflicts &middot; stay informed &middot; project-level memory</div>
 </div>
 
@@ -2690,6 +2746,611 @@ body {
     </div>
   </div>
 </div>
+
+
+<!-- ============================================================
+     ACT 4 — THIS MANAGES EVERYTHING
+     Multi-project: the sidebar becomes a control surface
+     ============================================================ -->
+
+<div class="act-header" style="margin-top:8px;">
+  <div class="act-header-label">Act 4 &mdash; Managing multiple projects</div>
+  <div class="act-header-subtitle">6 screens &middot; second project through cross-project triage and cleanup</div>
+</div>
+
+
+<!-- SCREEN 4-1: A SECOND PROJECT ARRIVES -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 4 &middot; STEP 1</span>
+    <span class="screen-label-title">A second project arrives</span>
+    <span class="screen-label-desc">When a teammate asks me to fix something in a different repo, I need to open it in Canvas without closing what I&rsquo;m already working on, so I don&rsquo;t have to choose between helping them and losing my current context.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <!-- Project 1: Canvas-App (background, still running) -->
+        <div class="project-section">
+          <div class="project-label">Canvas-App</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age amber">48m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
+          </div>
+        </div>
+        <!-- Project 2: Amplifier-Docs (just added, active) -->
+        <div class="project-section">
+          <div class="project-label">Amplifier-Docs</div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Fix navigation</span>
+                <span class="session-age amber">just now</span>
+              </div>
+            </div>
+          </div>
+          <div class="new-session-link">+ New session</div>
+        </div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Fix navigation &middot; Amplifier-Docs</div>
+        <div class="terminal-area">
+          <span class="t dim">Bundle &apos;foundation&apos; prepared successfully</span>
+          <span class="t dim">&#x256D;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;</span>
+          <span class="t dim">&#x2502; Amplifier Interactive Session &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
+          <span class="t dim">&#x2502; Session ID: d8e7f6a5-b4c3-2109-8765-432109876543 &nbsp;&#x2502;</span>
+          <span class="t dim">&#x2502; amplifier 2026.03.30 &nbsp;| core 1.3.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
+          <span class="t dim">&#x2502; Commands: /help &nbsp;| Multi-line: Ctrl-J | Exit: Ctrl-D &#x2502;</span>
+          <span class="t dim">&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; Fix the broken sidebar navigation &mdash; links to API reference and Getting Started are dead<span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-wrapper -->
+
+
+<!-- SCREEN 4-2: TWO WORLDS, ONE SIDEBAR -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 4 &middot; STEP 2</span>
+    <span class="screen-label-title">Two worlds, one sidebar</span>
+    <span class="screen-label-desc">When I have sessions running in multiple projects, I need to see what finished and what&rsquo;s still going without switching between them, so I know the state of everything from where I&rsquo;m sitting.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <!-- Canvas-App: session DONE (green) -->
+        <div class="project-section">
+          <div class="project-label">Canvas-App</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot green" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age green">&#x2713; PR #48</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
+          </div>
+        </div>
+        <!-- Amplifier-Docs: still running (active view) -->
+        <div class="project-section">
+          <div class="project-label">Amplifier-Docs</div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Fix navigation</span>
+                <span class="session-age amber">12m</span>
+              </div>
+            </div>
+          </div>
+          <div class="new-session-link">+ New session</div>
+        </div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Fix navigation &middot; Amplifier-Docs</div>
+        <div class="terminal-area">
+          <span class="t-tool">read_file docs/sidebar.yaml</span>
+          <span class="t dim" style="padding:0 14px;">  Found 3 broken links in navigation config:</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;- /api-reference &rarr; /docs/api (moved)</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;- /getting-started &rarr; /docs/quickstart (renamed)</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;- /changelog &rarr; 404 (page deleted)</span>
+          <span class="t blank"></span>
+          <span class="t-tool">edit_file docs/sidebar.yaml</span>
+          <span class="t dim" style="padding:0 14px;">  Updated 2 link targets, removed changelog entry</span>
+          <span class="t blank"></span>
+          <span class="t-tool">bash npm run build</span>
+          <span class="t dim" style="padding:0 14px;">  Building docs site...</span>
+          <span class="t dim" style="padding:0 14px;">  Compiled 47 pages in 3.2s</span>
+          <span class="t success" style="padding:0 14px;">  &nbsp;&nbsp;&#x2713; Build successful, 0 broken links</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  I&rsquo;ve fixed the navigation. The sidebar had 3 broken links from the</span>
+          <span class="t dim" style="padding:0 14px;">  recent docs restructure. Two were moved pages, one was deleted.</span>
+          <span class="t dim" style="padding:0 14px;">  Build passes clean now. Want me to commit and push?</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-wrapper -->
+
+
+<!-- SCREEN 4-3: SWITCHING WITHOUT LOSING YOUR PLACE -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 4 &middot; STEP 3</span>
+    <span class="screen-label-title">Switching without losing your place</span>
+    <span class="screen-label-desc">When I click into a different project to check on it, I need my previous project&rsquo;s state to be exactly where I left it when I come back, so switching is free and I&rsquo;m not punished for context-switching.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <!-- Canvas-App: ACTIVE — user switched HERE to review -->
+        <div class="project-section">
+          <div class="project-label">Canvas-App</div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot green" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Dark mode</span>
+                <span class="session-age green">&#x2713; PR #48</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
+          </div>
+        </div>
+        <!-- Amplifier-Docs: background, waiting for user -->
+        <div class="project-section">
+          <div class="project-label">Amplifier-Docs</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot blue" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Fix navigation</span>
+                <span class="session-age blue">needs input</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Terminal: Canvas-App completed session — user reviewing the PR -->
+      <div class="terminal-zone">
+        <div class="pane-title-complete">&#x2713; Session complete <span>Dark mode &middot; Canvas-App</span></div>
+        <div class="terminal-area">
+          <span class="t dim" style="padding:0 14px;">  Summary:</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;Added dark mode theme with CSS custom properties</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;Created ThemeProvider context with system preference detection</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;Updated 12 components to use theme tokens</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;Added toggle in settings panel</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Files changed: 14 &nbsp;&middot;&nbsp; +482 / -67 lines</span>
+          <span class="t dim" style="padding:0 14px;">  Tests: 23 passed, 0 failed</span>
+          <span class="t blank"></span>
+          <span class="t success" style="padding:0 14px;">  &nbsp;&nbsp;&#x2713; Committed to worktree/dark-mode</span>
+          <span class="t success" style="padding:0 14px;">  &nbsp;&nbsp;&#x2713; PR #48 created &rarr; github.com/chrispark/canvas-app/pull/48</span>
+          <span class="t blank"></span>
+          <span class="t blank"></span>
+          <span class="t-prompt"><span class="t-path">~/canvas-app</span> <span class="t-branch">(dark-mode)</span> <span class="t-dollar">$</span></span>
+        </div>
+      </div>
+      <!-- Right panel: reviewing the diff -->
+      <div class="right-panel">
+        <div class="tab-row-primary">
+          <span class="tab-primary active">Files</span>
+          <span class="tab-primary">Preview</span>
+          <span class="tab-primary">Analysis</span>
+        </div>
+        <div class="tab-row-secondary">
+          <button class="browse-btn">&#x25A6;</button>
+          <span class="file-tab active">ThemeProvider.tsx <span class="file-tab-close">&times;</span></span>
+          <span class="file-tab">theme.css <span class="file-tab-close">&times;</span></span>
+          <span class="file-tab">Settings.tsx <span class="file-tab-close">&times;</span></span>
+        </div>
+        <div class="source-view-wrap">
+          <div class="source-gutter-dark">
+            <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div>
+          </div>
+          <div class="source-code-dark">
+            <span class="sl"><span style="color:#C4784A;">import</span> { createContext, useContext, useEffect, useState } <span style="color:#C4784A;">from</span> <span style="color:#98C379;">'react'</span>;</span>
+            <span class="sl-blank"></span>
+            <span class="sl"><span style="color:#C4784A;">type</span> <span style="color:#E5C07B;">Theme</span> = <span style="color:#98C379;">'light'</span> | <span style="color:#98C379;">'dark'</span> | <span style="color:#98C379;">'system'</span>;</span>
+            <span class="sl-blank"></span>
+            <span class="sl"><span style="color:#C4784A;">const</span> ThemeContext = createContext&lt;<span style="color:#E5C07B;">ThemeCtx</span>&gt;(</span>
+            <span class="sl">  { theme: <span style="color:#98C379;">'system'</span>, setTheme: () =&gt; {} }</span>
+            <span class="sl">);</span>
+            <span class="sl-blank"></span>
+            <span class="sl"><span style="color:#C4784A;">export function</span> <span style="color:#61AFEF;">ThemeProvider</span>({ children }) {</span>
+            <span class="sl">  <span style="color:#C4784A;">const</span> [theme, setTheme] = useState&lt;<span style="color:#E5C07B;">Theme</span>&gt;(<span style="color:#98C379;">'system'</span>);</span>
+            <span class="sl">  <span style="color:#C4784A;">const</span> resolved = useResolvedTheme(theme);</span>
+            <span class="sl-blank"></span>
+            <span class="sl">  useEffect(() =&gt; {</span>
+            <span class="sl">    document.documentElement.dataset.theme = resolved;</span>
+            <span class="sl">  }, [resolved]);</span>
+            <span class="sl-blank"></span>
+            <span class="sl">  <span style="color:#C4784A;">return</span> (</span>
+            <span class="sl">    &lt;<span style="color:#E5C07B;">ThemeContext.Provider</span> value={{ theme, setTheme }}&gt;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-wrapper -->
+
+
+<!-- SCREEN 4-4: THE SIDEBAR GROWS UP -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 4 &middot; STEP 4</span>
+    <span class="screen-label-title">The sidebar grows up</span>
+    <span class="screen-label-desc">When I&rsquo;ve accumulated more projects than I can hold in my head, I need active work surfaced and quiet projects compressed, so five projects don&rsquo;t feel five times as complex.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <!-- Project 1: Canvas-App (active, viewing) -->
+        <div class="project-section">
+          <div class="project-label">Canvas-App</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot green" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age green">&#x2713; merged</span>
+              </div>
+            </div>
+          </div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Test suite</span>
+                <span class="session-age amber">6m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Project 2: API-Service (active, 2 sessions) -->
+        <div class="project-section">
+          <div class="project-label">API-Service</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Auth endpoints</span>
+                <span class="session-age amber">22m</span>
+              </div>
+            </div>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot green" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Schema migration</span>
+                <span class="session-age green">&#x2713; committed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Project 3: Amplifier-Docs (quiet, done) -->
+        <div class="project-section">
+          <div class="project-label">Amplifier-Docs</div>
+          <div class="session-row-new" style="padding-top:4px;padding-bottom:4px;">
+            <div class="session-dot green" style="flex-shrink:0;"></div>
+            <span class="session-name" style="color:var(--text-muted);">Fix navigation</span>
+            <span class="session-age green">&#x2713; committed</span>
+          </div>
+        </div>
+        <!-- Project 4: Design-System (collapsed, quiet) -->
+        <div class="project-section">
+          <div class="project-label" style="color:var(--text-muted);">Design-System</div>
+          <div class="project-collapsed-meta">3 sessions &middot; 2d ago</div>
+        </div>
+        <!-- Project 5: Landing-Page (collapsed, quiet) -->
+        <div class="project-section">
+          <div class="project-label" style="color:var(--text-muted);">Landing-Page</div>
+          <div class="project-collapsed-meta">1 session &middot; 5d ago</div>
+        </div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Test suite &middot; Canvas-App</div>
+        <div class="terminal-area">
+          <span class="t-tool">bash npm run test</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/ThemeProvider.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/Sidebar.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/SessionRow.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/Terminal.test.tsx</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Test Suites: 4 passed, 4 total</span>
+          <span class="t dim" style="padding:0 14px;">  Tests:       23 passed, 23 total</span>
+          <span class="t dim" style="padding:0 14px;">  Time:        2.847s</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  All existing tests pass. Now I&rsquo;ll add tests for the new dark mode</span>
+          <span class="t dim" style="padding:0 14px;">  components. Starting with ThemeProvider context switching...</span>
+          <span class="t blank"></span>
+          <span class="t-tool">write_file src/ThemeProvider.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  Added 6 test cases for theme context</span>
+          <span class="t blank"></span>
+          <span class="t-tool">bash npm run test<span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-wrapper -->
+
+
+<!-- SCREEN 4-5: SOMETHING NEEDS YOU -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 4 &middot; STEP 5</span>
+    <span class="screen-label-title">Something needs you</span>
+    <span class="screen-label-desc">When something fails in a project I&rsquo;m not looking at, I need to see it without being interrupted, so I can finish my current thought and deal with it when I&rsquo;m ready.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <!-- Canvas-App: user is here, session running -->
+        <div class="project-section">
+          <div class="project-label">Canvas-App</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot green" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age green">&#x2713; merged</span>
+              </div>
+            </div>
+          </div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Test suite</span>
+                <span class="session-age amber">18m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- API-Service: FAILED (red dot) -->
+        <div class="project-section">
+          <div class="project-label">API-Service</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot red" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Auth endpoints</span>
+                <span class="session-age red">test failed</span>
+              </div>
+            </div>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot green" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Schema migration</span>
+                <span class="session-age green">&#x2713; committed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Amplifier-Docs: quiet, done -->
+        <div class="project-section">
+          <div class="project-label">Amplifier-Docs</div>
+          <div class="session-row-new" style="padding-top:4px;padding-bottom:4px;">
+            <div class="session-dot green" style="flex-shrink:0;"></div>
+            <span class="session-name" style="color:var(--text-muted);">Fix navigation</span>
+            <span class="session-age green">&#x2713; committed</span>
+          </div>
+        </div>
+        <!-- Design-System: collapsed -->
+        <div class="project-section">
+          <div class="project-label" style="color:var(--text-muted);">Design-System</div>
+          <div class="project-collapsed-meta">3 sessions &middot; 2d ago</div>
+        </div>
+        <!-- Landing-Page: collapsed -->
+        <div class="project-section">
+          <div class="project-label" style="color:var(--text-muted);">Landing-Page</div>
+          <div class="project-collapsed-meta">1 session &middot; 5d ago</div>
+        </div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Test suite &middot; Canvas-App</div>
+        <div class="terminal-area">
+          <span class="t-tool">bash npm run test</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/ThemeProvider.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/Sidebar.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/SessionRow.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/Terminal.test.tsx</span>
+          <span class="t dim" style="padding:0 14px;">  PASS  src/ThemeToggle.test.tsx</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Test Suites: 5 passed, 5 total</span>
+          <span class="t dim" style="padding:0 14px;">  Tests:       29 passed, 29 total</span>
+          <span class="t dim" style="padding:0 14px;">  Time:        3.114s</span>
+          <span class="t blank"></span>
+          <span class="t success" style="padding:0 14px;">  &nbsp;&nbsp;&#x2713; All 29 tests pass.</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  All tests pass including the 6 new dark mode test cases.</span>
+          <span class="t dim" style="padding:0 14px;">  Coverage looks solid. Want me to commit?</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-wrapper -->
+
+
+<!-- SCREEN 4-6: CLEANING HOUSE -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 4 &middot; STEP 6</span>
+    <span class="screen-label-title">Cleaning house</span>
+    <span class="screen-label-desc">When projects are finished or abandoned, I need to clear them out so my sidebar reflects what I&rsquo;m actually working on, not everything I&rsquo;ve ever touched.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <!-- Canvas-App: still active -->
+        <div class="project-section">
+          <div class="project-label">Canvas-App</div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Accessibility audit</span>
+                <span class="session-age amber">14m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- API-Service: still active -->
+        <div class="project-section">
+          <div class="project-label">API-Service</div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Rate limiting</span>
+                <span class="session-age amber">31m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Archived section: collapsed behind chevron -->
+        <div style="margin:12px 14px 4px;">
+          <div style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+            <span style="color:var(--text-very-muted);font-size:10px;line-height:1;">&#x25B6;</span>
+            <span style="color:var(--text-very-muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Archived (3)</span>
+          </div>
+        </div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Accessibility audit &middot; Canvas-App</div>
+        <div class="terminal-area">
+          <span class="t dim" style="padding:0 14px;">  Running axe-core accessibility scan on all routes...</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Route /dashboard</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;&#x26A0; 3 contrast issues (AA)</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;&#x26A0; 1 missing aria-label on icon button</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Route /settings</span>
+          <span class="t success" style="padding:0 14px;">  &nbsp;&nbsp;&#x2713; No issues found</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Route /projects</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;&#x26A0; 2 contrast issues (AA)</span>
+          <span class="t dim" style="padding:0 14px;">  &nbsp;&nbsp;&#x26A0; 1 missing landmark region</span>
+          <span class="t blank"></span>
+          <span class="t dim" style="padding:0 14px;">  Found 7 issues across 3 routes. I&rsquo;ll fix the contrast</span>
+          <span class="t dim" style="padding:0 14px;">  issues first since those affect the most users...</span>
+          <span class="t blank"></span>
+          <span class="t-tool">edit_file src/styles/tokens.css<span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /screen-wrapper -->
+
 
 
 </body>
