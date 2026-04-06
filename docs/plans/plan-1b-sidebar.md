@@ -4,9 +4,9 @@
 
 **Goal:** Implement the sidebar layer (S1-S5), producing a left panel that shows all Amplifier sessions grouped by project with real-time status updates.
 
-**Architecture:** The sidebar is a read-only view over Amplifier's session data on disk. The main process discovers sessions by scanning `~/.amplifier/projects/*/sessions/*/`, parses `events.jsonl` files to derive session status, and pushes a canonical `SessionState[]` to the renderer via IPC. The renderer stores this in Zustand and renders it as a collapsible sidebar with status dots. Real-time updates come from chokidar watching the sessions directories and events.jsonl files — when a file changes, the state-aggregator re-parses and pushes updates.
+**Architecture:** The sidebar is a read-only view over Amplifier's session data on disk. The main process discovers sessions by scanning `~/.amplifier/projects/*/sessions/*/`, parses `events.jsonl` files to derive session status, and pushes a canonical `SessionState[]` to the renderer via IPC. The renderer stores this in Zustand and renders it as a collapsible sidebar with status dots. Real-time updates come from dual event ingestion: a canvas-relay hook module for Canvas-started sessions (~10ms latency) and chokidar file watchers for external sessions (~500ms latency). Session lifecycle is persisted in SQLite (canvas.db). When events arrive (via hook or file watcher), the state-aggregator updates canvas.db and pushes canonical state to the renderer via IPC.
 
-**Tech Stack:** Electron (from Plan 1A), React, TypeScript, Zustand 5, chokidar 4 (file watching), Playwright (E2E testing)
+**Tech Stack:** Electron (from Plan 1A), React, TypeScript, Zustand 5, better-sqlite3 (installed in Plan 1A), chokidar 4 (file watching), Playwright (E2E testing)
 
 **This is Plan 1B of 3.** Plan 1A (Scaffold + Terminal) is the prerequisite. Plan 1C (Viewer + Integration) follows.
 
@@ -54,6 +54,375 @@
 - `prompt:complete` — AI finished responding (if last event = waiting for user)
 - `tool:pre` / `tool:post` — tool calls (running indicator)
 - `execution:start` / `execution:end` — execution lifecycle
+
+---
+
+## Section 0: Infrastructure — SQLite + Hook Receiver (Tasks 0a–0c)
+
+**Feature:** Initialize the SQLite data layer and hook event receiver that the sidebar will build on. These provide the persistence and real-time event ingestion that the state-aggregator (Section 2) consumes.
+
+---
+
+### Task 0a: Create SQLite state store
+
+**Files:**
+- Create: `src/main/state-store.ts`
+- Modify: `src/shared/constants.ts`
+
+**Step 1: Update `src/shared/constants.ts`**
+
+Add after the existing `AMPLIFIER_PROJECTS_DIR` constant:
+
+```typescript
+import { app } from 'electron'
+
+export const CANVAS_DATA_DIR = join(app.getPath('userData'), 'canvas')
+export const CANVAS_DB_PATH = join(CANVAS_DATA_DIR, 'canvas.db')
+export const HOOK_RECEIVER_PORT = 19542
+```
+
+> **Note:** `app.getPath('userData')` resolves to `~/.config/amplifier-canvas` on Linux, `~/Library/Application Support/amplifier-canvas` on macOS. The `canvas.db` file lives inside Canvas's own data directory, never inside `~/.amplifier/`.
+
+**Step 2: Create `src/main/state-store.ts`**
+
+```typescript
+import Database from 'better-sqlite3'
+import { mkdirSync, existsSync } from 'fs'
+import { dirname } from 'path'
+import { CANVAS_DB_PATH } from '../shared/constants'
+
+let db: Database.Database | null = null
+
+export function initDb(): Database.Database {
+  if (db) return db
+
+  // Ensure directory exists
+  const dir = dirname(CANVAS_DB_PATH)
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+
+  db = new Database(CANVAS_DB_PATH)
+
+  // WAL mode for crash safety and concurrent reads
+  db.pragma('journal_mode = WAL')
+
+  // Create tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      slug TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      last_activity TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      project_slug TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      started_by TEXT NOT NULL DEFAULT 'external',
+      byte_offset INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      bundle TEXT,
+      model TEXT,
+      turn_count INTEGER DEFAULT 0,
+      FOREIGN KEY (project_slug) REFERENCES projects(slug)
+    );
+
+    CREATE TABLE IF NOT EXISTS ui_preferences (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `)
+
+  return db
+}
+
+export function getDb(): Database.Database {
+  if (!db) throw new Error('Database not initialized. Call initDb() first.')
+  return db
+}
+
+// --- Project CRUD ---
+
+export function upsertProject(slug: string, name: string, path: string): void {
+  const stmt = getDb().prepare(`
+    INSERT INTO projects (slug, name, path, last_activity)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(slug) DO UPDATE SET
+      name = excluded.name,
+      path = excluded.path,
+      last_activity = datetime('now')
+  `)
+  stmt.run(slug, name, path)
+}
+
+export function getProjects(): Array<{ slug: string; name: string; path: string; last_activity: string | null }> {
+  return getDb().prepare('SELECT * FROM projects ORDER BY last_activity DESC').all() as any[]
+}
+
+// --- Session CRUD ---
+
+export function upsertSession(
+  id: string,
+  projectSlug: string,
+  startedAt: string,
+  startedBy: 'canvas' | 'external' = 'external'
+): void {
+  const stmt = getDb().prepare(`
+    INSERT INTO sessions (id, project_slug, started_at, started_by)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      started_by = CASE WHEN sessions.started_by = 'canvas' THEN 'canvas' ELSE excluded.started_by END
+  `)
+  stmt.run(id, projectSlug, startedAt, startedBy)
+}
+
+export function getSessionsByProject(projectSlug: string): Array<{
+  id: string; project_slug: string; started_at: string; ended_at: string | null;
+  started_by: string; byte_offset: number; status: string; bundle: string | null;
+  model: string | null; turn_count: number;
+}> {
+  return getDb().prepare(
+    'SELECT * FROM sessions WHERE project_slug = ? ORDER BY started_at DESC'
+  ).all(projectSlug) as any[]
+}
+
+export function updateByteOffset(sessionId: string, offset: number): void {
+  getDb().prepare('UPDATE sessions SET byte_offset = ? WHERE id = ?').run(offset, sessionId)
+}
+
+export function updateSessionStatus(sessionId: string, status: string, endedAt?: string): void {
+  if (endedAt) {
+    getDb().prepare('UPDATE sessions SET status = ?, ended_at = ? WHERE id = ?').run(status, endedAt, sessionId)
+  } else {
+    getDb().prepare('UPDATE sessions SET status = ? WHERE id = ?').run(status, sessionId)
+  }
+}
+
+export function getByteOffset(sessionId: string): number {
+  const row = getDb().prepare('SELECT byte_offset FROM sessions WHERE id = ?').get(sessionId) as any
+  return row?.byte_offset ?? 0
+}
+
+// --- UI Preferences ---
+
+export function setPreference(key: string, value: string): void {
+  getDb().prepare(
+    'INSERT INTO ui_preferences (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  ).run(key, value)
+}
+
+export function getPreference(key: string): string | null {
+  const row = getDb().prepare('SELECT value FROM ui_preferences WHERE key = ?').get(key) as any
+  return row?.value ?? null
+}
+
+// --- Recovery ---
+
+export function isDbPopulated(): boolean {
+  const row = getDb().prepare('SELECT COUNT(*) as count FROM projects').get() as any
+  return row.count > 0
+}
+
+export function closeDb(): void {
+  if (db) {
+    db.close()
+    db = null
+  }
+}
+
+// --- Watcher helpers ---
+
+export function getExternalActiveSessions(): Array<{ id: string; project_slug: string }> {
+  return getDb().prepare(
+    "SELECT id, project_slug FROM sessions WHERE started_by = 'external' AND status NOT IN ('done', 'failed')"
+  ).all() as any[]
+}
+```
+
+**Step 3: Verify the build**
+
+```bash
+npm run build
+```
+
+Expected: Build succeeds. The `better-sqlite3` native module should already be built from Plan 1A's postinstall script.
+
+---
+
+### Task 0b: Create hook event receiver
+
+**Files:**
+- Create: `src/main/hook-receiver.ts`
+
+**Step 1: Create `src/main/hook-receiver.ts`**
+
+```typescript
+import { createServer, IncomingMessage, ServerResponse } from 'http'
+import { HOOK_RECEIVER_PORT } from '../shared/constants'
+
+export interface HookEvent {
+  sessionId: string
+  event: string
+  data?: Record<string, unknown>
+}
+
+type HookEventHandler = (event: HookEvent) => void
+
+let handler: HookEventHandler = () => {} // No-op until wired
+
+export function setHookEventHandler(fn: HookEventHandler): void {
+  handler = fn
+}
+
+export function startHookReceiver(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+      // Only accept POST /event
+      if (req.method !== 'POST' || req.url !== '/event') {
+        res.writeHead(404)
+        res.end()
+        return
+      }
+
+      // Only accept localhost connections
+      const remoteAddr = req.socket.remoteAddress
+      if (remoteAddr !== '127.0.0.1' && remoteAddr !== '::1' && remoteAddr !== '::ffff:127.0.0.1') {
+        res.writeHead(403)
+        res.end()
+        return
+      }
+
+      let body = ''
+      req.on('data', (chunk) => { body += chunk })
+      req.on('end', () => {
+        try {
+          const event = JSON.parse(body) as HookEvent
+          if (!event.sessionId || !event.event) {
+            res.writeHead(400)
+            res.end(JSON.stringify({ error: 'Missing sessionId or event' }))
+            return
+          }
+          handler(event)
+          res.writeHead(200)
+          res.end(JSON.stringify({ ok: true }))
+        } catch {
+          res.writeHead(400)
+          res.end(JSON.stringify({ error: 'Invalid JSON' }))
+        }
+      })
+    })
+
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        // Port already in use — another Canvas instance may be running
+        console.warn(`Hook receiver port ${HOOK_RECEIVER_PORT} already in use. Hook events will not be received.`)
+        resolve() // Graceful degradation — don't crash
+      } else {
+        reject(err)
+      }
+    })
+
+    server.listen(HOOK_RECEIVER_PORT, '127.0.0.1', () => {
+      console.log(`Hook receiver listening on 127.0.0.1:${HOOK_RECEIVER_PORT}`)
+      resolve()
+    })
+  })
+}
+```
+
+**Step 2: Verify the build**
+
+```bash
+npm run build
+```
+
+Expected: Build succeeds.
+
+---
+
+### Task 0c: Integrate infrastructure into main process
+
+**Files:**
+- Modify: `src/main/index.ts`
+
+**Step 1: Update `src/main/index.ts`**
+
+Add imports at the top:
+
+```typescript
+import { initDb, closeDb, upsertSession, updateSessionStatus } from './state-store'
+import { startHookReceiver, setHookEventHandler } from './hook-receiver'
+import { pushSessionUpdate } from './ipc'
+```
+
+In the `app.whenReady()` block, BEFORE creating the window, add:
+
+```typescript
+  // Initialize infrastructure
+  initDb()
+  startHookReceiver().catch((err) => {
+    console.error('Failed to start hook receiver:', err)
+    // Graceful degradation — Canvas works without hook
+  })
+```
+
+After the window is created and IPC handlers are registered, wire the hook event handler:
+
+```typescript
+  // Wire hook events to state aggregator
+  setHookEventHandler((event) => {
+    switch (event.event) {
+      case 'session:start':
+        // canvas-relay sends project_slug in data; fall back to 'unknown' if missing
+        upsertSession(
+          event.sessionId,
+          (event.data?.project_slug as string) || 'unknown',
+          (event.data?.startedAt as string) || new Date().toISOString(),
+          'canvas'
+        )
+        break
+      case 'session:end':
+        updateSessionStatus(event.sessionId, 'done', new Date().toISOString())
+        break
+      default:
+        // Other events (tool:pre, tool:post, prompt:submit, etc.) — status stays unchanged
+        break
+    }
+    // Push updated state to renderer
+    pushSessionUpdate(mainWindow)
+  })
+```
+
+In `app.on('before-quit')` (or create one if it doesn't exist):
+
+```typescript
+app.on('before-quit', () => {
+  closeDb()
+})
+```
+
+**Step 2: Verify build and test**
+
+```bash
+npm run build && npx playwright test
+```
+
+Expected: All existing tests pass. The SQLite database file should be created at the Canvas data directory. Hook receiver should be listening (check console output).
+
+**Step 3: Commit**
+
+```bash
+git add -A
+git commit -m "feat(infra): add SQLite state store and hook event receiver
+
+- state-store.ts: better-sqlite3 with WAL mode, projects/sessions/preferences tables
+- hook-receiver.ts: localhost HTTP server for canvas-relay hook events
+- Both initialized in main process on app.whenReady()
+- Graceful degradation: hook receiver is optional, SQLite recovers from deletion"
+```
 
 ---
 
@@ -307,6 +676,16 @@ Expected: All tests pass, including new S1 sidebar tests and existing terminal t
 Add sidebar features to the features section:
 
 ```yaml
+  DB:
+    name: SQLite state store
+    status: done
+    depends_on: []
+    blockers: []
+  HK:
+    name: Hook event receiver
+    status: done
+    depends_on: [DB]
+    blockers: []
   S1:
     name: Sidebar shell
     status: done
@@ -315,7 +694,7 @@ Add sidebar features to the features section:
   S2:
     name: Session list
     status: ready
-    depends_on: [S1]
+    depends_on: [S1, DB, HK]
     blockers: []
   S3:
     name: Session status
@@ -330,7 +709,7 @@ Add sidebar features to the features section:
   S5:
     name: Real-time updates
     status: ready
-    depends_on: [S3]
+    depends_on: [S3, HK]
     blockers: []
 ```
 
@@ -386,7 +765,7 @@ export const IPC_CHANNELS = {
 } as const
 
 // Session status
-export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'paused'
+export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active'
 
 // Session model (renderer-side)
 export interface Session {
@@ -400,6 +779,8 @@ export interface Session {
   bundle?: string         // e.g. "bundle:foundation"
   model?: string          // e.g. "anthropic/claude-opus-4-6"
   turnCount?: number
+  startedBy: 'canvas' | 'external'  // How this session was initiated
+  byteOffset: number                  // Last read position in events.jsonl
 }
 
 // Project model (renderer-side)
@@ -603,10 +984,15 @@ Expected: FAIL — no `[data-testid="session-item"]` elements exist yet.
 **Step 1: Create `src/main/state-aggregator.ts`**
 
 ```typescript
-import { readdirSync, readFileSync, existsSync } from 'fs'
-import { join, basename } from 'path'
+import { readdirSync, readFileSync, existsSync, openSync, fstatSync, readSync, closeSync } from 'fs'
+import { join } from 'path'
 import { AMPLIFIER_PROJECTS_DIR } from '../shared/constants'
 import type { Project, Session, SessionStatus } from '../shared/types'
+import {
+  isDbPopulated, getProjects, getSessionsByProject,
+  upsertProject, upsertSession, updateByteOffset,
+  updateSessionStatus, getByteOffset
+} from './state-store'
 
 /**
  * Decode a project slug back to a filesystem path.
@@ -635,20 +1021,40 @@ function projectNameFromPath(decodedPath: string): string {
 }
 
 /**
- * Derive session status from events.jsonl content.
- * Reads the file, extracts event types, and determines the current status.
+ * Derive session status from events.jsonl content using tail-reading.
+ * Reads only new bytes since the last known offset, updates the offset in canvas.db.
+ * On first call (offset = 0), reads the full file.
  */
-function deriveSessionStatus(eventsPath: string): { status: SessionStatus; startedAt: string; elapsed?: string; outcome?: string } {
-  const defaultResult = { status: 'paused' as SessionStatus, startedAt: new Date().toISOString() }
+function deriveSessionStatus(eventsPath: string, sessionId: string): { status: SessionStatus; startedAt: string; elapsed?: string; outcome?: string } {
+  const defaultResult = { status: 'active' as SessionStatus, startedAt: new Date().toISOString() }
 
   if (!existsSync(eventsPath)) {
     return defaultResult
   }
 
   try {
-    const content = readFileSync(eventsPath, 'utf-8')
-    const lines = content.trim().split('\n').filter(Boolean)
+    const offset = getByteOffset(sessionId)
+    const fd = openSync(eventsPath, 'r')
+    const stats = fstatSync(fd)
 
+    let content = ''
+    if (stats.size > offset) {
+      // Read only new bytes since last offset
+      const buffer = Buffer.alloc(stats.size - offset)
+      readSync(fd, buffer, 0, buffer.length, offset)
+      content = buffer.toString('utf-8')
+      updateByteOffset(sessionId, stats.size)
+    }
+    closeSync(fd)
+
+    // If no new content and we have an existing offset, we have no new events
+    if (!content && offset > 0) {
+      // Return current DB status — caller should read from DB instead
+      return defaultResult
+    }
+
+    // If first read (offset was 0) but file is empty, return default
+    const lines = content.trim().split('\n').filter(Boolean)
     if (lines.length === 0) {
       return defaultResult
     }
@@ -694,7 +1100,14 @@ function deriveSessionStatus(eventsPath: string): { status: SessionStatus; start
     } else if (startedAt) {
       status = 'running'
     } else {
-      status = 'paused'
+      status = 'active'
+    }
+
+    // Persist the derived status back to canvas.db
+    if (hasSessionEnd) {
+      updateSessionStatus(sessionId, status, lastTimestamp || undefined)
+    } else {
+      updateSessionStatus(sessionId, status)
     }
 
     // Calculate elapsed time for running sessions
@@ -738,10 +1151,76 @@ function readSessionMetadata(metadataPath: string): { bundle?: string; model?: s
 }
 
 /**
- * Scan all Amplifier projects and sessions from disk.
- * Returns a Project[] array suitable for sending to the renderer.
+ * Public entry point. On startup checks canvas.db — if populated, reads from DB (fast path).
+ * On cold start (empty DB), does a full disk scan and persists to canvas.db.
  */
-export function scanAllSessions(): Project[] {
+export function discoverSessions(): Project[] {
+  // Fast path: read from canvas.db if populated
+  if (isDbPopulated()) {
+    return loadFromDb()
+  }
+
+  // Cold start: full disk scan, then populate canvas.db
+  const projects = scanDisk()
+  persistToDb(projects)
+  return projects
+}
+
+/**
+ * Read projects and sessions from SQLite and return the Project[] structure.
+ * Used on warm startup when canvas.db is already populated.
+ */
+function loadFromDb(): Project[] {
+  const dbProjects = getProjects()
+  const projects: Project[] = []
+
+  for (const dbProject of dbProjects) {
+    const dbSessions = getSessionsByProject(dbProject.slug)
+    const decodedPath = decodeSlug(dbProject.slug)
+
+    const sessions: Session[] = dbSessions.map((s) => ({
+      id: s.id,
+      name: s.id.slice(0, 8),
+      status: s.status as SessionStatus,
+      startedAt: s.started_at,
+      elapsed: undefined, // Recalculated on next event
+      bundle: s.bundle ?? undefined,
+      model: s.model ?? undefined,
+      turnCount: s.turn_count ?? undefined,
+      startedBy: s.started_by as 'canvas' | 'external',
+      byteOffset: s.byte_offset,
+    }))
+
+    projects.push({
+      id: dbProject.slug,
+      name: projectNameFromPath(decodedPath),
+      path: decodedPath,
+      sessions,
+      lastActivity: dbProject.last_activity || new Date().toISOString(),
+    })
+  }
+
+  return projects
+}
+
+/**
+ * Write discovered projects/sessions to canvas.db for future warm reads.
+ */
+function persistToDb(projects: Project[]): void {
+  for (const project of projects) {
+    upsertProject(project.id, project.name, project.path)
+    for (const session of project.sessions) {
+      upsertSession(session.id, project.id, session.startedAt, 'external')
+      updateSessionStatus(session.id, session.status)
+    }
+  }
+}
+
+/**
+ * Full disk scan — used only on cold start (empty canvas.db).
+ * Discovers all projects and sessions from ~/.amplifier/projects/*/sessions/*/
+ */
+function scanDisk(): Project[] {
   const projectsDir = AMPLIFIER_PROJECTS_DIR
 
   if (!existsSync(projectsDir)) {
@@ -772,7 +1251,7 @@ export function scanAllSessions(): Project[] {
         const eventsPath = join(sessionPath, 'events.jsonl')
         const metadataPath = join(sessionPath, 'metadata.json')
 
-        const { status, startedAt, elapsed } = deriveSessionStatus(eventsPath)
+        const { status, startedAt, elapsed } = deriveSessionStatus(eventsPath, sessionId)
         const metadata = readSessionMetadata(metadataPath)
 
         sessions.push({
@@ -784,6 +1263,8 @@ export function scanAllSessions(): Project[] {
           bundle: metadata.bundle,
           model: metadata.model,
           turnCount: metadata.turnCount,
+          startedBy: 'external',
+          byteOffset: 0,
         })
       }
 
@@ -820,7 +1301,7 @@ Add session IPC handlers. Keep the existing terminal handlers and add:
 import { ipcMain, BrowserWindow } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty } from './pty'
-import { scanAllSessions } from './state-aggregator'
+import { discoverSessions } from './state-aggregator'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // --- Terminal handlers (existing from Plan 1A) ---
@@ -844,7 +1325,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Initial session scan — send to renderer once it's ready
   mainWindow.webContents.on('did-finish-load', () => {
-    const projects = scanAllSessions()
+    const projects = discoverSessions()
     mainWindow.webContents.send(IPC_CHANNELS.SESSIONS_CHANGED, { projects })
   })
 
@@ -860,7 +1341,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
  */
 export function pushSessionUpdate(mainWindow: BrowserWindow): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    const projects = scanAllSessions()
+    const projects = discoverSessions()
     mainWindow.webContents.send(IPC_CHANNELS.SESSIONS_CHANGED, { projects })
   }
 }
@@ -1112,7 +1593,7 @@ Change S2 status to `done` and `next_action` to `"Implement S3: Session status"`
   S2:
     name: Session list
     status: done
-    depends_on: [S1]
+    depends_on: [S1, DB, HK]
     blockers: []
 ```
 
@@ -1672,14 +2153,27 @@ import { watch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { BrowserWindow } from 'electron'
 import { existsSync } from 'fs'
+import { join } from 'path'
 import { AMPLIFIER_PROJECTS_DIR } from '../shared/constants'
 import { pushSessionUpdate } from './ipc'
+import { getExternalActiveSessions } from './state-store'
+
+/**
+ * File watchers are the FALLBACK event path for external sessions.
+ * Canvas-started sessions receive events via the hook receiver (~10ms).
+ * External sessions (started in a regular terminal) use file watchers (~500ms).
+ *
+ * Ownership rule: each session has exactly one primary event source.
+ * Deduplication: if both paths deliver the same event, the state-aggregator
+ * deduplicates by byte offset (same offset = same event = skip).
+ */
 
 let watcher: FSWatcher | null = null
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
- * Start watching the Amplifier projects directory for changes.
+ * Start watching events.jsonl files for external sessions only.
+ * Canvas-started sessions are handled by the hook receiver — no watcher needed.
  * When a session file changes, re-scan and push updates to the renderer.
  */
 export function startSessionWatcher(mainWindow: BrowserWindow): void {
@@ -1689,11 +2183,20 @@ export function startSessionWatcher(mainWindow: BrowserWindow): void {
     return
   }
 
-  // Watch for changes to events.jsonl and metadata.json files,
-  // and for new session directories being created
-  watcher = watch(AMPLIFIER_PROJECTS_DIR, {
-    // Watch the entire projects tree
-    depth: 4, // projects/<slug>/sessions/<id>/events.jsonl = 4 levels
+  // Only watch external sessions — Canvas-started sessions use hook events
+  const externalSessions = getExternalActiveSessions()
+
+  // Sparse watcher: watch only the specific events.jsonl files we care about,
+  // plus the top-level projects directory for new external session discovery
+  const pathsToWatch = [
+    AMPLIFIER_PROJECTS_DIR, // watch for new project/session directories
+    ...externalSessions.map((s) =>
+      join(AMPLIFIER_PROJECTS_DIR, s.project_slug, 'sessions', s.id, 'events.jsonl')
+    ),
+  ].filter(existsSync)
+
+  watcher = watch(pathsToWatch, {
+    depth: 4, // projects/<slug>/sessions/<id>/events.jsonl = 4 levels (for directory watching)
     ignoreInitial: true,
     persistent: true,
     // Debounce rapid changes (e.g., events.jsonl appends)
@@ -1720,7 +2223,7 @@ export function startSessionWatcher(mainWindow: BrowserWindow): void {
     console.error('[watcher] Error:', error)
   })
 
-  console.log(`[watcher] Watching: ${AMPLIFIER_PROJECTS_DIR}`)
+  console.log(`[watcher] Watching ${externalSessions.length} external session(s) + project directory`)
 }
 
 /**
@@ -1832,7 +2335,7 @@ Change S5 status to `done` and `next_action` to `"Sidebar layer review (antagoni
   S5:
     name: Real-time updates
     status: done
-    depends_on: [S3]
+    depends_on: [S3, HK]
     blockers: []
 ```
 
@@ -1947,6 +2450,16 @@ features:
     status: done
     depends_on: [T3]
     blockers: []
+  DB:
+    name: SQLite state store
+    status: done
+    depends_on: []
+    blockers: []
+  HK:
+    name: Hook event receiver
+    status: done
+    depends_on: [DB]
+    blockers: []
   S1:
     name: Sidebar shell
     status: done
@@ -1955,7 +2468,7 @@ features:
   S2:
     name: Session list
     status: done
-    depends_on: [S1]
+    depends_on: [S1, DB, HK]
     blockers: []
   S3:
     name: Session status
@@ -1970,7 +2483,7 @@ features:
   S5:
     name: Real-time updates
     status: done
-    depends_on: [S3]
+    depends_on: [S3, HK]
     blockers: []
 
 next_action: "Antagonistic review of sidebar layer, then begin Plan 1C (Viewer + Integration)"
