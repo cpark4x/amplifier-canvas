@@ -11,3 +11,13 @@ ui-studio/
 
 # Superpowers scratch
 .superpowers/
+
+# Build artifacts
+node_modules/
+out/
+dist/
+*.tsbuildinfo
+
+# Test artifacts
+test-results/
+playwright-report/
