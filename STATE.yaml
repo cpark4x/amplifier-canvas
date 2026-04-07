@@ -16,7 +16,7 @@ features:
     blockers: []
   T3:
     name: PTY pipe
-    status: ready
+    status: done
     depends_on: [T2]
     blockers: []
   T4:
@@ -30,4 +30,4 @@ features:
     depends_on: [T3]
     blockers: []
 
-next_action: "Implement T3: PTY pipe"
+next_action: "Implement T4: CLI launch command"
