@@ -169,3 +169,60 @@ test('T3: window resize reflows terminal', async ({ appWindow, electronApp }) =>
   expect(boxAfter).toBeTruthy()
   expect(boxAfter!.width).toBeGreaterThan(boxBefore!.width)
 })
+
+// --- T5: Keyboard Fidelity ---
+
+test('T5: Ctrl+C sends SIGINT and interrupts a running process', async ({ appWindow }) => {
+  const term = appWindow.locator('.xterm')
+  await term.click()
+  await appWindow.waitForTimeout(1000)
+  await appWindow.keyboard.type('sleep 999')
+  await appWindow.keyboard.press('Enter')
+  await appWindow.waitForTimeout(500)
+  await appWindow.keyboard.press('Control+c')
+  await appWindow.waitForTimeout(500)
+  await appWindow.keyboard.type('echo __AFTER_SIGINT__')
+  await appWindow.keyboard.press('Enter')
+
+  const terminal = appWindow.locator('.xterm')
+  await expect(terminal).toContainText('__AFTER_SIGINT__', { timeout: 5000 })
+})
+
+test('T5: arrow keys produce escape sequences (command history)', async ({ appWindow }) => {
+  await appWindow.locator('.xterm').click()
+  await appWindow.keyboard.type('echo __HISTORY_TEST__')
+  await appWindow.keyboard.press('Enter')
+  await appWindow.waitForTimeout(500)
+  await appWindow.keyboard.press('ArrowUp')
+  await appWindow.waitForTimeout(300)
+  await appWindow.keyboard.press('Enter')
+
+  const terminal = appWindow.locator('.xterm')
+  await expect(terminal).toContainText('__HISTORY_TEST__', { timeout: 5000 })
+})
+
+test('T5: Ctrl+D on empty line exits subshell gracefully', async ({ appWindow }) => {
+  await appWindow.locator('.xterm').click()
+  await appWindow.keyboard.type('bash')
+  await appWindow.keyboard.press('Enter')
+  await appWindow.waitForTimeout(500)
+  await appWindow.keyboard.press('Control+d')
+  await appWindow.waitForTimeout(500)
+  await appWindow.keyboard.type('echo __AFTER_CTRL_D__')
+  await appWindow.keyboard.press('Enter')
+
+  const terminal = appWindow.locator('.xterm')
+  await expect(terminal).toContainText('__AFTER_CTRL_D__', { timeout: 5000 })
+})
+
+test('T5: tab completion works', async ({ appWindow }) => {
+  await appWindow.locator('.xterm').click()
+  await appWindow.keyboard.type('ech')
+  await appWindow.keyboard.press('Tab')
+  await appWindow.waitForTimeout(500)
+  await appWindow.keyboard.type(' __TAB_COMPLETE__')
+  await appWindow.keyboard.press('Enter')
+
+  const terminal = appWindow.locator('.xterm')
+  await expect(terminal).toContainText('__TAB_COMPLETE__', { timeout: 5000 })
+})

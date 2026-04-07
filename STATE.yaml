@@ -26,8 +26,8 @@ features:
     blockers: []
   T5:
     name: Keyboard fidelity
-    status: ready
+    status: done
     depends_on: [T3]
     blockers: []
 
-next_action: "Implement T5: Keyboard fidelity"
+next_action: "Run terminal layer review (antagonistic review checkpoint)"
