@@ -1,0 +1,33 @@
+# Amplifier Canvas — Build State (Track B)
+# Read this at every session start.
+
+phase: "1A — Scaffold + Terminal"
+
+features:
+  T1:
+    name: Electron shell
+    status: done
+    depends_on: []
+    blockers: []
+  T2:
+    name: xterm.js terminal
+    status: done
+    depends_on: [T1]
+    blockers: []
+  T3:
+    name: PTY pipe
+    status: done
+    depends_on: [T2]
+    blockers: []
+  T4:
+    name: CLI launch command
+    status: done
+    depends_on: [T1]
+    blockers: []
+  T5:
+    name: Keyboard fidelity
+    status: done
+    depends_on: [T3]
+    blockers: []
+
+next_action: "Run terminal layer review (antagonistic review checkpoint)"
