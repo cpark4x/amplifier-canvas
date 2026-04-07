@@ -107,3 +107,65 @@ test('T2: terminal takes up the full app area', async ({ appWindow }) => {
   expect(box!.width).toBeGreaterThan(size.width * 0.5)
   expect(box!.height).toBeGreaterThan(size.height * 0.5)
 })
+
+// --- T3: PTY Pipe ---
+
+test('T3: typing a command produces output', async ({ appWindow }) => {
+  const terminal = appWindow.locator('.xterm')
+
+  // Wait for shell to initialize and show a prompt
+  await appWindow.waitForTimeout(2000)
+
+  // Click the terminal to focus xterm's internal textarea
+  await terminal.click()
+
+  await appWindow.keyboard.type('echo __CANVAS_TEST__')
+  await appWindow.keyboard.press('Enter')
+
+  await expect(terminal).toContainText('__CANVAS_TEST__', { timeout: 5000 })
+})
+
+test('T3: shell persists after command completes', async ({ appWindow }) => {
+  const terminal = appWindow.locator('.xterm')
+
+  // Click the terminal to ensure focus
+  await terminal.click()
+
+  await appWindow.keyboard.type('echo __STILL_ALIVE__')
+  await appWindow.keyboard.press('Enter')
+
+  await expect(terminal).toContainText('__STILL_ALIVE__', { timeout: 5000 })
+})
+
+test('T3: ANSI color sequences render correctly', async ({ appWindow }) => {
+  const terminal = appWindow.locator('.xterm')
+
+  await appWindow.waitForTimeout(1000)
+  await terminal.click()
+
+  await appWindow.keyboard.type('printf "\\033[32mGREEN\\033[0m NORMAL"')
+  await appWindow.keyboard.press('Enter')
+
+  await expect(terminal).toContainText('GREEN', { timeout: 5000 })
+  await expect(terminal).toContainText('NORMAL', { timeout: 5000 })
+})
+
+test('T3: window resize reflows terminal', async ({ appWindow, electronApp }) => {
+  const terminal = appWindow.locator('.xterm')
+  const boxBefore = await terminal.boundingBox()
+  expect(boxBefore).toBeTruthy()
+
+  await electronApp.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) {
+      const [w, h] = win.getSize()
+      win.setSize(w + 100, h + 100)
+    }
+  })
+
+  await appWindow.waitForTimeout(500)
+
+  const boxAfter = await terminal.boundingBox()
+  expect(boxAfter).toBeTruthy()
+  expect(boxAfter!.width).toBeGreaterThan(boxBefore!.width)
+})

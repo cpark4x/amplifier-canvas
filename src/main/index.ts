@@ -3,6 +3,7 @@ import type { MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
+import { registerIpcHandlers } from './ipc'
 
 const isMac = process.platform === 'darwin'
 const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
@@ -36,7 +37,7 @@ function loadRenderer(mainWindow: BrowserWindow): void {
   })
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     title: APP_NAME,
     width: WINDOW_CONFIG.width,
@@ -64,6 +65,8 @@ function createWindow(): void {
   })
 
   loadRenderer(mainWindow)
+
+  return mainWindow
 }
 
 function buildAppMenu(): void {
@@ -133,11 +136,13 @@ function buildAppMenu(): void {
 
 app.whenReady().then(() => {
   buildAppMenu()
-  createWindow()
+  const mainWindow = createWindow()
+  registerIpcHandlers(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      const newWindow = createWindow()
+      registerIpcHandlers(newWindow)
     }
   })
 })
