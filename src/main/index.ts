@@ -3,7 +3,39 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 
-function createWindow(): BrowserWindow {
+const isMac = process.platform === 'darwin'
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
+
+function openExternalUrl(url: string): void {
+  try {
+    const parsedUrl = new URL(url)
+
+    if (!ALLOWED_EXTERNAL_PROTOCOLS.has(parsedUrl.protocol)) {
+      console.error('Blocked unsupported external URL protocol:', parsedUrl.protocol, url)
+      return
+    }
+
+    void shell.openExternal(parsedUrl.toString()).catch(error => {
+      console.error('Failed to open external URL:', url, error)
+    })
+  } catch (error) {
+    console.error('Blocked invalid external URL:', url, error)
+  }
+}
+
+function loadRenderer(mainWindow: BrowserWindow): void {
+  const rendererUrl = process.env['ELECTRON_RENDERER_URL']
+  const loadPromise =
+    is.dev && rendererUrl
+      ? mainWindow.loadURL(rendererUrl)
+      : mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+
+  void loadPromise.catch(error => {
+    console.error('Failed to load renderer:', error)
+  })
+}
+
+function createWindow(): void {
   const mainWindow = new BrowserWindow({
     title: APP_NAME,
     width: WINDOW_CONFIG.width,
@@ -13,28 +45,20 @@ function createWindow(): BrowserWindow {
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-    },
+      sandbox: false
+    }
   })
 
-  mainWindow.on('ready-to-show', () => {
+  mainWindow.once('ready-to-show', () => {
     mainWindow.show()
   })
 
-  // Open external links in the default browser
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalUrl(url)
     return { action: 'deny' }
   })
 
-  // Load the renderer
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
-  return mainWindow
+  loadRenderer(mainWindow)
 }
 
 app.whenReady().then(() => {
@@ -48,5 +72,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  app.quit()
+  if (!isMac) {
+    app.quit()
+  }
 })

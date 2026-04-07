@@ -1,5 +1,4 @@
-// Shared types between main and renderer processes
-// IPC channel names defined in ARCHITECTURE.md
+// IPC channel names shared between the main process and preload bridge
 
 export const IPC_CHANNELS = {
   // Main → Renderer (push)

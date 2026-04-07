@@ -1,27 +1,15 @@
-import { test, expect } from '@playwright/test'
-import { _electron as electron } from 'playwright'
+import { test, expect } from './fixtures'
 
-test('window.electronAPI is exposed with terminal IPC methods', async () => {
-  const app = await electron.launch({
-    args: ['.'],
-    cwd: process.cwd()
-  })
+test('window.electronAPI is exposed with terminal IPC methods', async ({ appWindow }) => {
+  const apiShape = await appWindow.evaluate(() => ({
+    hasElectronAPI: typeof window.electronAPI !== 'undefined',
+    hasSendInput: typeof window.electronAPI?.sendTerminalInput === 'function',
+    hasSendResize: typeof window.electronAPI?.sendTerminalResize === 'function',
+    hasOnData: typeof window.electronAPI?.onTerminalData === 'function'
+  }))
 
-  const window = await app.firstWindow()
-
-  // electronAPI should be exposed on window (not the old 'api')
-  const hasElectronAPI = await window.evaluate(() => typeof window.electronAPI !== 'undefined')
-  expect(hasElectronAPI).toBe(true)
-
-  // All three terminal IPC methods must exist
-  const hasSendInput = await window.evaluate(() => typeof window.electronAPI?.sendTerminalInput === 'function')
-  expect(hasSendInput).toBe(true)
-
-  const hasSendResize = await window.evaluate(() => typeof window.electronAPI?.sendTerminalResize === 'function')
-  expect(hasSendResize).toBe(true)
-
-  const hasOnData = await window.evaluate(() => typeof window.electronAPI?.onTerminalData === 'function')
-  expect(hasOnData).toBe(true)
-
-  await app.close()
+  expect(apiShape.hasElectronAPI).toBe(true)
+  expect(apiShape.hasSendInput).toBe(true)
+  expect(apiShape.hasSendResize).toBe(true)
+  expect(apiShape.hasOnData).toBe(true)
 })
