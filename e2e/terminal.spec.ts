@@ -88,3 +88,22 @@ test('T1: window shows no unexpected chrome', async ({ appWindow }) => {
   expect(boundingBox!.width).toBeGreaterThan(0)
   expect(boundingBox!.height).toBeGreaterThan(0)
 })
+
+// --- T2: xterm.js Terminal ---
+
+test('T2: terminal element exists in the window', async ({ appWindow }) => {
+  const terminal = appWindow.locator('.xterm')
+  await expect(terminal).toBeVisible({ timeout: 5000 })
+})
+
+test('T2: terminal takes up the full app area', async ({ appWindow }) => {
+  const terminal = appWindow.locator('.xterm')
+  const box = await terminal.boundingBox()
+  expect(box).toBeTruthy()
+  const size = await appWindow.evaluate(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }))
+  expect(box!.width).toBeGreaterThan(size.width * 0.5)
+  expect(box!.height).toBeGreaterThan(size.height * 0.5)
+})
