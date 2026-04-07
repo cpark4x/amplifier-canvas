@@ -6,7 +6,7 @@ phase: "1A — Scaffold + Terminal"
 features:
   T1:
     name: Electron shell
-    status: ready
+    status: done
     depends_on: []
     blockers: []
   T2:
@@ -30,4 +30,4 @@ features:
     depends_on: [T3]
     blockers: []
 
-next_action: "Implement T1: Electron shell"
+next_action: "Implement T2: xterm.js terminal"
