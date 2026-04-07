@@ -11,7 +11,7 @@ features:
     blockers: []
   T2:
     name: xterm.js terminal
-    status: ready
+    status: done
     depends_on: [T1]
     blockers: []
   T3:
@@ -30,4 +30,4 @@ features:
     depends_on: [T3]
     blockers: []
 
-next_action: "Implement T2: xterm.js terminal"
+next_action: "Implement T3: PTY pipe"
