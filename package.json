@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Amplifier Canvas — A visual companion for the Amplifier CLI",
   "main": "out/main/index.js",
+  "bin": {
+    "canvas": "./bin/canvas.js"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

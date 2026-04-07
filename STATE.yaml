@@ -21,7 +21,7 @@ features:
     blockers: []
   T4:
     name: CLI launch command
-    status: ready
+    status: done
     depends_on: [T1]
     blockers: []
   T5:
@@ -30,4 +30,4 @@ features:
     depends_on: [T3]
     blockers: []
 
-next_action: "Implement T4: CLI launch command"
+next_action: "Implement T5: Keyboard fidelity"
