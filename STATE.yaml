@@ -30,4 +30,20 @@ features:
     depends_on: [T3]
     blockers: []
 
-next_action: "Run terminal layer review (antagonistic review checkpoint)"
+review_1A:
+  status: passed
+  date: 2026-04-08
+  findings:
+    major:
+      - "IPC handler leak on macOS reactivation (index.ts:142-147) — fix before 1B"
+      - "PTY exit not forwarded to renderer (ipc.ts) — fix before 1B"
+      - "Initial resize not sent after fit (Terminal.tsx:30) — fix before 1B"
+    minor:
+      - "sandbox: false is intentional (node-pty) — document the tradeoff"
+      - "No CSP meta tag — add before release"
+      - "fitAddonRef stored but never read — dead ref"
+      - "Singleton PTY global state — design note for 1B multi-terminal"
+    nits:
+      - "types.ts is really a channels file"
+
+next_action: "Fix 3 major review findings, then start Phase 1B (Sidebar)"

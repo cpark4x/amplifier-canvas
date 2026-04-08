@@ -11,15 +11,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     }
   })
 
-  ipcMain.on(IPC_CHANNELS.TERMINAL_INPUT, (_event, data: string) => {
-    writeToPty(data)
+  ptyProcess.onExit(({ exitCode, signal }) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { exitCode, signal })
+    }
   })
 
-  ipcMain.on(IPC_CHANNELS.TERMINAL_RESIZE, (_event, { cols, rows }: { cols: number; rows: number }) => {
+  const onInput = (_event: Electron.IpcMainEvent, data: string): void => {
+    writeToPty(data)
+  }
+
+  const onResize = (_event: Electron.IpcMainEvent, { cols, rows }: { cols: number; rows: number }): void => {
     resizePty(cols, rows)
-  })
+  }
+
+  ipcMain.on(IPC_CHANNELS.TERMINAL_INPUT, onInput)
+  ipcMain.on(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
 
   mainWindow.on('closed', () => {
+    ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
+    ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
     killPty()
   })
 }

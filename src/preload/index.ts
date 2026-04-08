@@ -23,6 +23,17 @@ const api = {
       ipcRenderer.removeListener(IPC_CHANNELS.TERMINAL_DATA, handler)
     }
   },
+
+  // Terminal: PTY process exited
+  onTerminalExit: (callback: (info: { exitCode: number; signal?: number }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, info: { exitCode: number; signal?: number }): void => {
+      callback(info)
+    }
+    ipcRenderer.on(IPC_CHANNELS.TERMINAL_EXIT, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.TERMINAL_EXIT, handler)
+    }
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

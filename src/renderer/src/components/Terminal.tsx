@@ -30,7 +30,6 @@ function TerminalComponent(): React.ReactElement {
     fitAddon.fit()
 
     xtermRef.current = xterm
-    fitAddonRef.current = fitAddon
 
     const handleResize = (): void => {
       fitAddon.fit()
@@ -39,12 +38,20 @@ function TerminalComponent(): React.ReactElement {
 
     // Wire up IPC if available (connected to PTY in T3)
     if (window.electronAPI) {
+      // Sync initial size — fitAddon.fit() set the terminal dimensions,
+      // but the PTY was spawned at a hardcoded 80x24. Send the real size now.
+      window.electronAPI.sendTerminalResize(xterm.cols, xterm.rows)
+
       xterm.onData((data) => {
         window.electronAPI.sendTerminalInput(data)
       })
 
-      const cleanup = window.electronAPI.onTerminalData((data) => {
+      const cleanupData = window.electronAPI.onTerminalData((data) => {
         xterm.write(data)
+      })
+
+      const cleanupExit = window.electronAPI.onTerminalExit(({ exitCode }) => {
+        xterm.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`)
       })
 
       xterm.onResize(({ cols, rows }) => {
@@ -52,7 +59,8 @@ function TerminalComponent(): React.ReactElement {
       })
 
       return () => {
-        cleanup()
+        cleanupData()
+        cleanupExit()
         window.removeEventListener('resize', handleResize)
         xterm.dispose()
         xtermRef.current = null
