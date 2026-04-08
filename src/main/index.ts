@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell, net, protocol } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
@@ -8,7 +8,7 @@ import { existsSync } from 'fs'
 import { initDatabase, closeDatabase, upsertProject, upsertSession, updateSessionStatus, updateByteOffset } from './db'
 import { scanProjects, getAmplifierHome } from './scanner'
 import { startWatching, stopWatching } from './watcher'
-import { pushSessionsChanged, pushFilesChanged, setAllowedDirs } from './ipc'
+import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity } from './events-parser'
 import type { SessionState } from '../shared/types'
 
@@ -141,6 +141,19 @@ function buildAppMenu(): void {
   Menu.setApplicationMenu(menu)
 }
 
+// Register canvas:// as a privileged scheme before app is ready
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'canvas',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+    },
+  },
+])
+
 app.whenReady().then(() => {
   buildAppMenu()
 
@@ -161,6 +174,22 @@ app.whenReady().then(() => {
     const allowedDirs = [projectsDir, ...workDirs]
     setAllowedDirs(allowedDirs)
   }
+
+  // Register canvas:// protocol handler for secure image serving
+  protocol.handle('canvas', (request) => {
+    // canvas://file/absolute/path → extract the pathname
+    // Uses fixed "file" host to avoid case-mangling of path components
+    const url = new URL(request.url)
+    const filePath = decodeURIComponent(url.pathname)
+
+    if (!isPathAllowed(filePath)) {
+      console.error('[protocol] Blocked canvas:// access to disallowed path:', filePath)
+      return new Response('Forbidden', { status: 403 })
+    }
+
+    // Use net.fetch with file:// to read the local file
+    return net.fetch(`file://${filePath}`)
+  })
 
   const mainWindow = createWindow()
   registerIpcHandlers(mainWindow)

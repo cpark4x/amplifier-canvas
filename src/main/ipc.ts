@@ -13,7 +13,7 @@ export function setAllowedDirs(dirs: string[]): void {
   allowedDirs = dirs.map((d) => resolve(normalize(d)))
 }
 
-function isPathAllowed(requestedPath: string): boolean {
+export function isPathAllowed(requestedPath: string): boolean {
   const resolved = resolve(normalize(requestedPath))
   return allowedDirs.some((dir) => resolved.startsWith(dir))
 }

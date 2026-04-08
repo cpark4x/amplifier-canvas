@@ -1,9 +1,31 @@
+import { useState } from 'react'
+
 type ImageRendererProps = {
   filePath: string
 }
 
 function ImageRenderer({ filePath }: ImageRendererProps): React.ReactElement {
+  const [error, setError] = useState(false)
   const fileName = filePath.split('/').pop() || 'image'
+  const canvasSrc = `canvas://file${filePath}`
+
+  if (error) {
+    return (
+      <div
+        data-testid="image-renderer"
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '12px',
+        }}
+      >
+        <div style={{ color: '#8B8B90', fontSize: '11px', textAlign: 'center' }}>
+          Failed to load image: {fileName}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -15,10 +37,17 @@ function ImageRenderer({ filePath }: ImageRendererProps): React.ReactElement {
         padding: '12px',
       }}
     >
-      <div style={{ color: '#8B8B90', fontSize: '11px', textAlign: 'center' }}>
-        <div style={{ marginBottom: '8px' }}>{fileName}</div>
-        <div>(Image preview requires canvas:// protocol)</div>
-      </div>
+      <img
+        src={canvasSrc}
+        alt={fileName}
+        onError={() => setError(true)}
+        style={{
+          maxWidth: '100%',
+          maxHeight: '80vh',
+          objectFit: 'contain',
+          borderRadius: '4px',
+        }}
+      />
     </div>
   )
 }

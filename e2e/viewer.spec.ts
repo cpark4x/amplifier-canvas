@@ -429,3 +429,61 @@ test('V4: clicking a TypeScript file shows syntax-highlighted code', async ({ ap
   const codeText = await codeBlock.textContent()
   expect(codeText).toContain('createServer')
 })
+
+// --- V5: canvas:// Protocol + ImageRenderer ---
+
+test('V5: clicking an image file shows the image renderer', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer to reset state (tests share window)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Wait for file browser
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Navigate to assets/
+  const assetsFolder = appWindow.locator('[data-testid="file-entry"][data-is-directory="true"]', { hasText: 'assets' })
+  await expect(assetsFolder).toBeVisible({ timeout: 3000 })
+  await assetsFolder.click()
+  await appWindow.waitForTimeout(500)
+
+  // Click logo.png
+  const logoEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'logo.png' })
+  await expect(logoEntry).toBeVisible({ timeout: 5000 })
+  await logoEntry.click()
+
+  // Image renderer should appear
+  const imageRenderer = appWindow.locator('[data-testid="image-renderer"]')
+  await expect(imageRenderer).toBeVisible({ timeout: 5000 })
+
+  // Should have an img element with canvas:// src
+  const img = imageRenderer.locator('img')
+  await expect(img).toBeVisible({ timeout: 5000 })
+  const src = await img.getAttribute('src')
+  expect(src).toMatch(/^canvas:\/\//)
+})
