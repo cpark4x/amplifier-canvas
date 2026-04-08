@@ -1,0 +1,4 @@
+# Test artifacts created during e2e runs
+canvas.db
+canvas.db-wal
+canvas.db-shm
