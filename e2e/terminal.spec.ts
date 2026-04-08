@@ -26,7 +26,7 @@ test('T1: app launches in under 2 seconds', async () => {
   const testApp = await electron.launch({
     args: ['.'],
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: 'test' },
+    env: { ...process.env, NODE_ENV: 'test', AMPLIFIER_HOME: require('path').resolve(__dirname, 'fixtures', 'amplifier-home') },
   })
   const testPage = await testApp.firstWindow()
   const elapsed = Date.now() - start

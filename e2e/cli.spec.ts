@@ -11,7 +11,7 @@ test('T4: bin entry point exists', async () => {
 test('T4: app can be launched with electron directly', async () => {
   const app = await electron.launch({
     args: ['.'],
-    env: { ...process.env, NODE_ENV: 'test' },
+    env: { ...process.env, NODE_ENV: 'test', AMPLIFIER_HOME: require('path').resolve(__dirname, 'fixtures', 'amplifier-home') },
   })
   const page = await app.firstWindow()
   const title = await page.title()

@@ -4,6 +4,13 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
+import { existsSync } from 'fs'
+import { initDatabase, closeDatabase, upsertProject, upsertSession, updateSessionStatus, updateByteOffset } from './db'
+import { scanProjects, getAmplifierHome } from './scanner'
+import { startWatching, stopWatching } from './watcher'
+import { pushSessionsChanged, pushFilesChanged, setAllowedDirs } from './ipc'
+import { tailReadEvents, deriveSessionStatus, extractFileActivity } from './events-parser'
+import type { SessionState } from '../shared/types'
 
 const isMac = process.platform === 'darwin'
 const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
@@ -136,8 +143,52 @@ function buildAppMenu(): void {
 
 app.whenReady().then(() => {
   buildAppMenu()
+
+  // Initialize database
+  initDatabase()
+
+  // Scan existing projects from disk
+  const amplifierHome = getAmplifierHome()
+  const scanResult = scanProjects(amplifierHome)
+
+  // Set allowed directories for file access security
+  const projectsDir = join(amplifierHome, 'projects')
+  if (existsSync(projectsDir)) {
+    const allowedDirs = [projectsDir]
+    setAllowedDirs(allowedDirs)
+  }
+
   const mainWindow = createWindow()
   registerIpcHandlers(mainWindow)
+
+  // Push initial session state once the window is ready
+  mainWindow.webContents.once('did-finish-load', () => {
+    pushSessionsChanged(mainWindow, scanResult.sessions)
+  })
+
+  // Start file watching
+  startWatching(amplifierHome, (event, data) => {
+    if (event === 'session-updated' && data.sessionId) {
+      const eventsPath = join(amplifierHome, 'projects', data.projectSlug, 'sessions', data.sessionId, 'events.jsonl')
+      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
+      const status = deriveSessionStatus(events)
+      const recentFiles = extractFileActivity(events)
+
+      updateSessionStatus(data.sessionId, status)
+      updateByteOffset(data.sessionId, newByteOffset)
+
+      // Re-scan all sessions and push full state
+      const freshScan = scanProjects(amplifierHome)
+      pushSessionsChanged(mainWindow, freshScan.sessions)
+      pushFilesChanged(mainWindow, data.sessionId, recentFiles)
+    }
+
+    if (event === 'project-added') {
+      // Re-scan to pick up the new project
+      const freshScan = scanProjects(amplifierHome)
+      pushSessionsChanged(mainWindow, freshScan.sessions)
+    }
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -145,6 +196,11 @@ app.whenReady().then(() => {
       registerIpcHandlers(newWindow)
     }
   })
+})
+
+app.on('before-quit', () => {
+  stopWatching()
+  closeDatabase()
 })
 
 app.on('window-all-closed', () => {
