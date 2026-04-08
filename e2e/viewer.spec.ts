@@ -431,6 +431,63 @@ test('V4: clicking a TypeScript file shows syntax-highlighted code', async ({ ap
   expect(codeText).toContain('createServer')
 })
 
+test('V4b: code renderer uses dark theme background (#0F0E0C)', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer to reset state (tests share window)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Wait for file browser
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Navigate to src/
+  const srcFolder = appWindow.locator('[data-testid="file-entry"][data-is-directory="true"]', { hasText: 'src' })
+  await expect(srcFolder).toBeVisible({ timeout: 3000 })
+  await srcFolder.click()
+  await appWindow.waitForTimeout(500)
+
+  // Click app.ts
+  const appTsEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'app.ts' })
+  await expect(appTsEntry).toBeVisible({ timeout: 5000 })
+  await appTsEntry.click()
+
+  const codeBlock = appWindow.locator('[data-testid="code-renderer"]')
+  await expect(codeBlock).toBeVisible({ timeout: 5000 })
+
+  // The inner flex container must use the warm near-black dark background
+  const bg = await codeBlock.evaluate((el) => {
+    const inner = el.querySelector('div')
+    return inner ? getComputedStyle(inner).backgroundColor : ''
+  })
+  // #0F0E0C = rgb(15, 14, 12)
+  expect(bg).toBe('rgb(15, 14, 12)')
+})
+
 // --- V5: canvas:// Protocol + ImageRenderer ---
 
 test('V5: clicking an image file shows the image renderer', async ({ appWindow }) => {

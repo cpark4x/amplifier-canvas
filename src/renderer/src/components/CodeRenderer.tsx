@@ -85,7 +85,7 @@ function CodeRenderer({ filePath }: CodeRendererProps): React.ReactElement {
 
   if (loading) {
     return (
-      <div style={{ color: '#8B8B90', fontSize: '11px', padding: '8px 0' }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '11px', padding: '8px 0' }}>
         Loading...
       </div>
     )
@@ -96,33 +96,37 @@ function CodeRenderer({ filePath }: CodeRendererProps): React.ReactElement {
   return (
     <div data-testid="code-renderer">
       <style>{`
-        [data-testid="code-renderer"] .hljs-keyword { color: #CF222E; }
-        [data-testid="code-renderer"] .hljs-string { color: #0A3069; }
-        [data-testid="code-renderer"] .hljs-number { color: #0550AE; }
-        [data-testid="code-renderer"] .hljs-comment { color: #6E7781; font-style: italic; }
-        [data-testid="code-renderer"] .hljs-function { color: #8250DF; }
-        [data-testid="code-renderer"] .hljs-title { color: #8250DF; }
-        [data-testid="code-renderer"] .hljs-type { color: #953800; }
-        [data-testid="code-renderer"] .hljs-built_in { color: #0550AE; }
-        [data-testid="code-renderer"] .hljs-attr { color: #0550AE; }
-        [data-testid="code-renderer"] .hljs-variable { color: #953800; }
-        [data-testid="code-renderer"] .hljs-params { color: #953800; }
-        [data-testid="code-renderer"] .hljs-meta { color: #CF222E; }
-        [data-testid="code-renderer"] .hljs-selector-class { color: #0550AE; }
-        [data-testid="code-renderer"] .hljs-selector-tag { color: #116329; }
-        [data-testid="code-renderer"] .hljs-property { color: #0550AE; }
+        [data-testid="code-renderer"] .hljs-keyword { color: #C4784A; }
+        [data-testid="code-renderer"] .hljs-string { color: #4CAF74; }
+        [data-testid="code-renderer"] .hljs-number { color: #A09888; }
+        [data-testid="code-renderer"] .hljs-comment { color: #5A6855; font-style: italic; }
+        [data-testid="code-renderer"] .hljs-function { color: #F59E0B; }
+        [data-testid="code-renderer"] .hljs-title { color: #F59E0B; }
+        [data-testid="code-renderer"] .hljs-type { color: #8A9E8A; }
+        [data-testid="code-renderer"] .hljs-built_in { color: #5A8A9A; }
+        [data-testid="code-renderer"] .hljs-attr { color: #C8C4BC; }
+        [data-testid="code-renderer"] .hljs-variable { color: #C8C4BC; }
+        [data-testid="code-renderer"] .hljs-params { color: #A09888; }
+        [data-testid="code-renderer"] .hljs-meta { color: #C4784A; }
+        [data-testid="code-renderer"] .hljs-selector-class { color: #5A8A9A; }
+        [data-testid="code-renderer"] .hljs-selector-tag { color: #4CAF74; }
+        [data-testid="code-renderer"] .hljs-property { color: #5A8A9A; }
       `}</style>
       <div
         style={{
           display: 'flex',
-          fontSize: '12px',
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-          lineHeight: 1.5,
+          fontSize: '11px',
+          fontFamily: "'SFMono-Regular', Menlo, Consolas, monospace",
+          lineHeight: 1.65,
           overflow: 'auto',
+          backgroundColor: '#0F0E0C',
+          color: '#C8C4BC',
+          borderRadius: '4px',
+          padding: '12px 0',
         }}
       >
         {/* Line numbers */}
-        <div style={{ color: '#8B8B90', textAlign: 'right', paddingRight: '12px', userSelect: 'none', minWidth: '32px', borderRight: '1px solid #E8E6E1', marginRight: '12px' }}>
+        <div style={{ color: '#C8C4BC', opacity: 0.45, textAlign: 'right', paddingRight: '12px', paddingLeft: '12px', userSelect: 'none', minWidth: '36px', borderRight: '1px solid rgba(255,255,255,0.06)', marginRight: '12px' }}>
           {lines.map((_, i) => (
             <div key={i}>{i + 1}</div>
           ))}
