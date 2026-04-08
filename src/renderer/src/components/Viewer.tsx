@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useCanvasStore } from '../store'
+import FileBrowser from './FileBrowser'
 import type { SessionStatus } from '../../../shared/types'
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
@@ -14,6 +16,7 @@ function Viewer(): React.ReactElement | null {
   const getSelectedSession = useCanvasStore((s) => s.getSelectedSession)
   const selectSession = useCanvasStore((s) => s.selectSession)
   const session = getSelectedSession()
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
 
   if (!selectedSessionId || !session) {
     return null
@@ -107,16 +110,51 @@ function Viewer(): React.ReactElement | null {
           padding: '12px',
         }}
       >
-        <div
-          style={{
-            color: '#8B8B90',
-            fontSize: '12px',
-            textAlign: 'center',
-            marginTop: '40px',
-          }}
-        >
-          Select a file to view
-        </div>
+        {selectedFilePath ? (
+          <div>
+            <button
+              data-testid="viewer-back-to-files"
+              onClick={() => setSelectedFilePath(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                color: '#3B82F6',
+                padding: '4px 0 8px 0',
+              }}
+            >
+              ← Back to files
+            </button>
+            <div
+              data-testid="file-renderer-placeholder"
+              style={{
+                fontSize: '11px',
+                color: '#8B8B90',
+                borderTop: '1px solid rgba(0,0,0,0.08)',
+                paddingTop: '8px',
+              }}
+            >
+              Selected: {selectedFilePath.split('/').pop()}
+            </div>
+          </div>
+        ) : session.workDir ? (
+          <FileBrowser
+            rootPath={session.workDir}
+            onSelectFile={(filePath) => setSelectedFilePath(filePath)}
+          />
+        ) : (
+          <div
+            style={{
+              color: '#8B8B90',
+              fontSize: '12px',
+              textAlign: 'center',
+              marginTop: '40px',
+            }}
+          >
+            No project directory available
+          </div>
+        )}
       </div>
     </div>
   )
