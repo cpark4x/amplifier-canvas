@@ -1,0 +1,3 @@
+{"type":"session:start","timestamp":"2026-04-07T11:00:00Z","data":{"sessionId":"tp-session-002","projectSlug":"team-pulse"}}
+{"type":"tool_call","timestamp":"2026-04-07T11:00:05Z","data":{"tool":"create_file","args":{"path":"src/new-feature.ts"}}}
+{"type":"assistant_message","timestamp":"2026-04-07T11:00:10Z","data":{"text":"I created the new feature file."}}

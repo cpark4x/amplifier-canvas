@@ -1,10 +1,17 @@
 import { test as base, _electron as electron } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
+import { resolve } from 'path'
+
+const FIXTURES_DIR = resolve(__dirname, 'fixtures', 'amplifier-home')
 
 const ELECTRON_LAUNCH_OPTIONS = {
   args: ['.'],
   cwd: process.cwd(),
-  env: { ...process.env, NODE_ENV: 'test' }
+  env: {
+    ...process.env,
+    NODE_ENV: 'test',
+    AMPLIFIER_HOME: FIXTURES_DIR,
+  }
 } as const
 
 type ElectronFixtures = {
@@ -36,3 +43,4 @@ export const test = base.extend<{}, ElectronFixtures>({
 })
 
 export { expect } from '@playwright/test'
+export { FIXTURES_DIR }

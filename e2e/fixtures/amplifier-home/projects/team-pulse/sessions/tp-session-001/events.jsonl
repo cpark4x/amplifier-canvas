@@ -1,0 +1,6 @@
+{"type":"session:start","timestamp":"2026-04-07T10:00:00Z","data":{"sessionId":"tp-session-001","projectSlug":"team-pulse"}}
+{"type":"tool_call","timestamp":"2026-04-07T10:00:05Z","data":{"tool":"read_file","args":{"path":"src/app.ts"}}}
+{"type":"tool_call","timestamp":"2026-04-07T10:00:10Z","data":{"tool":"write_file","args":{"path":"src/app.ts"}}}
+{"type":"tool_call","timestamp":"2026-04-07T10:00:15Z","data":{"tool":"edit_file","args":{"path":"src/utils.ts"}}}
+{"type":"assistant_message","timestamp":"2026-04-07T10:00:20Z","data":{"text":"Done. I updated app.ts and utils.ts."}}
+{"type":"session:end","timestamp":"2026-04-07T10:00:25Z","data":{"exitCode":0}}
