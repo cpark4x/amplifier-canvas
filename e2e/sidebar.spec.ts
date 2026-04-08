@@ -36,10 +36,10 @@ test('S1: terminal still fills remaining space', async ({ appWindow }) => {
   expect(terminalBox!.x).toBeGreaterThanOrEqual(sidebarBox!.x + sidebarBox!.width - 5)
 })
 
-test('S1: no visible border between sidebar and terminal', async ({ appWindow }) => {
+test('S1: sidebar has 1px border separating it from terminal', async ({ appWindow }) => {
   const sidebar = appWindow.locator('[data-testid="sidebar"]')
   const borderRight = await sidebar.evaluate((el) => getComputedStyle(el).borderRightWidth)
-  expect(borderRight).toBe('0px')
+  expect(borderRight).toBe('1px')
 })
 
 // --- S2: Project List (now from real fixture data) ---
@@ -59,7 +59,7 @@ test('S2: project names have correct font size', async ({ appWindow }) => {
   const project = appWindow.locator('[data-testid="project-name"]').first()
   await expect(project).toBeVisible({ timeout: 5000 })
   const fontSize = await project.evaluate((el) => getComputedStyle(el).fontSize)
-  expect(fontSize).toBe('11px')
+  expect(fontSize).toBe('10px')
 })
 
 test('S2: clicking a project selects it', async ({ appWindow }) => {
@@ -106,7 +106,7 @@ test('S3: session names have correct font size', async ({ appWindow }) => {
   const session = appWindow.locator('[data-testid="session-name"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   const fontSize = await session.evaluate((el) => getComputedStyle(el).fontSize)
-  expect(fontSize).toBe('10px')
+  expect(fontSize).toBe('12px')
 })
 
 // --- S4: Collapse/Expand ---

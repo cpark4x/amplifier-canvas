@@ -14,10 +14,10 @@ interface Project {
 }
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
-  running: '#3B82F6',
-  active: '#3B82F6',
+  running: '#F59E0B',
+  active: '#F59E0B',
   needs_input: '#F59E0B',
-  done: '#10B981',
+  done: '#4CAF74',
   failed: '#EF4444',
 }
 
@@ -54,7 +54,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
         minWidth: collapsed ? 28 : 200,
         height: '100%',
         backgroundColor: 'var(--bg-sidebar)',
-        borderRight: '0px solid transparent',
+        borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -71,7 +71,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
           cursor: 'pointer',
           padding: '6px 8px',
           fontSize: '10px',
-          color: '#8B8B90',
+          color: 'var(--text-very-muted)',
           textAlign: 'left',
           letterSpacing: '0.08em',
           textTransform: 'uppercase' as const,
@@ -97,10 +97,12 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                 <span
                   data-testid="project-name"
                   style={{
-                    fontSize: '11px',
-                    fontWeight: 500,
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: '0.1em',
                     color:
-                      selectedProjectSlug === project.slug ? '#2C2825' : '#8B8B90',
+                      selectedProjectSlug === project.slug ? 'var(--text-primary)' : 'var(--text-very-muted)',
                   }}
                 >
                   {project.name}
@@ -109,7 +111,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
 
               {/* Session list (visible when project is selected) */}
               {selectedProjectSlug === project.slug && (
-                <div style={{ paddingLeft: '8px' }}>
+                <div style={{ paddingLeft: 0 }}>
                   {project.sessions.map((session) => (
                     <div
                       key={session.id}
@@ -117,16 +119,31 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                       data-selected={selectedSessionId === session.id ? 'true' : 'false'}
                       onClick={() => selectSession(session.id)}
                       style={{
-                        padding: '2px 4px',
+                        height: 36,
+                        padding: '0 12px 0 14px',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
+                        position: 'relative' as const,
                         backgroundColor:
                           selectedSessionId === session.id
-                            ? 'rgba(0, 0, 0, 0.06)'
+                            ? 'var(--bg-sidebar-active)'
                             : 'transparent',
-                        borderRadius: '3px',
+                        borderLeft:
+                          selectedSessionId === session.id
+                            ? '2px solid var(--amber)'
+                            : '2px solid transparent',
+                        transition: 'background 0.12s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedSessionId !== session.id) {
+                          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        ;(e.currentTarget as HTMLDivElement).style.backgroundColor =
+                          selectedSessionId === session.id ? '#E8E0D4' : 'transparent'
                       }}
                     >
                       <span
@@ -144,15 +161,16 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                       <span
                         data-testid="session-name"
                         style={{
-                          fontSize: '10px',
+                          fontSize: '12px',
                           color:
-                            selectedSessionId === session.id ? '#2C2825' : '#8B8B90',
+                            selectedSessionId === session.id ? 'var(--text-primary)' : 'var(--text-muted)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          flex: 1,
                         }}
                       >
-                        {session.id}
+                        {session.id.slice(0, 8)}
                       </span>
                     </div>
                   ))}
