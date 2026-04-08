@@ -91,6 +91,20 @@ test('T1: window shows no unexpected chrome', async ({ appWindow }) => {
 
 // --- T2: xterm.js Terminal ---
 
+test('T2: pane title bar is visible above terminal', async ({ appWindow }) => {
+  const paneTitle = appWindow.locator('[data-testid="pane-title"]')
+  await expect(paneTitle).toBeVisible({ timeout: 5000 })
+  await expect(paneTitle).toContainText('Terminal')
+})
+
+test('T2: pane title bar has correct background color', async ({ appWindow }) => {
+  const paneTitle = appWindow.locator('[data-testid="pane-title"]')
+  await expect(paneTitle).toBeVisible({ timeout: 5000 })
+  const bg = await paneTitle.evaluate((el) => getComputedStyle(el).backgroundColor)
+  // --bg-pane-title: #DDD5C8 = rgb(221, 213, 200)
+  expect(bg).toBe('rgb(221, 213, 200)')
+})
+
 test('T2: terminal element exists in the window', async ({ appWindow }) => {
   const terminal = appWindow.locator('.xterm')
   await expect(terminal).toBeVisible({ timeout: 5000 })

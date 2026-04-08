@@ -13,12 +13,15 @@ function TerminalComponent(): React.ReactElement {
 
     const xterm = new XTerm({
       cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontSize: 13,
+      fontFamily: "'SFMono-Regular', Menlo, Consolas, monospace",
+      lineHeight: 1.65,
       theme: {
-        background: '#1a1a1a',
-        foreground: '#e0e0e0',
-        cursor: '#e0e0e0',
+        background: '#0F0E0C',
+        foreground: '#C8C4BC',
+        cursor: '#F59E0B',
+        cursorAccent: '#0F0E0C',
+        selectionBackground: 'rgba(245, 158, 11, 0.25)',
       },
       allowProposedApi: true,
     })

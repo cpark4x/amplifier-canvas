@@ -68,6 +68,24 @@ function App(): React.ReactElement {
           flexDirection: 'column' as const,
           overflow: 'hidden',
         }}>
+          {/* Pane title bar above terminal */}
+          <div
+            data-testid="pane-title"
+            style={{
+              height: 28,
+              minHeight: 28,
+              backgroundColor: 'var(--bg-pane-title)',
+              display: 'flex',
+              alignItems: 'center',
+              paddingLeft: 12,
+              paddingRight: 12,
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              flexShrink: 0,
+            }}
+          >
+            Terminal
+          </div>
           <TerminalComponent />
         </div>
         {selectedSessionId && <Viewer />}
