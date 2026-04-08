@@ -72,8 +72,8 @@ test('T1: window has warm background to prevent flash', async ({ electronApp }) 
     return win?.getBackgroundColor()
   })
 
-  // Should be warm stone (#F2F0EB) — Electron returns uppercase hex with alpha
-  expect(bgColor?.toLowerCase()).toContain('f2f0eb')
+  // Should be warm stone (#F0EBE3) — Electron returns uppercase hex with alpha
+  expect(bgColor?.toLowerCase()).toContain('f0ebe3')
 })
 
 test('T1: window shows no unexpected chrome', async ({ appWindow }) => {

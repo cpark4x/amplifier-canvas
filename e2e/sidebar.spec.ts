@@ -18,8 +18,8 @@ test('S1: sidebar has correct default width', async ({ appWindow }) => {
 test('S1: sidebar has warm stone background', async ({ appWindow }) => {
   const sidebar = appWindow.locator('[data-testid="sidebar"]')
   const bg = await sidebar.evaluate((el) => getComputedStyle(el).backgroundColor)
-  // #F2F0EB = rgb(242, 240, 235)
-  expect(bg).toBe('rgb(242, 240, 235)')
+  // #F0EBE3 = rgb(240, 235, 227)
+  expect(bg).toBe('rgb(240, 235, 227)')
 })
 
 test('S1: terminal still fills remaining space', async ({ appWindow }) => {
@@ -158,8 +158,8 @@ test('S5: header bar exists with correct background', async ({ appWindow }) => {
   const header = appWindow.locator('[data-testid="header-bar"]')
   await expect(header).toBeVisible({ timeout: 5000 })
   const bg = await header.evaluate((el) => getComputedStyle(el).backgroundColor)
-  // #F5F3EE = rgb(245, 243, 238)
-  expect(bg).toBe('rgb(245, 243, 238)')
+  // #E8E2D8 = rgb(232, 226, 216)
+  expect(bg).toBe('rgb(232, 226, 216)')
 })
 
 test('S5: header bar spans full width', async ({ appWindow }) => {

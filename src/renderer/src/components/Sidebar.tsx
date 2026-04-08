@@ -53,7 +53,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
         width: collapsed ? 28 : 200,
         minWidth: collapsed ? 28 : 200,
         height: '100%',
-        backgroundColor: '#F2F0EB',
+        backgroundColor: 'var(--bg-sidebar)',
         borderRight: '0px solid transparent',
         display: 'flex',
         flexDirection: 'column',

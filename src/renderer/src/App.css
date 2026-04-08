@@ -1,3 +1,30 @@
+/* ============================================================
+   DESIGN SYSTEM — CSS VARIABLES (from canvas.html)
+   ============================================================ */
+:root {
+  --bg-page:           #F0EBE3;
+  --bg-header:         #E8E2D8;
+  --bg-sidebar:        #F0EBE3;
+  --bg-sidebar-active: #E8E0D4;
+  --bg-pane-title:     #DDD5C8;
+  --bg-terminal:       #0F0E0C;
+  --bg-right:          #F7F4EF;
+  --bg-modal:          #FAF8F4;
+  --border:            #DDD5C8;
+  --text-primary:      #1C1A16;
+  --text-muted:        #8A8278;
+  --text-very-muted:   #A09888;
+  --text-terminal:     #C8C4BC;
+  --amber:             #F59E0B;
+  --green:             #4CAF74;
+  --red:               #EF4444;
+  --font-ui:           -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  --font-mono:         'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* ============================================================
+   RESET + BASE
+   ============================================================ */
 * {
   margin: 0;
   padding: 0;
@@ -8,8 +35,9 @@ html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #F2F0EB;
-  color: #2C2825;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
 }
 
 .xterm {

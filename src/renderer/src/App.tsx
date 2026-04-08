@@ -33,15 +33,17 @@ function App(): React.ReactElement {
       <div
         data-testid="header-bar"
         style={{
-          height: 32,
-          minHeight: 32,
-          backgroundColor: '#F5F3EE',
+          height: 38,
+          minHeight: 38,
+          backgroundColor: 'var(--bg-header)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           paddingLeft: 80, // room for macOS traffic lights
           WebkitAppRegion: 'drag' as unknown as string,
-          fontSize: '11px',
-          color: '#8B8B90',
+          fontSize: '13px',
+          fontWeight: 600,
+          color: 'var(--text-primary)',
           letterSpacing: '0.04em',
         }}
       >
@@ -62,8 +64,9 @@ function App(): React.ReactElement {
         />
         <div style={{
           flex: 1,
+          display: 'flex',
+          flexDirection: 'column' as const,
           overflow: 'hidden',
-          padding: '4px',
         }}>
           <TerminalComponent />
         </div>
