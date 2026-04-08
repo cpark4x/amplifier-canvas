@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
+import Viewer from './components/Viewer'
 import { useCanvasStore } from './store'
 
 // Register IPC listeners eagerly at module level (before React mount)
@@ -18,6 +19,7 @@ if (typeof window !== 'undefined' && window.electronAPI) {
 function App(): React.ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const sessions = useCanvasStore((s) => s.sessions)
+  const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
 
   return (
     <div id="app" style={{
@@ -48,7 +50,7 @@ function App(): React.ReactElement {
         </span>
       </div>
 
-      {/* Main content: sidebar + terminal */}
+      {/* Main content: sidebar + terminal + viewer */}
       <div style={{
         flex: 1,
         display: 'flex',
@@ -65,6 +67,7 @@ function App(): React.ReactElement {
         }}>
           <TerminalComponent />
         </div>
+        {selectedSessionId && <Viewer />}
       </div>
 
       {/* Debug elements for e2e tests — hidden */}
