@@ -325,3 +325,107 @@ test('V2: back button navigates up one level', async ({ appWindow }) => {
   expect(allText).toContain('README.md')
   expect(allText).toContain('src')
 })
+
+// --- V3: FileRenderer + MarkdownRenderer ---
+
+test('V3: clicking a markdown file renders it', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Wait for file browser to load
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Click README.md
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  // File renderer should appear with markdown content
+  const fileRenderer = appWindow.locator('[data-testid="file-renderer"]')
+  await expect(fileRenderer).toBeVisible({ timeout: 5000 })
+
+  // Should contain rendered markdown (headings become h1, h2, etc.)
+  const heading = fileRenderer.locator('h1')
+  await expect(heading).toBeVisible({ timeout: 5000 })
+  const headingText = await heading.textContent()
+  expect(headingText).toContain('Team Pulse')
+})
+
+// --- V4: CodeRenderer ---
+
+test('V4: clicking a TypeScript file shows syntax-highlighted code', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer to reset state (tests share window)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Wait for file browser
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Navigate to src/
+  const srcFolder = appWindow.locator('[data-testid="file-entry"][data-is-directory="true"]', { hasText: 'src' })
+  await expect(srcFolder).toBeVisible({ timeout: 3000 })
+  await srcFolder.click()
+  await appWindow.waitForTimeout(500)
+
+  // Click app.ts
+  const appTsEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'app.ts' })
+  await expect(appTsEntry).toBeVisible({ timeout: 5000 })
+  await appTsEntry.click()
+
+  // File renderer should show code
+  const fileRenderer = appWindow.locator('[data-testid="file-renderer"]')
+  await expect(fileRenderer).toBeVisible({ timeout: 5000 })
+
+  // Should contain highlight.js markup (hljs class)
+  const codeBlock = fileRenderer.locator('[data-testid="code-renderer"]')
+  await expect(codeBlock).toBeVisible({ timeout: 5000 })
+
+  // The code should contain TypeScript content
+  const codeText = await codeBlock.textContent()
+  expect(codeText).toContain('createServer')
+})

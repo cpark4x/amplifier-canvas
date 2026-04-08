@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCanvasStore } from '../store'
 import FileBrowser from './FileBrowser'
+import FileRenderer from './FileRenderer'
 import type { SessionStatus } from '../../../shared/types'
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
@@ -17,6 +18,11 @@ function Viewer(): React.ReactElement | null {
   const selectSession = useCanvasStore((s) => s.selectSession)
   const session = getSelectedSession()
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+
+  // Reset selected file when session changes
+  useEffect(() => {
+    setSelectedFilePath(null)
+  }, [selectedSessionId])
 
   if (!selectedSessionId || !session) {
     return null
@@ -127,16 +133,18 @@ function Viewer(): React.ReactElement | null {
               ← Back to files
             </button>
             <div
-              data-testid="file-renderer-placeholder"
               style={{
                 fontSize: '11px',
-                color: '#8B8B90',
-                borderTop: '1px solid rgba(0,0,0,0.08)',
-                paddingTop: '8px',
+                fontWeight: 600,
+                color: '#2C2825',
+                marginBottom: '8px',
+                paddingBottom: '6px',
+                borderBottom: '1px solid rgba(0,0,0,0.08)',
               }}
             >
-              Selected: {selectedFilePath.split('/').pop()}
+              {selectedFilePath.split('/').pop()}
             </div>
+            <FileRenderer filePath={selectedFilePath} />
           </div>
         ) : session.workDir ? (
           <FileBrowser
