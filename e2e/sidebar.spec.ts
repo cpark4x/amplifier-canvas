@@ -183,3 +183,96 @@ test('S5: header bar is draggable region', async ({ appWindow }) => {
   const webkitDrag = await header.evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region'))
   expect(webkitDrag).toBe('drag')
 })
+
+// --- S6: Session Selection ---
+
+test('S6: clicking a session selects it', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse project first
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      await projectItems.nth(i).click()
+      break
+    }
+  }
+  await appWindow.waitForTimeout(300)
+
+  // Click the first session
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const selected = await session.getAttribute('data-selected')
+  expect(selected).toBe('true')
+})
+
+test('S6: clicking a different session deselects the previous one', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse project
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const sessions = appWindow.locator('[data-testid="session-item"]')
+  await expect(sessions.first()).toBeVisible({ timeout: 3000 })
+  const sessionCount = await sessions.count()
+  expect(sessionCount).toBeGreaterThanOrEqual(2)
+
+  // Click the first session
+  await sessions.first().click()
+  const firstSelected = await sessions.first().getAttribute('data-selected')
+  expect(firstSelected).toBe('true')
+
+  // Click the second session
+  await sessions.nth(1).click()
+  const firstAfter = await sessions.first().getAttribute('data-selected')
+  const secondAfter = await sessions.nth(1).getAttribute('data-selected')
+  expect(firstAfter).toBe('false')
+  expect(secondAfter).toBe('true')
+})
+
+// --- S7: Status Dots ---
+
+test('S7: session items show status dots', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse project
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const dots = appWindow.locator('[data-testid="status-dot"]')
+  await expect(dots.first()).toBeVisible({ timeout: 3000 })
+  const dotCount = await dots.count()
+  expect(dotCount).toBeGreaterThanOrEqual(2)
+
+  // Each dot should have a non-empty background-color
+  const firstDotBg = await dots.first().evaluate((el) => getComputedStyle(el).backgroundColor)
+  expect(firstDotBg).not.toBe('')
+  expect(firstDotBg).not.toBe('rgba(0, 0, 0, 0)')
+})

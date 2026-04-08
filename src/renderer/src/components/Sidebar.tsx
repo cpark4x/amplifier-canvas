@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useCanvasStore } from '../store'
-import type { SessionState } from '../../../shared/types'
+import type { SessionState, SessionStatus } from '../../../shared/types'
 
 type SidebarProps = {
   collapsed: boolean
@@ -13,10 +13,20 @@ interface Project {
   sessions: SessionState[]
 }
 
+const STATUS_COLORS: Record<SessionStatus, string> = {
+  running: '#3B82F6',
+  active: '#3B82F6',
+  needs_input: '#F59E0B',
+  done: '#10B981',
+  failed: '#EF4444',
+}
+
 function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
+  const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
+  const selectSession = useCanvasStore((s) => s.selectSession)
 
   // Derive projects from sessions (stable reference via useMemo)
   const projects: Project[] = useMemo(() => {
@@ -104,13 +114,42 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                     <div
                       key={session.id}
                       data-testid="session-item"
-                      style={{ padding: '2px 0' }}
+                      data-selected={selectedSessionId === session.id ? 'true' : 'false'}
+                      onClick={() => selectSession(session.id)}
+                      style={{
+                        padding: '2px 4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor:
+                          selectedSessionId === session.id
+                            ? 'rgba(0, 0, 0, 0.06)'
+                            : 'transparent',
+                        borderRadius: '3px',
+                      }}
                     >
+                      <span
+                        data-testid="status-dot"
+                        data-status={session.status}
+                        style={{
+                          width: 6,
+                          height: 6,
+                          minWidth: 6,
+                          borderRadius: '50%',
+                          backgroundColor: STATUS_COLORS[session.status] || '#8B8B90',
+                          display: 'inline-block',
+                        }}
+                      />
                       <span
                         data-testid="session-name"
                         style={{
                           fontSize: '10px',
-                          color: '#8B8B90',
+                          color:
+                            selectedSessionId === session.id ? '#2C2825' : '#8B8B90',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {session.id}
