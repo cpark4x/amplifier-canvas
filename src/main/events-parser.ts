@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from 'fs'
+import path from 'path'
 import type { FileActivity, SessionStatus } from '../shared/types'
 
 export interface ParsedEvent {
@@ -117,4 +118,21 @@ export function extractFileActivity(events: ParsedEvent[]): FileActivity[] {
   }
 
   return activities
+}
+
+export function extractWorkDir(events: ParsedEvent[], sessionDir?: string): string | undefined {
+  const startEvent = events.find((e) => e.type === 'session:start')
+  if (!startEvent) return undefined
+
+  const data = startEvent.data as Record<string, unknown>
+  // Check common field names for working directory
+  const rawDir = (data.cwd as string) || (data.workDir as string) || (data.project_dir as string)
+  if (!rawDir) return undefined
+
+  // If the path is relative and we have a session directory, resolve against it
+  if (sessionDir && !path.isAbsolute(rawDir)) {
+    return path.resolve(sessionDir, rawDir)
+  }
+
+  return rawDir
 }

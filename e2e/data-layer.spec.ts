@@ -77,3 +77,30 @@ test('D5: project sessions are listed when project is expanded', async ({ appWin
   const sessionCount = await sessions.count()
   expect(sessionCount).toBe(2)
 })
+
+// --- D6: workDir is extracted from events and available on sessions ---
+
+test('D6: sessions have workDir extracted from events.jsonl cwd field', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Read workDir data from the debug element added to App.tsx
+  const workDirData = await appWindow.evaluate(() => {
+    const el = document.querySelector('[data-testid="debug-session-workdirs"]')
+    if (!el || !el.textContent) return null
+    try {
+      return JSON.parse(el.textContent) as Array<{ id: string; workDir?: string }>
+    } catch {
+      return null
+    }
+  })
+
+  expect(workDirData).not.toBeNull()
+  expect(workDirData!.length).toBe(3)
+
+  // All fixture sessions should have workDir set (events.jsonl has cwd field)
+  for (const session of workDirData!) {
+    expect(session.workDir).toBeDefined()
+    expect(typeof session.workDir).toBe('string')
+    expect(session.workDir!).toContain('workdir')
+  }
+})

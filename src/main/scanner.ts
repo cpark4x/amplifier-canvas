@@ -2,7 +2,7 @@ import { readdirSync, existsSync, statSync } from 'fs'
 import { join, basename } from 'path'
 import os from 'os'
 import { upsertProject, upsertSession } from './db'
-import { tailReadEvents, deriveSessionStatus, extractFileActivity } from './events-parser'
+import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
 import type { SessionState, FileActivity } from '../shared/types'
 
 export function getAmplifierHome(): string {
@@ -53,6 +53,8 @@ export function scanProjects(amplifierHome?: string): ScanResult {
       const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
       const status = deriveSessionStatus(events)
       const recentFiles = extractFileActivity(events)
+      const sessionPath = join(sessionsDir, sessionId)
+      const workDir = extractWorkDir(events, sessionPath)
 
       // Extract startedAt from first event, or fall back to file mtime
       let startedAt: string
@@ -81,6 +83,7 @@ export function scanProjects(amplifierHome?: string): ScanResult {
         startedBy: 'external',
         byteOffset: newByteOffset,
         recentFiles,
+        workDir,
       })
     }
   }

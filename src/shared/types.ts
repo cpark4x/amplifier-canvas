@@ -33,6 +33,7 @@ export interface SessionState {
   startedBy: 'canvas' | 'external'
   byteOffset: number
   recentFiles: FileActivity[]
+  workDir?: string
 }
 
 // --- File types ---

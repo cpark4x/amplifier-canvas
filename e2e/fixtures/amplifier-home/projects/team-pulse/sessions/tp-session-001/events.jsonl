@@ -1,4 +1,4 @@
-{"type":"session:start","timestamp":"2026-04-07T10:00:00Z","data":{"sessionId":"tp-session-001","projectSlug":"team-pulse"}}
+{"type":"session:start","timestamp":"2026-04-07T10:00:00Z","data":{"sessionId":"tp-session-001","projectSlug":"team-pulse","cwd":"../../workdir"}}
 {"type":"tool_call","timestamp":"2026-04-07T10:00:05Z","data":{"tool":"read_file","args":{"path":"src/app.ts"}}}
 {"type":"tool_call","timestamp":"2026-04-07T10:00:10Z","data":{"tool":"write_file","args":{"path":"src/app.ts"}}}
 {"type":"tool_call","timestamp":"2026-04-07T10:00:15Z","data":{"tool":"edit_file","args":{"path":"src/utils.ts"}}}

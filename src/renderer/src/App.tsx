@@ -67,9 +67,12 @@ function App(): React.ReactElement {
         </div>
       </div>
 
-      {/* Debug element for e2e tests — hidden */}
+      {/* Debug elements for e2e tests — hidden */}
       <div data-testid="debug-session-count" style={{ display: 'none' }}>
         {sessions.length}
+      </div>
+      <div data-testid="debug-session-workdirs" style={{ display: 'none' }}>
+        {JSON.stringify(sessions.map((s) => ({ id: s.id, workDir: s.workDir })))}
       </div>
     </div>
   )

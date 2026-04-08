@@ -154,7 +154,11 @@ app.whenReady().then(() => {
   // Set allowed directories for file access security
   const projectsDir = join(amplifierHome, 'projects')
   if (existsSync(projectsDir)) {
-    const allowedDirs = [projectsDir]
+    // Collect workDirs from scanned sessions for file access
+    const workDirs = scanResult.sessions
+      .map((s) => s.workDir)
+      .filter((dir): dir is string => !!dir && existsSync(dir))
+    const allowedDirs = [projectsDir, ...workDirs]
     setAllowedDirs(allowedDirs)
   }
 
