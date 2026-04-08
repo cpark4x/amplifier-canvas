@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useCanvasStore } from '../store'
 import FileBrowser from './FileBrowser'
 import FileRenderer from './FileRenderer'
-import type { SessionStatus } from '../../../shared/types'
+import type { FileActivity, SessionStatus } from '../../../shared/types'
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#3B82F6',
@@ -10,6 +10,14 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   needs_input: '#F59E0B',
   done: '#10B981',
   failed: '#EF4444',
+}
+
+const OPERATION_COLORS: Record<FileActivity['operation'], string> = {
+  read: '#6B7280',
+  write: '#3B82F6',
+  edit: '#F59E0B',
+  create: '#10B981',
+  delete: '#EF4444',
 }
 
 function Viewer(): React.ReactElement | null {
@@ -106,6 +114,66 @@ function Viewer(): React.ReactElement | null {
           ✕
         </button>
       </div>
+
+      {/* Recent files quick access */}
+      {session.recentFiles.length > 0 && (
+        <div
+          data-testid="recent-files"
+          style={{
+            padding: '6px 12px',
+            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            display: 'flex',
+            gap: '4px',
+            flexWrap: 'wrap',
+            maxHeight: '60px',
+            overflow: 'hidden',
+          }}
+        >
+          {[...new Map(session.recentFiles.map((f) => [f.path, f])).values()]
+            .slice(-5)
+            .map((file) => {
+              const fileName = file.path.split('/').pop() || file.path
+              const absolutePath = session.workDir
+                ? `${session.workDir}/${file.path}`
+                : file.path
+              return (
+                <span
+                  key={file.path}
+                  data-testid="recent-file-item"
+                  onClick={() => setSelectedFilePath(absolutePath)}
+                  style={{
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    backgroundColor: 'rgba(0,0,0,0.04)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span
+                    data-testid="operation-badge"
+                    style={{
+                      fontSize: '8px',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      color: '#fff',
+                      backgroundColor: OPERATION_COLORS[file.operation] || '#6B7280',
+                      borderRadius: '2px',
+                      padding: '0px 3px',
+                      lineHeight: '14px',
+                    }}
+                  >
+                    {file.operation}
+                  </span>
+                  <span style={{ color: '#2C2825' }}>{fileName}</span>
+                </span>
+              )
+            })}
+        </div>
+      )}
 
       {/* Content area */}
       <div
