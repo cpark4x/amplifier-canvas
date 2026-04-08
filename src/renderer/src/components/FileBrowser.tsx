@@ -64,7 +64,7 @@ function FileBrowser({ rootPath, onSelectFile }: FileBrowserProps): React.ReactE
   const breadcrumbParts = relativePath ? relativePath.split('/') : []
 
   return (
-    <div data-testid="file-browser" style={{ fontSize: '12px' }}>
+    <div data-testid="file-browser" style={{ fontSize: '13px' }}>
       {/* Breadcrumb */}
       <div
         data-testid="file-breadcrumb"
@@ -73,14 +73,14 @@ function FileBrowser({ rootPath, onSelectFile }: FileBrowserProps): React.ReactE
           alignItems: 'center',
           gap: '4px',
           padding: '4px 0 8px 0',
-          color: '#8B8B90',
+          color: 'var(--text-muted)',
           fontSize: '10px',
           flexWrap: 'wrap',
         }}
       >
         <span
           onClick={() => setCurrentPath(rootPath)}
-          style={{ cursor: 'pointer', color: '#3B82F6' }}
+          style={{ cursor: 'pointer', color: 'var(--text-primary)' }}
         >
           root
         </span>
@@ -94,7 +94,7 @@ function FileBrowser({ rootPath, onSelectFile }: FileBrowserProps): React.ReactE
                 onClick={() => setCurrentPath(pathUpTo)}
                 style={{
                   cursor: 'pointer',
-                  color: i === breadcrumbParts.length - 1 ? '#2C2825' : '#3B82F6',
+                  color: 'var(--text-primary)',
                 }}
               >
                 {part}
@@ -112,7 +112,7 @@ function FileBrowser({ rootPath, onSelectFile }: FileBrowserProps): React.ReactE
           style={{
             padding: '3px 4px',
             cursor: 'pointer',
-            color: '#8B8B90',
+            color: 'var(--text-muted)',
             fontSize: '11px',
             display: 'flex',
             alignItems: 'center',
@@ -125,14 +125,14 @@ function FileBrowser({ rootPath, onSelectFile }: FileBrowserProps): React.ReactE
 
       {/* Loading state */}
       {loading && (
-        <div style={{ color: '#8B8B90', padding: '8px 0', fontSize: '11px' }}>
+        <div style={{ color: 'var(--text-muted)', padding: '8px 0', fontSize: '11px' }}>
           Loading...
         </div>
       )}
 
       {/* Empty state */}
       {!loading && entries.length === 0 && (
-        <div style={{ color: '#8B8B90', padding: '8px 0', fontSize: '11px' }}>
+        <div style={{ color: 'var(--text-muted)', padding: '8px 0', fontSize: '11px' }}>
           Empty directory
         </div>
       )}
@@ -147,25 +147,26 @@ function FileBrowser({ rootPath, onSelectFile }: FileBrowserProps): React.ReactE
             data-name={entry.name}
             onClick={() => handleEntryClick(entry)}
             style={{
-              padding: '3px 4px',
+              height: 28,
+              padding: '0 4px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               borderRadius: '3px',
-              fontSize: '11px',
-              color: '#2C2825',
+              fontSize: '13px',
+              color: 'var(--text-primary)',
+              transition: 'background 0.12s ease',
             }}
             onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLDivElement).style.backgroundColor =
-                'rgba(44, 40, 37, 0.06)'
+              ;(e.currentTarget as HTMLDivElement).style.backgroundColor = '#E8E0D4'
             }}
             onMouseLeave={(e) => {
               ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
             }}
           >
-            <span style={{ fontSize: '12px', width: '16px', textAlign: 'center' }}>
-              {entry.isDirectory ? '\uD83D\uDCC1' : '\uD83D\uDCC4'}
+            <span style={{ fontSize: '13px', width: '16px', textAlign: 'center', color: 'var(--text-very-muted)', fontFamily: 'var(--font-mono)' }}>
+              {entry.isDirectory ? '\u25B8' : '\u2261'}
             </span>
             <span
               style={{

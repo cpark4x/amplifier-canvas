@@ -58,7 +58,8 @@ test('V1: Viewer panel shows session info in header', async ({ appWindow }) => {
 
   const headerText = await viewerHeader.textContent()
   expect(headerText).toContain('Team Pulse')
-  expect(headerText).toContain('tp-session-')
+  // Session ID is now truncated to first 8 chars (tp-session-001 → tp-sessi)
+  expect(headerText).toContain('tp-sessi')
 })
 
 test('V1: Viewer panel shows status dot', async ({ appWindow }) => {
@@ -670,4 +671,183 @@ test('I2: terminal persists when Viewer opens and closes', async ({ appWindow })
   // Terminal should STILL contain the previous output after Viewer closes
   await expect(terminal).toContainText('__VIEWER_PERSIST_TEST__', { timeout: 3000 })
   await expect(terminal).toBeVisible()
+})
+
+// --- V4: Design System Polish ---
+
+test('V4: viewer panel width is 340px', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Open a session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  await expect(viewer).toBeVisible({ timeout: 3000 })
+
+  const box = await viewer.boundingBox()
+  expect(box).toBeTruthy()
+  expect(box!.width).toBeGreaterThanOrEqual(335)
+  expect(box!.width).toBeLessThanOrEqual(345)
+})
+
+test('V4: viewer header shows truncated 8-char session ID', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const viewerHeader = appWindow.locator('[data-testid="viewer-header"]')
+  await expect(viewerHeader).toBeVisible({ timeout: 3000 })
+
+  const headerText = await viewerHeader.textContent()
+  // Session ID should be truncated to 8 chars (tp-sessi for tp-session-001)
+  expect(headerText).toContain('tp-sessi')
+  // Full session ID should NOT appear
+  expect(headerText).not.toContain('tp-session-001')
+})
+
+test('V4: close button has aria-label', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+  await expect(closeBtn).toBeVisible({ timeout: 3000 })
+  const ariaLabel = await closeBtn.getAttribute('aria-label')
+  expect(ariaLabel).toBe('Close viewer')
+})
+
+test('V4: file entry rows have 28px height and 13px font', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  const entryBox = await fileEntries.first().boundingBox()
+  expect(entryBox).toBeTruthy()
+  expect(entryBox!.height).toBeGreaterThanOrEqual(27)
+  expect(entryBox!.height).toBeLessThanOrEqual(30)
+
+  const fontSize = await fileEntries.first().evaluate((el) => getComputedStyle(el).fontSize)
+  expect(fontSize).toBe('13px')
+})
+
+test('V4: file entries use text icons instead of emoji', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Directory entry should use ▸ (U+25B8) not 📁 emoji
+  const dirEntry = appWindow.locator('[data-testid="file-entry"][data-is-directory="true"]').first()
+  await expect(dirEntry).toBeVisible({ timeout: 3000 })
+  const dirText = await dirEntry.textContent()
+  expect(dirText).toContain('\u25B8')
+  expect(dirText).not.toContain('\uD83D\uDCC1')
+
+  // File entry should use ≡ (U+2261) not 📄 emoji
+  const fileEntry = appWindow.locator('[data-testid="file-entry"][data-is-directory="false"]').first()
+  await expect(fileEntry).toBeVisible({ timeout: 3000 })
+  const fileText = await fileEntry.textContent()
+  expect(fileText).toContain('\u2261')
+  expect(fileText).not.toContain('\uD83D\uDCC4')
 })

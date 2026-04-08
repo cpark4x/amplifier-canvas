@@ -5,18 +5,18 @@ import FileRenderer from './FileRenderer'
 import type { FileActivity, SessionStatus } from '../../../shared/types'
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
-  running: '#3B82F6',
-  active: '#3B82F6',
+  running: '#F59E0B',
+  active: '#F59E0B',
   needs_input: '#F59E0B',
-  done: '#10B981',
+  done: '#4CAF74',
   failed: '#EF4444',
 }
 
 const OPERATION_COLORS: Record<FileActivity['operation'], string> = {
-  read: '#6B7280',
-  write: '#3B82F6',
+  read: 'var(--text-muted)',
+  write: '#F59E0B',
   edit: '#F59E0B',
-  create: '#10B981',
+  create: '#4CAF74',
   delete: '#EF4444',
 }
 
@@ -40,13 +40,13 @@ function Viewer(): React.ReactElement | null {
     <div
       data-testid="viewer-panel"
       style={{
-        width: 350,
-        minWidth: 350,
+        width: 340,
+        minWidth: 340,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#F2F0EB',
-        borderLeft: '1px solid rgba(0,0,0,0.08)',
+        backgroundColor: 'var(--bg-right)',
+        borderLeft: '1px solid var(--border)',
         overflow: 'hidden',
       }}
     >
@@ -55,7 +55,7 @@ function Viewer(): React.ReactElement | null {
         data-testid="viewer-header"
         style={{
           padding: '10px 12px',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
@@ -69,7 +69,7 @@ function Viewer(): React.ReactElement | null {
             height: 8,
             minWidth: 8,
             borderRadius: '50%',
-            backgroundColor: STATUS_COLORS[session.status] || '#8B8B90',
+            backgroundColor: STATUS_COLORS[session.status] || 'var(--text-muted)',
             display: 'inline-block',
           }}
         />
@@ -78,7 +78,7 @@ function Viewer(): React.ReactElement | null {
             style={{
               fontSize: '11px',
               fontWeight: 600,
-              color: '#2C2825',
+              color: 'var(--text-primary)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -89,24 +89,27 @@ function Viewer(): React.ReactElement | null {
           <div
             style={{
               fontSize: '10px',
-              color: '#8B8B90',
+              color: 'var(--text-muted)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}
           >
-            {session.id}
+            {session.id.slice(0, 8)}
           </div>
         </div>
         <button
           data-testid="viewer-close"
+          aria-label="Close viewer"
           onClick={() => selectSession(null)}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#1C1A16' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#8A8278' }}
           style={{
             background: 'none',
             border: 'none',
             cursor: 'pointer',
             fontSize: '14px',
-            color: '#8B8B90',
+            color: 'var(--text-muted)',
             padding: '2px 4px',
             lineHeight: 1,
           }}
@@ -121,7 +124,7 @@ function Viewer(): React.ReactElement | null {
           data-testid="recent-files"
           style={{
             padding: '6px 12px',
-            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             gap: '4px',
             flexWrap: 'wrap',
@@ -160,7 +163,7 @@ function Viewer(): React.ReactElement | null {
                       fontWeight: 600,
                       textTransform: 'uppercase',
                       color: '#fff',
-                      backgroundColor: OPERATION_COLORS[file.operation] || '#6B7280',
+                      backgroundColor: OPERATION_COLORS[file.operation] || 'var(--text-muted)',
                       borderRadius: '2px',
                       padding: '0px 3px',
                       lineHeight: '14px',
@@ -168,7 +171,7 @@ function Viewer(): React.ReactElement | null {
                   >
                     {file.operation}
                   </span>
-                  <span style={{ color: '#2C2825' }}>{fileName}</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{fileName}</span>
                 </span>
               )
             })}
@@ -188,13 +191,14 @@ function Viewer(): React.ReactElement | null {
           <div>
             <button
               data-testid="viewer-back-to-files"
+              aria-label="Back to files"
               onClick={() => setSelectedFilePath(null)}
               style={{
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '11px',
-                color: '#3B82F6',
+                color: 'var(--text-muted)',
                 padding: '4px 0 8px 0',
               }}
             >
@@ -204,10 +208,10 @@ function Viewer(): React.ReactElement | null {
               style={{
                 fontSize: '11px',
                 fontWeight: 600,
-                color: '#2C2825',
+                color: 'var(--text-primary)',
                 marginBottom: '8px',
                 paddingBottom: '6px',
-                borderBottom: '1px solid rgba(0,0,0,0.08)',
+                borderBottom: '1px solid var(--border)',
               }}
             >
               {selectedFilePath.split('/').pop()}
@@ -222,7 +226,7 @@ function Viewer(): React.ReactElement | null {
         ) : (
           <div
             style={{
-              color: '#8B8B90',
+              color: 'var(--text-muted)',
               fontSize: '12px',
               textAlign: 'center',
               marginTop: '40px',
