@@ -1,9 +1,23 @@
 import { useState } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
+import { useCanvasStore } from './store'
+
+// Register IPC listeners eagerly at module level (before React mount)
+// so we catch the initial session push from main process on did-finish-load.
+// The useEffect approach loses the first push because it fires after paint.
+if (typeof window !== 'undefined' && window.electronAPI) {
+  window.electronAPI.onSessionsChanged((sessions) => {
+    useCanvasStore.getState().setSessions(sessions)
+  })
+  window.electronAPI.onFilesChanged(({ sessionId, files }) => {
+    useCanvasStore.getState().updateFileActivity(sessionId, files)
+  })
+}
 
 function App(): React.ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sessions = useCanvasStore((s) => s.sessions)
 
   return (
     <div id="app" style={{
@@ -51,6 +65,11 @@ function App(): React.ReactElement {
         }}>
           <TerminalComponent />
         </div>
+      </div>
+
+      {/* Debug element for e2e tests — hidden */}
+      <div data-testid="debug-session-count" style={{ display: 'none' }}>
+        {sessions.length}
       </div>
     </div>
   )

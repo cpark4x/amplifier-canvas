@@ -1,38 +1,40 @@
-import { useState } from 'react'
-
-const MOCK_PROJECTS = [
-  {
-    id: 'team-pulse',
-    name: 'Team Pulse',
-    sessions: [
-      { id: 'tp-main', name: 'main' },
-      { id: 'tp-notif', name: 'feature/notifications' },
-    ],
-  },
-  {
-    id: 'canvas-app',
-    name: 'Canvas-App',
-    sessions: [
-      { id: 'ca-main', name: 'main' },
-      { id: 'ca-sidebar', name: 'redesign-sidebar' },
-    ],
-  },
-  {
-    id: 'ridecast',
-    name: 'Ridecast',
-    sessions: [
-      { id: 'rc-main', name: 'main' },
-    ],
-  },
-]
+import { useMemo } from 'react'
+import { useCanvasStore } from '../store'
+import type { SessionState } from '../../../shared/types'
 
 type SidebarProps = {
   collapsed: boolean
   onToggle: () => void
 }
 
+interface Project {
+  slug: string
+  name: string
+  sessions: SessionState[]
+}
+
 function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
+  const sessions = useCanvasStore((s) => s.sessions)
+  const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
+  const selectProject = useCanvasStore((s) => s.selectProject)
+
+  // Derive projects from sessions (stable reference via useMemo)
+  const projects: Project[] = useMemo(() => {
+    const projectMap = new Map<string, Project>()
+    for (const session of sessions) {
+      const existing = projectMap.get(session.projectSlug)
+      if (existing) {
+        existing.sessions.push(session)
+      } else {
+        projectMap.set(session.projectSlug, {
+          slug: session.projectSlug,
+          name: session.projectName,
+          sessions: [session],
+        })
+      }
+    }
+    return Array.from(projectMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [sessions])
 
   return (
     <div
@@ -65,22 +67,18 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
           textTransform: 'uppercase' as const,
         }}
       >
-        {collapsed ? '›' : '‹'}
+        {collapsed ? '\u203a' : '\u2039'}
       </button>
 
       {/* Project list (hidden when collapsed) */}
       {!collapsed && (
         <div style={{ padding: '4px 8px', flex: 1, overflow: 'auto' }}>
-          {MOCK_PROJECTS.map((project) => (
-            <div key={project.id}>
+          {projects.map((project) => (
+            <div key={project.slug}>
               <div
                 data-testid="project-item"
-                data-selected={selectedProject === project.id ? 'true' : 'false'}
-                onClick={() =>
-                  setSelectedProject(
-                    selectedProject === project.id ? null : project.id
-                  )
-                }
+                data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
+                onClick={() => selectProject(project.slug)}
                 style={{
                   cursor: 'pointer',
                   padding: '3px 0',
@@ -92,7 +90,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                     fontSize: '11px',
                     fontWeight: 500,
                     color:
-                      selectedProject === project.id ? '#2C2825' : '#8B8B90',
+                      selectedProjectSlug === project.slug ? '#2C2825' : '#8B8B90',
                   }}
                 >
                   {project.name}
@@ -100,7 +98,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
               </div>
 
               {/* Session list (visible when project is selected) */}
-              {selectedProject === project.id && (
+              {selectedProjectSlug === project.slug && (
                 <div style={{ paddingLeft: '8px' }}>
                   {project.sessions.map((session) => (
                     <div
@@ -115,7 +113,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                           color: '#8B8B90',
                         }}
                       >
-                        {session.name}
+                        {session.id}
                       </span>
                     </div>
                   ))}

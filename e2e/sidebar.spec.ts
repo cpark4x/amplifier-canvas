@@ -42,23 +42,30 @@ test('S1: no visible border between sidebar and terminal', async ({ appWindow })
   expect(borderRight).toBe('0px')
 })
 
-// --- S2: Project List ---
+// --- S2: Project List (now from real fixture data) ---
 
-test('S2: project list shows project names', async ({ appWindow }) => {
+test('S2: project list shows projects from fixtures', async ({ appWindow }) => {
+  // Wait for IPC session data to arrive from main process
+  await appWindow.waitForTimeout(2000)
   const projects = appWindow.locator('[data-testid="project-item"]')
   await expect(projects.first()).toBeVisible({ timeout: 5000 })
   const count = await projects.count()
-  expect(count).toBe(3)
+  // Fixtures have 2 projects: team-pulse and ridecast
+  expect(count).toBe(2)
 })
 
 test('S2: project names have correct font size', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
   const project = appWindow.locator('[data-testid="project-name"]').first()
+  await expect(project).toBeVisible({ timeout: 5000 })
   const fontSize = await project.evaluate((el) => getComputedStyle(el).fontSize)
   expect(fontSize).toBe('11px')
 })
 
 test('S2: clicking a project selects it', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
   const project = appWindow.locator('[data-testid="project-item"]').first()
+  await expect(project).toBeVisible({ timeout: 5000 })
   await project.click()
   const selected = await project.getAttribute('data-selected')
   expect(selected).toBe('true')
@@ -67,8 +74,11 @@ test('S2: clicking a project selects it', async ({ appWindow }) => {
 // --- S3: Session List ---
 
 test('S3: selected project shows sessions', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
   // Ensure no project is selected first by clicking an already-selected one to deselect
   const project = appWindow.locator('[data-testid="project-item"]').first()
+  await expect(project).toBeVisible({ timeout: 5000 })
   const selected = await project.getAttribute('data-selected')
   if (selected === 'true') {
     await project.click()
@@ -84,7 +94,9 @@ test('S3: selected project shows sessions', async ({ appWindow }) => {
 })
 
 test('S3: session names have correct font size', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
   const project = appWindow.locator('[data-testid="project-item"]').first()
+  await expect(project).toBeVisible({ timeout: 5000 })
   // Ensure sessions are visible
   const selected = await project.getAttribute('data-selected')
   if (selected !== 'true') {
