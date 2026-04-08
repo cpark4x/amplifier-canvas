@@ -66,14 +66,14 @@ test('T1: app menu has required sections', async ({ electronApp }) => {
   expect(editMenu.submenuLabels).toContain('Select All')
 })
 
-test('T1: window has dark background to prevent flash', async ({ electronApp }) => {
+test('T1: window has warm background to prevent flash', async ({ electronApp }) => {
   const bgColor = await electronApp.evaluate(({ BrowserWindow }) => {
     const win = BrowserWindow.getAllWindows()[0]
     return win?.getBackgroundColor()
   })
 
-  // Should be dark (#1A1A1A) — Electron returns uppercase hex with alpha
-  expect(bgColor?.toLowerCase()).toContain('1a1a1a')
+  // Should be warm stone (#F2F0EB) — Electron returns uppercase hex with alpha
+  expect(bgColor?.toLowerCase()).toContain('f2f0eb')
 })
 
 test('T1: window shows no unexpected chrome', async ({ appWindow }) => {
@@ -96,7 +96,7 @@ test('T2: terminal element exists in the window', async ({ appWindow }) => {
   await expect(terminal).toBeVisible({ timeout: 5000 })
 })
 
-test('T2: terminal takes up the full app area', async ({ appWindow }) => {
+test('T2: terminal takes up the main content area', async ({ appWindow }) => {
   const terminal = appWindow.locator('.xterm')
   const box = await terminal.boundingBox()
   expect(box).toBeTruthy()
@@ -104,7 +104,8 @@ test('T2: terminal takes up the full app area', async ({ appWindow }) => {
     width: window.innerWidth,
     height: window.innerHeight,
   }))
-  expect(box!.width).toBeGreaterThan(size.width * 0.5)
+  // Terminal shares width with sidebar, but should fill most of it
+  expect(box!.width).toBeGreaterThan(size.width * 0.4)
   expect(box!.height).toBeGreaterThan(size.height * 0.5)
 })
 

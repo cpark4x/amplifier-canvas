@@ -1,7 +1,7 @@
 # Amplifier Canvas — Build State (Track B)
 # Read this at every session start.
 
-phase: "1A — Scaffold + Terminal"
+phase: "1B — Sidebar"
 
 features:
   T1:
@@ -29,21 +29,42 @@ features:
     status: done
     depends_on: [T3]
     blockers: []
+  S1:
+    name: Layout split
+    status: done
+    depends_on: []
+    blockers: []
+  S2:
+    name: Project list
+    status: done
+    depends_on: [S1]
+    blockers: []
+  S3:
+    name: Session list
+    status: done
+    depends_on: [S2]
+    blockers: []
+  S4:
+    name: Collapse/expand toggle
+    status: done
+    depends_on: [S1]
+    blockers: []
+  S5:
+    name: macOS title bar integration
+    status: done
+    depends_on: [S1]
+    blockers: []
 
 review_1A:
   status: passed
   date: 2026-04-08
-  findings:
-    major:
-      - "IPC handler leak on macOS reactivation (index.ts:142-147) — fix before 1B"
-      - "PTY exit not forwarded to renderer (ipc.ts) — fix before 1B"
-      - "Initial resize not sent after fit (Terminal.tsx:30) — fix before 1B"
-    minor:
-      - "sandbox: false is intentional (node-pty) — document the tradeoff"
-      - "No CSP meta tag — add before release"
-      - "fitAddonRef stored but never read — dead ref"
-      - "Singleton PTY global state — design note for 1B multi-terminal"
-    nits:
-      - "types.ts is really a channels file"
+  findings_fixed:
+    - "IPC handler leak on macOS reactivation — fixed in 5a5a235"
+    - "PTY exit not forwarded to renderer — fixed in 5a5a235"
+    - "Initial resize not sent after fit — fixed in 5a5a235"
+  minor_open:
+    - "sandbox: false is intentional (node-pty) — document the tradeoff"
+    - "No CSP meta tag — add before release"
+    - "Singleton PTY global state — design note for 1C multi-terminal"
 
-next_action: "Fix 3 major review findings, then start Phase 1B (Sidebar)"
+next_action: "Run sidebar review (antagonistic review checkpoint), then start Phase 1C (Viewer + Integration)"

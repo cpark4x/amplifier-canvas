@@ -45,7 +45,7 @@ function createWindow(): BrowserWindow {
     minWidth: WINDOW_CONFIG.minWidth,
     minHeight: WINDOW_CONFIG.minHeight,
     show: false,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#F2F0EB',
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 12 } }
       : {}),
