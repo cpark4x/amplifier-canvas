@@ -20,7 +20,7 @@ function ImageRenderer({ filePath }: ImageRendererProps): React.ReactElement {
           padding: '12px',
         }}
       >
-        <div style={{ color: '#8B8B90', fontSize: '11px', textAlign: 'center' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '11px', textAlign: 'center' }}>
           Failed to load image: {fileName}
         </div>
       </div>
@@ -43,7 +43,7 @@ function ImageRenderer({ filePath }: ImageRendererProps): React.ReactElement {
         onError={() => setError(true)}
         style={{
           maxWidth: '100%',
-          maxHeight: '80vh',
+          maxHeight: '60vh',
           objectFit: 'contain',
           borderRadius: '4px',
         }}

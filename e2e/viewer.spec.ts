@@ -908,3 +908,158 @@ test('V4: file entries use text icons instead of emoji', async ({ appWindow }) =
   expect(fileText).toContain('\u2261')
   expect(fileText).not.toContain('\uD83D\uDCC4')
 })
+
+// --- V6: MarkdownRenderer + ImageRenderer Design System ---
+
+test('V6a: markdown renderer wrapper uses design-system text color (--text-primary)', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer to reset state
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Click README.md
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  // Markdown renderer should appear
+  const mdRenderer = appWindow.locator('[data-testid="markdown-renderer"]')
+  await expect(mdRenderer).toBeVisible({ timeout: 5000 })
+
+  // Text color should be --text-primary (#1C1A16 = rgb(28, 26, 22))
+  const color = await mdRenderer.evaluate((el) => getComputedStyle(el).color)
+  expect(color).toBe('rgb(28, 26, 22)')
+})
+
+test('V6a: markdown h1 is 18px and fenced code blocks use dark background', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Click README.md
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  const mdRenderer = appWindow.locator('[data-testid="markdown-renderer"]')
+  await expect(mdRenderer).toBeVisible({ timeout: 5000 })
+
+  // h1 should be 18px (was 20px)
+  const h1 = mdRenderer.locator('h1').first()
+  await expect(h1).toBeVisible({ timeout: 5000 })
+  const h1FontSize = await h1.evaluate((el) => getComputedStyle(el).fontSize)
+  expect(h1FontSize).toBe('18px')
+
+  // pre blocks should have dark background (#0F0E0C = rgb(15, 14, 12))
+  const pre = mdRenderer.locator('pre').first()
+  await expect(pre).toBeVisible({ timeout: 5000 })
+  const preBg = await pre.evaluate((el) => getComputedStyle(el).backgroundColor)
+  expect(preBg).toBe('rgb(15, 14, 12)')
+})
+
+test('V6b: image renderer img uses 60vh max height', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Close any existing viewer
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Expand Team Pulse and click first session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Navigate to assets/
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+  const assetsFolder = appWindow.locator('[data-testid="file-entry"][data-is-directory="true"]', { hasText: 'assets' })
+  await expect(assetsFolder).toBeVisible({ timeout: 3000 })
+  await assetsFolder.click()
+  await appWindow.waitForTimeout(500)
+
+  // Click logo.png
+  const logoEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'logo.png' })
+  await expect(logoEntry).toBeVisible({ timeout: 5000 })
+  await logoEntry.click()
+
+  // Image renderer should appear
+  const imageRenderer = appWindow.locator('[data-testid="image-renderer"]')
+  await expect(imageRenderer).toBeVisible({ timeout: 5000 })
+
+  // img maxHeight should be 60vh (was 80vh)
+  const img = imageRenderer.locator('img')
+  await expect(img).toBeVisible({ timeout: 5000 })
+  const maxHeight = await img.evaluate((el) => (el as HTMLImageElement).style.maxHeight)
+  expect(maxHeight).toBe('60vh')
+})

@@ -154,7 +154,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                           height: 6,
                           minWidth: 6,
                           borderRadius: '50%',
-                          backgroundColor: STATUS_COLORS[session.status] || '#8B8B90',
+                          backgroundColor: STATUS_COLORS[session.status] || 'var(--text-muted)',
                           display: 'inline-block',
                         }}
                       />
