@@ -29,6 +29,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
+  const openViewer = useCanvasStore((s) => s.openViewer)
 
   // Derive projects from created projects + sessions
   const projects: Project[] = useMemo(() => {
@@ -193,8 +194,9 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                     <div
                       key={session.id}
                       data-testid="session-item"
+                      data-project-slug={session.projectSlug}
                       data-selected={selectedSessionId === session.id ? 'true' : 'false'}
-                      onClick={() => selectSession(session.id)}
+                      onClick={() => { selectSession(session.id); openViewer() }}
                       style={{
                         height: 36,
                         padding: '0 12px 0 14px',
@@ -252,7 +254,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                           flex: 1,
                         }}
                       >
-                        {session.id.slice(0, 8)}
+                        {session.id}
                       </span>
 
                       {/* Session age */}

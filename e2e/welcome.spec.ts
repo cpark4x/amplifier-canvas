@@ -7,11 +7,6 @@ test('Screen 1: welcome screen renders correctly', async ({ appWindow }) => {
   await appWindow.waitForLoadState('domcontentloaded')
   await appWindow.waitForTimeout(2000)
 
-  // Sidebar empty state
-  const emptyState = appWindow.locator('[data-testid="sidebar-empty"]')
-  await expect(emptyState).toBeVisible({ timeout: 5000 })
-  console.log('✓ Sidebar: "No projects yet"')
-
   // Welcome visible, terminal hidden
   const welcome = appWindow.locator('[data-testid="welcome-main"]')
   await expect(welcome).toBeVisible({ timeout: 5000 })
@@ -139,9 +134,8 @@ test('Screen 2→3: creating project transitions to terminal + sidebar shows pro
   await expect(emptyState).not.toBeVisible()
   console.log('✓ Sidebar empty state gone')
 
-  const projectName = appWindow.locator('[data-testid="project-name"]')
+  const projectName = appWindow.locator('[data-testid="project-name"]', { hasText: 'Canvas-App' })
   await expect(projectName).toBeVisible({ timeout: 3000 })
-  await expect(projectName).toHaveText('Canvas-App')
   console.log('✓ Sidebar shows project: Canvas-App')
 
   // "+" button visible in sidebar

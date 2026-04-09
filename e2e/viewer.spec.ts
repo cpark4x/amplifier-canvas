@@ -30,62 +30,48 @@ test('V1: selecting a session shows the Viewer panel', async ({ appWindow }) => 
   await expect(viewer).toBeVisible({ timeout: 3000 })
 })
 
-test('V1: Viewer panel shows session info in header', async ({ appWindow }) => {
+test('V1: Viewer panel shows primary tabs when session selected', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
-
-  // Expand Team Pulse and click first session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
   for (let i = 0; i < count; i++) {
     const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
     if (name === 'Team Pulse') {
       const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
       break
     }
   }
-
   const session = appWindow.locator('[data-testid="session-item"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
-
-  // Viewer header should show project name and session ID
-  const viewerHeader = appWindow.locator('[data-testid="viewer-header"]')
-  await expect(viewerHeader).toBeVisible({ timeout: 3000 })
-
-  const headerText = await viewerHeader.textContent()
-  expect(headerText).toContain('Team Pulse')
-  // Session ID is now truncated to first 8 chars (tp-session-001 → tp-sessi)
-  expect(headerText).toContain('tp-sessi')
+  const primaryTabs = appWindow.locator('[data-testid="primary-tabs"]')
+  await expect(primaryTabs).toBeVisible({ timeout: 3000 })
+  const filesTab = appWindow.locator('[data-testid="tab-files"]')
+  await expect(filesTab).toBeVisible({ timeout: 3000 })
+  const filesColor = await filesTab.evaluate((el) => getComputedStyle(el).color)
+  expect(filesColor).not.toBe(await appWindow.locator('[data-testid="tab-app"]').evaluate((el) => getComputedStyle(el).color))
 })
 
-test('V1: Viewer panel shows status dot', async ({ appWindow }) => {
+test('V1: Viewer panel has four primary tabs', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
-
-  // Expand Team Pulse and click first session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
   for (let i = 0; i < count; i++) {
     const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
     if (name === 'Team Pulse') {
       const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
       break
     }
   }
-
   const session = appWindow.locator('[data-testid="session-item"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
-
-  const viewerDot = appWindow.locator('[data-testid="viewer-status-dot"]')
-  await expect(viewerDot).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-changes"]')).toBeVisible({ timeout: 3000 })
 })
 
 test('V1: terminal remains visible when Viewer opens', async ({ appWindow }) => {
@@ -156,22 +142,19 @@ test('V1: close button dismisses the Viewer panel', async ({ appWindow }) => {
   await expect(viewer).not.toBeVisible({ timeout: 3000 })
 })
 
-// --- V2: FileBrowser ---
+// --- W1: Width Animation (progressive disclosure) ---
 
-test('V2: session with workDir shows file browser', async ({ appWindow }) => {
+test('W1: after closing, viewer panel is still in the DOM with width 0', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session (has workDir)
+  // Expand Team Pulse and open a session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
   for (let i = 0; i < count; i++) {
     const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
     if (name === 'Team Pulse') {
       const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
       break
     }
   }
@@ -180,32 +163,105 @@ test('V2: session with workDir shows file browser', async ({ appWindow }) => {
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
-  // File browser should be visible
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  await expect(viewer).toBeVisible({ timeout: 3000 })
+
+  // Close the viewer
+  const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+  await expect(closeBtn).toBeVisible({ timeout: 3000 })
+  await closeBtn.click()
+
+  // Viewer should NOT be visually visible (width collapsed to 0)
+  await expect(viewer).not.toBeVisible({ timeout: 3000 })
+
+  // BUT it must still be in the DOM (not unmounted)
+  const viewerCount = await viewer.count()
+  expect(viewerCount).toBe(1)
+
+  // AND its rendered width must be 0 (not 340)
+  const viewerWidth = await viewer.evaluate((el) => el.getBoundingClientRect().width)
+  expect(viewerWidth).toBe(0)
+})
+
+test('W1: viewer panel has CSS transition on width property', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse and open a session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  await expect(viewer).toBeVisible({ timeout: 3000 })
+
+  // The viewer root div must have a CSS transition on the width property
+  const transition = await viewer.evaluate((el) => getComputedStyle(el).transition)
+  expect(transition).toContain('width')
+})
+
+// --- V2: FileBrowser (browse-button-gated flow) ---
+// NOTE: Uses [data-project-slug="team-pulse"] to target a session whose workDir
+// has src/ and assets/ subdirectories. Ridecast sessions only have README.md.
+// Each test closes the viewer first to reset showBrowser state (toggle safety).
+
+test('V2: session with workDir shows file browser after browse-btn click', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session (has src/ and assets/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // File browser should NOT auto-appear — browse button must be clicked first
   const fileBrowser = appWindow.locator('[data-testid="file-browser"]')
+  await expect(fileBrowser).not.toBeVisible()
+
+  // Click the browse button to open the file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Now file browser should be visible
   await expect(fileBrowser).toBeVisible({ timeout: 5000 })
 })
 
 test('V2: file browser lists files from workDir', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
   }
 
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ and assets/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click the browse button to open the file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file entries to appear
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -221,24 +277,22 @@ test('V2: file browser lists files from workDir', async ({ appWindow }) => {
 test('V2: clicking a folder navigates into it', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
   }
 
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click the browse button to open the file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file entries
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -267,7 +321,7 @@ test('V2: clicking a folder navigates into it', async ({ appWindow }) => {
 test('V2: back button navigates up one level', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Close any existing viewer to reset state (tests share window)
+  // Reset: close viewer if open (ensures showBrowser starts as false)
   const viewer = appWindow.locator('[data-testid="viewer-panel"]')
   if (await viewer.isVisible()) {
     const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
@@ -275,26 +329,17 @@ test('V2: back button navigates up one level', async ({ appWindow }) => {
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
-  // Wait for file entries (should be at root since viewer was reset)
+  // Click the browse button to open the file browser (fresh state since viewer was reset)
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Wait for file entries at root
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
   await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
 
@@ -327,29 +372,97 @@ test('V2: back button navigates up one level', async ({ appWindow }) => {
   expect(allText).toContain('src')
 })
 
+test('V2: browse button shows amber color when file browser is active', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+
+  // Before clicking: should NOT be amber (#F59E0B = rgb(245, 158, 11))
+  const colorBefore = await browseBtn.evaluate((el) => getComputedStyle(el).color)
+  expect(colorBefore).not.toBe('rgb(245, 158, 11)')
+
+  // Click to open file browser
+  await browseBtn.click()
+  await appWindow.locator('[data-testid="file-browser"]').waitFor({ state: 'visible', timeout: 5000 })
+
+  // After clicking: color should be amber
+  const colorAfter = await browseBtn.evaluate((el) => getComputedStyle(el).color)
+  expect(colorAfter).toBe('rgb(245, 158, 11)')
+})
+
+test('V2: selecting a file dismisses the file browser and opens the file', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session (has README.md in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Open the file browser via browse button
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Wait for file entries to load
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Click README.md to open it
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  // File browser should be dismissed (hidden)
+  const fileBrowser = appWindow.locator('[data-testid="file-browser"]')
+  await expect(fileBrowser).not.toBeVisible({ timeout: 3000 })
+
+  // File renderer should appear with the file content
+  const fileRenderer = appWindow.locator('[data-testid="file-renderer"]')
+  await expect(fileRenderer).toBeVisible({ timeout: 5000 })
+})
+
 // --- V3: FileRenderer + MarkdownRenderer ---
 
 test('V3: clicking a markdown file renders it', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+    await closeBtn.click()
+    await appWindow.waitForTimeout(300)
   }
 
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file browser to load
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -384,24 +497,15 @@ test('V4: clicking a TypeScript file shows syntax-highlighted code', async ({ ap
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file browser
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -442,24 +546,15 @@ test('V4b: code renderer uses dark theme background (#0F0E0C)', async ({ appWind
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file browser
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -501,24 +596,15 @@ test('V5: clicking an image file shows the image renderer', async ({ appWindow }
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file browser
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -735,6 +821,13 @@ test('I2: terminal persists when Viewer opens and closes', async ({ appWindow })
 test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
+  // Reset: close viewer if open (ensures viewer starts fresh)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
   // Open a session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
@@ -754,44 +847,12 @@ test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
-  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
   await expect(viewer).toBeVisible({ timeout: 3000 })
 
   const box = await viewer.boundingBox()
   expect(box).toBeTruthy()
   expect(box!.width).toBeGreaterThanOrEqual(335)
   expect(box!.width).toBeLessThanOrEqual(345)
-})
-
-test('V4: viewer header shows truncated 8-char session ID', async ({ appWindow }) => {
-  await appWindow.waitForTimeout(2000)
-
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
-  await expect(session).toBeVisible({ timeout: 3000 })
-  await session.click()
-
-  const viewerHeader = appWindow.locator('[data-testid="viewer-header"]')
-  await expect(viewerHeader).toBeVisible({ timeout: 3000 })
-
-  const headerText = await viewerHeader.textContent()
-  // Session ID should be truncated to 8 chars (tp-sessi for tp-session-001)
-  expect(headerText).toContain('tp-sessi')
-  // Full session ID should NOT appear
-  expect(headerText).not.toContain('tp-session-001')
 })
 
 test('V4: close button has aria-label', async ({ appWindow }) => {
@@ -819,6 +880,37 @@ test('V4: close button has aria-label', async ({ appWindow }) => {
   await expect(closeBtn).toBeVisible({ timeout: 3000 })
   const ariaLabel = await closeBtn.getAttribute('aria-label')
   expect(ariaLabel).toBe('Close viewer')
+})
+
+test('V4: primary tabs use 12px font-size and are not uppercase', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const filesTab = appWindow.locator('[data-testid="tab-files"]')
+  await expect(filesTab).toBeVisible({ timeout: 3000 })
+
+  const fontSize = await filesTab.evaluate((el) => getComputedStyle(el).fontSize)
+  expect(fontSize).toBe('12px')
+
+  const textTransform = await filesTab.evaluate((el) => getComputedStyle(el).textTransform)
+  expect(textTransform).toBe('none')
 })
 
 test('V4: file entry rows have 28px height and 13px font', async ({ appWindow }) => {
@@ -850,6 +942,11 @@ test('V4: file entry rows have 28px height and 13px font', async ({ appWindow })
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
   await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
 
@@ -873,23 +970,15 @@ test('V4: file entries use text icons instead of emoji', async ({ appWindow }) =
     await appWindow.waitForTimeout(300)
   }
 
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
   await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
@@ -907,6 +996,69 @@ test('V4: file entries use text icons instead of emoji', async ({ appWindow }) =
   const fileText = await fileEntry.textContent()
   expect(fileText).toContain('\u2261')
   expect(fileText).not.toContain('\uD83D\uDCC4')
+})
+
+// --- P1: Provenance Tracking ("Opened by Amplifier" / "Opened by you") ---
+
+test('P1: clicking a file in the file browser shows "Opened by you" provenance label', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session (has workDir with files)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Open file browser via browse button
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Wait for file entries and click README.md
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  // Provenance label should show "Opened by you"
+  const provenanceLabel = appWindow.locator('[data-testid="provenance-label"]')
+  await expect(provenanceLabel).toBeVisible({ timeout: 5000 })
+  await expect(provenanceLabel).toHaveText('Opened by you')
+})
+
+test('P1: calling window.__canvasOpenFile shows "Opened by Amplifier" provenance label', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session so the viewer is open and active
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+  await expect(appWindow.locator('[data-testid="viewer-panel"]')).toBeVisible({ timeout: 3000 })
+
+  // Simulate Amplifier opening a file via the external API
+  await appWindow.evaluate(() => {
+    const openFile = (window as Record<string, unknown>).__canvasOpenFile as (path: string) => void
+    openFile('/tmp/amplifier-provenance-test.md')
+  })
+
+  // Provenance label should show "Opened by Amplifier"
+  const provenanceLabel = appWindow.locator('[data-testid="provenance-label"]')
+  await expect(provenanceLabel).toBeVisible({ timeout: 5000 })
+  await expect(provenanceLabel).toHaveText('Opened by Amplifier')
 })
 
 // --- V6: MarkdownRenderer + ImageRenderer Design System ---
@@ -941,6 +1093,11 @@ test('V6a: markdown renderer wrapper uses design-system text color (--text-prima
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
   // Click README.md
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
   await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
@@ -968,24 +1125,15 @@ test('V6a: markdown h1 is 18px and fenced code blocks use dark background', asyn
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Click README.md
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -1021,24 +1169,15 @@ test('V6b: image renderer img uses 60vh max height', async ({ appWindow }) => {
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click browse button to open file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Navigate to assets/
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')

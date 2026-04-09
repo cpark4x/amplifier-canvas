@@ -190,16 +190,36 @@ app.whenReady().then(() => {
     return net.fetch(`file://${filePath}`)
   })
 
-  // Clean slate per storyboard Screen 1: empty sidebar, welcome screen.
-  // Sessions appear only when the watcher detects live activity.
   const amplifierHome = getAmplifierHome()
   const projectsDir = join(amplifierHome, 'projects')
-  if (existsSync(projectsDir)) {
-    setAllowedDirs([projectsDir])
-  }
 
+  // Scan existing sessions on startup and push to renderer once ready
   mainWindow.webContents.once('did-finish-load', () => {
-    pushSessionsChanged(mainWindow, [])
+    try {
+      const scanResult = scanProjects(amplifierHome)
+
+      // Set allowed directories: projects dir + any known workDirs
+      if (existsSync(projectsDir)) {
+        const workDirs = scanResult.sessions
+          .map((s) => s.workDir)
+          .filter((dir): dir is string => !!dir && existsSync(dir))
+        setAllowedDirs([projectsDir, ...workDirs])
+      }
+
+      // Seed liveSessions so watcher updates merge with historical sessions
+      for (const session of scanResult.sessions) {
+        liveSessions.set(session.id, session)
+      }
+
+      pushSessionsChanged(mainWindow, scanResult.sessions)
+    } catch (err) {
+      console.error('[startup] Scan failed:', err instanceof Error ? err.message : String(err))
+      // Fall back to allowed dirs only, push empty state so UI still works
+      if (existsSync(projectsDir)) {
+        setAllowedDirs([projectsDir])
+      }
+      pushSessionsChanged(mainWindow, [])
+    }
   })
 
   // Watcher picks up NEW activity and pushes it to the renderer
