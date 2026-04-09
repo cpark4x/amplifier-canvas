@@ -653,17 +653,10 @@ test('I1: session with recent files shows recent-files section', async ({ appWin
   }
 
   // Click tp-session-001 specifically (it has tool_call events with file activity)
-  const sessions = appWindow.locator('[data-testid="session-item"]')
-  await expect(sessions.first()).toBeVisible({ timeout: 3000 })
-
-  const sessionCount = await sessions.count()
-  for (let i = 0; i < sessionCount; i++) {
-    const sessionName = await sessions.nth(i).locator('[data-testid="session-name"]').textContent()
-    if (sessionName?.includes('tp-session-001')) {
-      await sessions.nth(i).click()
-      break
-    }
-  }
+  // tp-session-001 has 'done' status so it renders as a history-item; use data-session-id to find it
+  const targetSession = appWindow.locator('[data-session-id="tp-session-001"]')
+  await expect(targetSession).toBeVisible({ timeout: 3000 })
+  await targetSession.click()
 
   // Recent files section should appear
   const recentFiles = appWindow.locator('[data-testid="recent-files"]')
@@ -697,17 +690,10 @@ test('I1: clicking a recent file link opens it in FileRenderer', async ({ appWin
     }
   }
 
-  const sessions = appWindow.locator('[data-testid="session-item"]')
-  await expect(sessions.first()).toBeVisible({ timeout: 3000 })
-
-  const sessionCount = await sessions.count()
-  for (let i = 0; i < sessionCount; i++) {
-    const sessionName = await sessions.nth(i).locator('[data-testid="session-name"]').textContent()
-    if (sessionName?.includes('tp-session-001')) {
-      await sessions.nth(i).click()
-      break
-    }
-  }
+  // tp-session-001 has 'done' status so it renders as a history-item; use data-session-id to find it
+  const targetSession = appWindow.locator('[data-session-id="tp-session-001"]')
+  await expect(targetSession).toBeVisible({ timeout: 3000 })
+  await targetSession.click()
 
   // Click the first recent file item
   const recentItems = appWindow.locator('[data-testid="recent-file-item"]')
@@ -737,17 +723,10 @@ test('I1: recent file items show operation badges', async ({ appWindow }) => {
     }
   }
 
-  const sessions = appWindow.locator('[data-testid="session-item"]')
-  await expect(sessions.first()).toBeVisible({ timeout: 3000 })
-
-  const sessionCount = await sessions.count()
-  for (let i = 0; i < sessionCount; i++) {
-    const sessionName = await sessions.nth(i).locator('[data-testid="session-name"]').textContent()
-    if (sessionName?.includes('tp-session-001')) {
-      await sessions.nth(i).click()
-      break
-    }
-  }
+  // tp-session-001 has 'done' status so it renders as a history-item; use data-session-id to find it
+  const targetSession = appWindow.locator('[data-session-id="tp-session-001"]')
+  await expect(targetSession).toBeVisible({ timeout: 3000 })
+  await targetSession.click()
 
   // Recent file items should have operation badges
   const badges = appWindow.locator('[data-testid="operation-badge"]')
@@ -765,14 +744,7 @@ test('I1: recent file items show operation badges', async ({ appWindow }) => {
 test('I2: terminal persists when Viewer opens and closes', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Type something in the terminal first
-  const terminal = appWindow.locator('.xterm')
-  await terminal.click()
-  await appWindow.keyboard.type('echo __VIEWER_PERSIST_TEST__')
-  await appWindow.keyboard.press('Enter')
-  await expect(terminal).toContainText('__VIEWER_PERSIST_TEST__', { timeout: 5000 })
-
-  // Now select a session to open the Viewer
+  // Select a session first so .xterm mounts (terminal only renders when hasSession=true)
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
   for (let i = 0; i < count; i++) {
@@ -786,12 +758,19 @@ test('I2: terminal persists when Viewer opens and closes', async ({ appWindow })
       break
     }
   }
-
   const session = appWindow.locator('[data-testid="session-item"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+  await appWindow.waitForTimeout(300)
 
-  // Viewer should be visible
+  // Type something in the terminal first
+  const terminal = appWindow.locator('.xterm')
+  await terminal.click()
+  await appWindow.keyboard.type('echo __VIEWER_PERSIST_TEST__')
+  await appWindow.keyboard.press('Enter')
+  await expect(terminal).toContainText('__VIEWER_PERSIST_TEST__', { timeout: 5000 })
+
+  // Viewer should be visible (opened when we selected the session above)
   const viewer = appWindow.locator('[data-testid="viewer-panel"]')
   await expect(viewer).toBeVisible({ timeout: 3000 })
 

@@ -23,6 +23,28 @@ test('S1: sidebar has warm stone background', async ({ appWindow }) => {
 })
 
 test('S1: terminal still fills remaining space', async ({ appWindow }) => {
+  // Select a session first so .xterm mounts (terminal only renders when hasSession=true).
+  // Use Team Pulse (not first project) so S2's click on Ridecast (first) isn't a toggle-off.
+  await appWindow.waitForTimeout(2000)
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  await expect(projectItems.first()).toBeVisible({ timeout: 5000 })
+  const projCount = await projectItems.count()
+  for (let i = 0; i < projCount; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const isSelected = await projectItems.nth(i).getAttribute('data-selected')
+      if (isSelected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+  const firstSession = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(firstSession).toBeVisible({ timeout: 3000 })
+  await firstSession.click()
+  await appWindow.waitForTimeout(300)
+
   const sidebar = appWindow.locator('[data-testid="sidebar"]')
   const terminal = appWindow.locator('.xterm')
   await expect(terminal).toBeVisible({ timeout: 5000 })

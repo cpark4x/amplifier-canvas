@@ -370,6 +370,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
   return (
     <div
       data-testid="session-item"
+      data-session-id={session.id}
       data-project-slug={session.projectSlug}
       data-selected={isSelected ? 'true' : 'false'}
       onClick={onSelect}
@@ -453,6 +454,7 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
   return (
     <div
       data-testid="history-item"
+      data-session-id={session.id}
       data-project-slug={session.projectSlug}
       data-selected={isSelected ? 'true' : 'false'}
       onClick={onSelect}
