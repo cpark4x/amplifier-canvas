@@ -13,6 +13,7 @@ interface CanvasStore {
   selectedSessionId: string | null
   selectedProjectSlug: string | null
   createdProjects: Project[] // Projects created via modal (before any session exists)
+  viewerOpen: boolean
 
   // Actions
   setSessions: (sessions: SessionState[]) => void
@@ -20,6 +21,8 @@ interface CanvasStore {
   selectProject: (slug: string | null) => void
   updateFileActivity: (sessionId: string, files: FileActivity[]) => void
   createProject: (name: string) => void
+  openViewer: () => void
+  closeViewer: () => void
 
   // Derived
   getProjects: () => Project[]
@@ -33,6 +36,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedSessionId: null,
   selectedProjectSlug: null,
   createdProjects: [],
+  viewerOpen: false,
 
   // Actions
   setSessions: (sessions) => set({ sessions }),
@@ -58,6 +62,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       selectedProjectSlug: slug,
     }))
   },
+
+  openViewer: () => set({ viewerOpen: true }),
+  closeViewer: () => set({ viewerOpen: false }),
 
   // Derived
   getProjects: () => {

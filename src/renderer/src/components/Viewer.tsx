@@ -2,45 +2,81 @@ import { useState, useEffect } from 'react'
 import { useCanvasStore } from '../store'
 import FileBrowser from './FileBrowser'
 import FileRenderer from './FileRenderer'
-import type { FileActivity, SessionStatus } from '../../../shared/types'
 
-const STATUS_COLORS: Record<SessionStatus, string> = {
-  running: '#F59E0B',
-  active: '#F59E0B',
-  needs_input: '#F59E0B',
-  done: '#4CAF74',
-  failed: '#EF4444',
-}
+type PrimaryTab = 'FILES' | 'APP' | 'ANALYSIS' | 'CHANGES'
 
-const OPERATION_COLORS: Record<FileActivity['operation'], string> = {
-  read: 'var(--text-muted)',
-  write: '#F59E0B',
-  edit: '#F59E0B',
-  create: '#4CAF74',
-  delete: '#EF4444',
+interface OpenFile {
+  path: string
+  name: string
 }
 
 function Viewer(): React.ReactElement | null {
-  const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
+  const viewerOpen = useCanvasStore((s) => s.viewerOpen)
+  const closeViewer = useCanvasStore((s) => s.closeViewer)
   const getSelectedSession = useCanvasStore((s) => s.getSelectedSession)
-  const selectSession = useCanvasStore((s) => s.selectSession)
   const session = getSelectedSession()
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
 
-  // Reset selected file when session changes
+  const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('FILES')
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
+  const [activeFileIdx, setActiveFileIdx] = useState<number>(0)
+  const [showBrowser, setShowBrowser] = useState(false)
+  const [appUrl, setAppUrl] = useState<string | null>(null)
+
+  // Reset when viewer closes
   useEffect(() => {
-    setSelectedFilePath(null)
-  }, [selectedSessionId])
+    if (!viewerOpen) {
+      setOpenFiles([])
+      setActiveFileIdx(0)
+      setShowBrowser(false)
+      setAppUrl(null)
+    }
+  }, [viewerOpen])
 
-  if (!selectedSessionId || !session) {
-    return null
+  if (!viewerOpen) return null
+
+  const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS', 'CHANGES']
+  const activeFile = openFiles[activeFileIdx] || null
+
+  function openFile(path: string): void {
+    const name = path.split('/').pop() || path
+    const existingIdx = openFiles.findIndex((f) => f.path === path)
+    if (existingIdx >= 0) {
+      setActiveFileIdx(existingIdx)
+    } else {
+      const newFiles = [...openFiles, { path, name }]
+      setOpenFiles(newFiles)
+      setActiveFileIdx(newFiles.length - 1)
+    }
+    setShowBrowser(false)
+    setPrimaryTab('FILES')
   }
+
+  function closeFile(idx: number): void {
+    const newFiles = openFiles.filter((_, i) => i !== idx)
+    setOpenFiles(newFiles)
+    if (activeFileIdx >= newFiles.length) {
+      setActiveFileIdx(Math.max(0, newFiles.length - 1))
+    } else if (activeFileIdx > idx) {
+      setActiveFileIdx(activeFileIdx - 1)
+    }
+  }
+
+  function setAppPreview(url: string): void {
+    setAppUrl(url)
+    setPrimaryTab('APP')
+  }
+
+  // Expose for external use (e.g. from terminal file detection)
+  ;(window as Record<string, unknown>).__canvasOpenFile = openFile
+  ;(window as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
+
+  const workDir = session?.workDir || null
 
   return (
     <div
       data-testid="viewer-panel"
       style={{
-        width: 340,
+        width: 400,
         minWidth: 340,
         height: '100%',
         display: 'flex',
@@ -50,192 +86,237 @@ function Viewer(): React.ReactElement | null {
         overflow: 'hidden',
       }}
     >
-      {/* Viewer header */}
+      {/* Primary tab row */}
       <div
-        data-testid="viewer-header"
+        data-testid="primary-tabs"
         style={{
-          padding: '10px 12px',
-          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          minHeight: 40,
+          height: 32,
+          borderBottom: '1px solid var(--border)',
+          backgroundColor: 'var(--bg-header)',
+          padding: '0 8px',
+          gap: 0,
         }}
       >
-        <span
-          data-testid="viewer-status-dot"
-          style={{
-            width: 8,
-            height: 8,
-            minWidth: 8,
-            borderRadius: '50%',
-            backgroundColor: STATUS_COLORS[session.status] || 'var(--text-muted)',
-            display: 'inline-block',
-          }}
-        />
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {session.projectName}
-          </div>
-          <div
+        {primaryTabs.map((tab) => (
+          <button
+            key={tab}
+            data-testid={`tab-${tab.toLowerCase()}`}
+            onClick={() => setPrimaryTab(tab)}
             style={{
               fontSize: '10px',
-              color: 'var(--text-muted)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              padding: '0 10px',
+              height: '100%',
+              border: 'none',
+              borderBottom: primaryTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+              background: 'none',
+              cursor: 'pointer',
+              color: primaryTab === tab ? 'var(--text-primary)' : 'var(--text-very-muted)',
             }}
           >
-            {session.id.slice(0, 8)}
-          </div>
-        </div>
+            {tab}
+          </button>
+        ))}
+        <div style={{ flex: 1 }} />
         <button
           data-testid="viewer-close"
           aria-label="Close viewer"
-          onClick={() => selectSession(null)}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#1C1A16' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#8A8278' }}
+          onClick={closeViewer}
           style={{
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            fontSize: '14px',
+            fontSize: '13px',
             color: 'var(--text-muted)',
             padding: '2px 4px',
             lineHeight: 1,
           }}
         >
-          ✕
+          {'\u2715'}
         </button>
       </div>
 
-      {/* Recent files quick access */}
-      {session.recentFiles.length > 0 && (
-        <div
-          data-testid="recent-files"
-          style={{
-            padding: '6px 12px',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            gap: '4px',
-            flexWrap: 'wrap',
-            maxHeight: '60px',
-            overflow: 'hidden',
-          }}
-        >
-          {[...new Map(session.recentFiles.map((f) => [f.path, f])).values()]
-            .slice(-5)
-            .map((file) => {
-              const fileName = file.path.split('/').pop() || file.path
-              const absolutePath = session.workDir
-                ? `${session.workDir}/${file.path}`
-                : file.path
-              return (
+      {/* FILES tab content */}
+      {primaryTab === 'FILES' && (
+        <>
+          {/* Secondary tab row: browse + file tabs */}
+          <div
+            data-testid="secondary-tabs"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              height: 28,
+              borderBottom: '1px solid var(--border)',
+              backgroundColor: 'var(--bg-header)',
+              padding: '0 6px',
+              gap: 2,
+              overflowX: 'auto',
+            }}
+          >
+            <button
+              data-testid="browse-btn"
+              onClick={() => setShowBrowser(!showBrowser)}
+              title="Browse files"
+              style={{
+                fontSize: '12px',
+                width: 24,
+                height: 22,
+                border: 'none',
+                borderRadius: 3,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                background: showBrowser ? 'rgba(0,0,0,0.08)' : 'none',
+                color: showBrowser ? 'var(--text-primary)' : 'var(--text-muted)',
+              }}
+            >
+              {'\u25A6'}
+            </button>
+            {openFiles.map((file, idx) => (
+              <div
+                key={file.path}
+                data-testid="file-tab"
+                onClick={() => { setActiveFileIdx(idx); setShowBrowser(false) }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                  borderRadius: 3,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  backgroundColor: idx === activeFileIdx && !showBrowser ? 'rgba(0,0,0,0.08)' : 'transparent',
+                  color: idx === activeFileIdx && !showBrowser ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontWeight: idx === activeFileIdx && !showBrowser ? 600 : 400,
+                }}
+              >
+                {file.name}
                 <span
-                  key={file.path}
-                  data-testid="recent-file-item"
-                  onClick={() => setSelectedFilePath(absolutePath)}
+                  data-testid="file-tab-close"
+                  onClick={(e) => { e.stopPropagation(); closeFile(idx) }}
                   style={{
-                    fontSize: '10px',
                     cursor: 'pointer',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    backgroundColor: 'rgba(0,0,0,0.04)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
+                    fontSize: '10px',
+                    color: 'var(--text-very-muted)',
+                    marginLeft: 2,
                   }}
                 >
-                  <span
-                    data-testid="operation-badge"
-                    style={{
-                      fontSize: '8px',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      color: '#fff',
-                      backgroundColor: OPERATION_COLORS[file.operation] || 'var(--text-muted)',
-                      borderRadius: '2px',
-                      padding: '0px 3px',
-                      lineHeight: '14px',
-                    }}
-                  >
-                    {file.operation}
-                  </span>
-                  <span style={{ color: 'var(--text-primary)' }}>{fileName}</span>
+                  {'\u00D7'}
                 </span>
-              )
-            })}
+              </div>
+            ))}
+          </div>
+
+          {/* Panel content */}
+          <div
+            data-testid="panel-content"
+            style={{ flex: 1, overflow: 'auto', padding: '10px 12px' }}
+          >
+            {showBrowser && workDir ? (
+              <FileBrowser
+                rootPath={workDir}
+                onSelectFile={(filePath) => openFile(filePath)}
+              />
+            ) : activeFile ? (
+              <FileRenderer filePath={activeFile.path} />
+            ) : (
+              <div
+                style={{
+                  color: 'var(--text-very-muted)',
+                  fontSize: '11px',
+                  textAlign: 'center',
+                  marginTop: 60,
+                }}
+              >
+                Click {'\u25A6'} to browse files
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* APP tab content */}
+      {primaryTab === 'APP' && (
+        <>
+          {appUrl ? (
+            <>
+              <div
+                data-testid="app-address-bar"
+                style={{
+                  height: 28,
+                  backgroundColor: 'var(--bg-header)',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 10px',
+                }}
+              >
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                  {appUrl}
+                </span>
+              </div>
+              <webview
+                data-testid="app-preview"
+                src={appUrl}
+                style={{ flex: 1 }}
+              />
+            </>
+          ) : (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-very-muted)',
+                fontSize: '11px',
+              }}
+            >
+              No app running. Start a dev server to see the preview.
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ANALYSIS tab content */}
+      {primaryTab === 'ANALYSIS' && (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-very-muted)',
+            fontSize: '11px',
+          }}
+        >
+          Analysis view coming soon
         </div>
       )}
 
-      {/* Content area */}
-      <div
-        data-testid="viewer-content"
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '12px',
-        }}
-      >
-        {selectedFilePath ? (
-          <div>
-            <button
-              data-testid="viewer-back-to-files"
-              aria-label="Back to files"
-              onClick={() => setSelectedFilePath(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '11px',
-                color: 'var(--text-muted)',
-                padding: '4px 0 8px 0',
-              }}
-            >
-              ← Back to files
-            </button>
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                marginBottom: '8px',
-                paddingBottom: '6px',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              {selectedFilePath.split('/').pop()}
-            </div>
-            <FileRenderer filePath={selectedFilePath} />
-          </div>
-        ) : session.workDir ? (
-          <FileBrowser
-            rootPath={session.workDir}
-            onSelectFile={(filePath) => setSelectedFilePath(filePath)}
-          />
-        ) : (
-          <div
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              textAlign: 'center',
-              marginTop: '40px',
-            }}
-          >
-            No project directory available
-          </div>
-        )}
-      </div>
+      {/* CHANGES tab content */}
+      {primaryTab === 'CHANGES' && (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-very-muted)',
+            fontSize: '11px',
+          }}
+        >
+          Changes view coming soon
+        </div>
+      )}
     </div>
   )
 }
