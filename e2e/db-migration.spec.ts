@@ -1,7 +1,6 @@
-import { test, expect } from './fixtures'
-import { execSync } from 'child_process'
+import { test, expect, FIXTURES_DIR } from './fixtures'
+import { execSync, execFileSync } from 'child_process'
 import { join } from 'path'
-import { FIXTURES_DIR } from './fixtures'
 
 function getSessionColumns(): string[] {
   const dbPath = join(FIXTURES_DIR, 'canvas', 'canvas.db')
@@ -44,24 +43,26 @@ test('D8: migration columns are writable (finalizeSession contract)', async ({
   // This tests the DB contract that finalizeSession relies on.
   const dbPath = join(FIXTURES_DIR, 'canvas', 'canvas.db')
 
-  // Get first session ID
-  const firstId = execSync(
-    `sqlite3 "${dbPath}" "SELECT id FROM sessions LIMIT 1;"`,
-    { encoding: 'utf-8' },
-  ).trim()
+  // Get first session ID (hardcoded SQL, no injection risk)
+  const firstId = execSync(`sqlite3 "${dbPath}" "SELECT id FROM sessions LIMIT 1;"`, {
+    encoding: 'utf-8',
+  }).trim()
 
   expect(firstId).toBeTruthy()
 
-  // Write values to the new columns
-  execSync(
-    `sqlite3 "${dbPath}" "UPDATE sessions SET title='D8 test', exitCode=99, firstPrompt='hello', promptCount=7, toolCallCount=21, filesChangedCount=4 WHERE id='${firstId}';"`,
-  )
+  // SQL-escape the ID and use execFileSync (no shell) + stdin to eliminate shell injection risk.
+  // execFileSync bypasses the shell entirely; SQL single-quote escaping handles SQL safety.
+  const safeId = firstId.replace(/'/g, "''")
+
+  execFileSync('sqlite3', [dbPath], {
+    input: `UPDATE sessions SET title='D8 test', exitCode=99, firstPrompt='hello', promptCount=7, toolCallCount=21, filesChangedCount=4 WHERE id='${safeId}';`,
+  })
 
   // Read back and verify
-  const row = execSync(
-    `sqlite3 "${dbPath}" "SELECT title,exitCode,firstPrompt,promptCount,toolCallCount,filesChangedCount FROM sessions WHERE id='${firstId}';"`,
-    { encoding: 'utf-8' },
-  ).trim()
+  const row = execFileSync('sqlite3', [dbPath], {
+    input: `SELECT title,exitCode,firstPrompt,promptCount,toolCallCount,filesChangedCount FROM sessions WHERE id='${safeId}';`,
+    encoding: 'utf-8',
+  }).trim()
 
   // Format: title|exitCode|firstPrompt|promptCount|toolCallCount|filesChangedCount
   const [title, exitCode, firstPrompt, promptCount, toolCallCount, filesChangedCount] =
