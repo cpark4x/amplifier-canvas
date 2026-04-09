@@ -198,6 +198,17 @@ function App(): React.ReactElement {
       <div data-testid="debug-session-workdirs" style={{ display: 'none' }}>
         {JSON.stringify(sessions.map((s) => ({ id: s.id, workDir: s.workDir })))}
       </div>
+      <div data-testid="debug-session-titles" style={{ display: 'none' }}>
+        {JSON.stringify(
+          sessions.map((s) => ({
+            id: s.id,
+            title: s.title,
+            status: s.status,
+            promptCount: s.promptCount,
+            filesChangedCount: s.filesChangedCount,
+          })),
+        )}
+      </div>
     </div>
   )
 }

@@ -1,8 +1,16 @@
 import { readdirSync, existsSync, statSync } from 'fs'
 import { join } from 'path'
 import os from 'os'
-import { upsertProject, upsertSession } from './db'
-import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
+import { upsertProject, upsertSession, finalizeSession } from './db'
+import {
+  tailReadEvents,
+  deriveSessionStatus,
+  extractFileActivity,
+  extractWorkDir,
+  extractFirstPrompt,
+  extractSessionStats,
+  deriveSessionTitle,
+} from './events-parser'
 import type { SessionState } from '../shared/types'
 
 // Only show projects with activity in the last N days
@@ -89,6 +97,16 @@ export function scanProjects(amplifierHome?: string): ScanResult {
           startedAt = statSync(eventsPath).mtime.toISOString()
         }
 
+        const firstPrompt = extractFirstPrompt(events)
+        const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
+        const stats = extractSessionStats(events)
+        const endEvent = events.find((e) => e.type === 'session:end')
+        const endedAt = endEvent?.timestamp
+        const exitCode =
+          endEvent !== undefined
+            ? ((endEvent.data as Record<string, unknown>).exitCode as number)
+            : undefined
+
         upsertSession({
           id: sessionId,
           projectSlug,
@@ -96,6 +114,17 @@ export function scanProjects(amplifierHome?: string): ScanResult {
           startedAt,
           status,
           byteOffset: newByteOffset,
+        })
+
+        finalizeSession(sessionId, {
+          status,
+          endedAt: endedAt ?? null,
+          exitCode: exitCode ?? null,
+          title: title ?? null,
+          firstPrompt: firstPrompt ?? null,
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+          filesChangedCount: stats.filesChanged.size,
         })
 
         allSessions.push({
@@ -108,6 +137,12 @@ export function scanProjects(amplifierHome?: string): ScanResult {
           byteOffset: newByteOffset,
           recentFiles,
           workDir,
+          title,
+          endedAt,
+          exitCode,
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+          filesChangedCount: stats.filesChanged.size,
         })
       } catch (err) {
         console.warn(`[scanner] Skipping session ${sessionId}: ${err instanceof Error ? err.message : String(err)}`)
