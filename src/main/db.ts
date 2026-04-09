@@ -41,6 +41,36 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
     );
   `)
 
+  // Additive column migrations — safe to run on existing databases.
+  // Each block checks whether the column exists before attempting ADD COLUMN.
+  const existingColumns = (
+    db.pragma('table_info(sessions)') as Array<{ name: string }>
+  ).map((col) => col.name)
+
+  const migrations: Array<{ column: string; ddl: string }> = [
+    { column: 'title', ddl: 'ALTER TABLE sessions ADD COLUMN title TEXT' },
+    { column: 'exitCode', ddl: 'ALTER TABLE sessions ADD COLUMN exitCode INTEGER' },
+    { column: 'firstPrompt', ddl: 'ALTER TABLE sessions ADD COLUMN firstPrompt TEXT' },
+    {
+      column: 'promptCount',
+      ddl: 'ALTER TABLE sessions ADD COLUMN promptCount INTEGER DEFAULT 0',
+    },
+    {
+      column: 'toolCallCount',
+      ddl: 'ALTER TABLE sessions ADD COLUMN toolCallCount INTEGER DEFAULT 0',
+    },
+    {
+      column: 'filesChangedCount',
+      ddl: 'ALTER TABLE sessions ADD COLUMN filesChangedCount INTEGER DEFAULT 0',
+    },
+  ]
+
+  for (const { column, ddl } of migrations) {
+    if (!existingColumns.includes(column)) {
+      db.exec(ddl)
+    }
+  }
+
   return db
 }
 
@@ -94,6 +124,44 @@ export function updateByteOffset(id: string, offset: number): void {
   d.prepare('UPDATE sessions SET byteOffset = ? WHERE id = ?').run(offset, id)
 }
 
+export function finalizeSession(
+  id: string,
+  data: {
+    status: string
+    endedAt: string | null
+    exitCode: number | null
+    title: string | null
+    firstPrompt: string | null
+    promptCount: number
+    toolCallCount: number
+    filesChangedCount: number
+  },
+): void {
+  const d = getDatabase()
+  d.prepare(`
+    UPDATE sessions SET
+      status = ?,
+      endedAt = ?,
+      exitCode = ?,
+      title = ?,
+      firstPrompt = ?,
+      promptCount = ?,
+      toolCallCount = ?,
+      filesChangedCount = ?
+    WHERE id = ?
+  `).run(
+    data.status,
+    data.endedAt,
+    data.exitCode,
+    data.title,
+    data.firstPrompt,
+    data.promptCount,
+    data.toolCallCount,
+    data.filesChangedCount,
+    id,
+  )
+}
+
 export interface ProjectRow {
   slug: string
   path: string
@@ -109,6 +177,12 @@ export interface SessionRow {
   endedAt: string | null
   status: string
   byteOffset: number
+  title: string | null
+  exitCode: number | null
+  firstPrompt: string | null
+  promptCount: number
+  toolCallCount: number
+  filesChangedCount: number
 }
 
 export function getAllProjects(): ProjectRow[] {
