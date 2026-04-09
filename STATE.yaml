@@ -1,7 +1,7 @@
 # Amplifier Canvas — Build State
 # Read this at every session start.
 
-phase: "Act 3, Phase 1 — Session Awareness"
+phase: "Act 3 — between phases (Phase 1 merged, ready for Phase 2 or polish)"
 
 completed_acts:
   act1:
@@ -20,13 +20,16 @@ completed_acts:
         name: "App Preview (embedded localhost webview)"
         reason: "Distinct engineering surface — PTY output parsing for localhost URLs + live webview. Deferred indefinitely."
 
-current_work:
+completed_acts_continued:
   act3_phase1:
     name: "Session Awareness"
     scenes: [3.5, 3.2, 3.8]
-    status: not_started
+    status: done
+    merged: "PR #6"
     design: "docs/plans/2026-04-09-act3-design.md"
-    delivers: "Session completion lifecycle, toast notifications, session history with resume"
+    delivered: "Session completion lifecycle, toast notifications, session history with resume, UI polish (header buttons, terminal padding, dynamic pane title)"
+
+current_work: null
 
 upcoming:
   act3_phase2:
@@ -63,6 +66,23 @@ features:
   V3: { name: Provenance tracking (Opened by Amplifier / you), status: done }
   V4: { name: Recent files section with operation badges, status: done }
   V5: { name: Tab system + multi-file support, status: done }
+  # Act 3 Phase 1 — Session Awareness
+  D1: { name: SessionState fields + types, status: done }
+  D2: { name: DB schema migration + finalizeSession, status: done }
+  D3: { name: extractFirstPrompt, status: done }
+  D4: { name: extractSessionStats + deriveSessionTitle, status: done }
+  D5: { name: Scanner enrichment pipeline, status: done }
+  D6: { name: Watcher enrichment (live completion), status: done }
+  D7: { name: Store toast state + completion detection, status: done }
+  D8: { name: Toast component, status: done }
+  D9: { name: Sidebar status dots + history + new session slot, status: done }
+  D10: { name: Session resume IPC + button wiring, status: done }
+  # UI Polish
+  P1: { name: Terminal padding, status: done }
+  P2: { name: Header buttons (layout/notifications/settings) + logo, status: done }
+  P3: { name: Dynamic pane title + Ctrl+C hint, status: done }
+  P4: { name: SVG chevrons for sidebar collapse, status: done }
+  P5: { name: New session slot always visible, status: done }
 
 review_1A:
   status: passed
@@ -75,4 +95,12 @@ review_1A:
     - "sandbox: false is intentional (node-pty) — document the tradeoff"
     - "No CSP meta tag — add before release"
 
-next_action: "Write Act 3 Phase 1 implementation plan, then build"
+test_health:
+  status: "5 pre-existing failures fixed (9e85ec8)"
+  remaining: "S6 may still be flaky — investigate next session if observed"
+
+open_items:
+  - "Fix #2: Native folder picker for project selection (UX improvement)"
+  - "Scene 2.5: App Preview (deferred indefinitely)"
+
+next_action: "Start fresh session — pick up Act 3 Phase 2 (AI analysis + git changes tabs) or tackle folder picker"
