@@ -1,0 +1,388 @@
+diff --git a/.gitignore b/.gitignore
+index 25bbce7..363a368 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -11,6 +11,7 @@ ui-studio/
+ 
+ # Superpowers scratch
+ .superpowers/
++.amplifier/
+ 
+ # Build artifacts
+ node_modules/
+diff --git a/.npmrc b/.npmrc
+deleted file mode 100644
+index d67f374..0000000
+--- a/.npmrc
++++ /dev/null
+@@ -1 +0,0 @@
+-node-linker=hoisted
+diff --git a/e2e/cli.spec.ts b/e2e/cli.spec.ts
+index e7aa040..b4b9d4e 100644
+--- a/e2e/cli.spec.ts
++++ b/e2e/cli.spec.ts
+@@ -1,6 +1,7 @@
+-import { test, expect, _electron as electron } from '@playwright/test'
++import { test, expect } from '@playwright/test'
+ import { resolve } from 'path'
+ import { existsSync } from 'fs'
++import { getFirstAppWindow, withElectronApp } from './fixtures'
+ import { APP_NAME } from '../src/shared/constants'
+ 
+ test('T4: bin entry point exists', async () => {
+@@ -9,12 +10,9 @@ test('T4: bin entry point exists', async () => {
+ })
+ 
+ test('T4: app can be launched with electron directly', async () => {
+-  const app = await electron.launch({
+-    args: ['.'],
+-    env: { ...process.env, NODE_ENV: 'test' },
++  await withElectronApp(async (app) => {
++    const page = await getFirstAppWindow(app)
++    const title = await page.title()
++    expect(title).toBe(APP_NAME)
+   })
+-  const page = await app.firstWindow()
+-  const title = await page.title()
+-  expect(title).toBe(APP_NAME)
+-  await app.close()
+ })
+\ No newline at end of file
+diff --git a/e2e/fixtures.ts b/e2e/fixtures.ts
+index b9e1095..136d956 100644
+--- a/e2e/fixtures.ts
++++ b/e2e/fixtures.ts
+@@ -1,12 +1,30 @@
+ import { test as base, _electron as electron } from '@playwright/test'
+ import type { ElectronApplication, Page } from '@playwright/test'
+ 
+-const ELECTRON_LAUNCH_OPTIONS = {
++export const ELECTRON_LAUNCH_OPTIONS = {
+   args: ['.'],
+   cwd: process.cwd(),
+   env: { ...process.env, NODE_ENV: 'test' }
+ } as const
+ 
++export async function getFirstAppWindow(electronApp: ElectronApplication): Promise<Page> {
++  const appWindow = await electronApp.firstWindow()
++  await appWindow.waitForLoadState('domcontentloaded')
++  return appWindow
++}
++
++export async function withElectronApp<T>(
++  callback: (electronApp: ElectronApplication) => Promise<T>
++): Promise<T> {
++  const electronApp = await electron.launch(ELECTRON_LAUNCH_OPTIONS)
++
++  try {
++    return await callback(electronApp)
++  } finally {
++    await electronApp.close().catch(() => undefined)
++  }
++}
++
+ type ElectronFixtures = {
+   electronApp: ElectronApplication
+   appWindow: Page
+@@ -27,8 +45,7 @@ export const test = base.extend<{}, ElectronFixtures>({
+   ],
+   appWindow: [
+     async ({ electronApp }, use) => {
+-      const appWindow = await electronApp.firstWindow()
+-      await appWindow.waitForLoadState('domcontentloaded')
++      const appWindow = await getFirstAppWindow(electronApp)
+       await use(appWindow)
+     },
+     { scope: 'worker' }
+diff --git a/e2e/terminal.spec.ts b/e2e/terminal.spec.ts
+index 72f816b..961de12 100644
+--- a/e2e/terminal.spec.ts
++++ b/e2e/terminal.spec.ts
+@@ -1,6 +1,14 @@
+-import { _electron as electron } from '@playwright/test'
+-import { test, expect } from './fixtures'
++import type { Locator } from '@playwright/test'
++import { test, expect, getFirstAppWindow, withElectronApp } from './fixtures'
+ import { APP_NAME, WINDOW_CONFIG } from '../src/shared/constants'
++import { IPC_CHANNELS } from '../src/shared/types'
++
++async function waitForTerminalToBeReady(terminal: Locator): Promise<void> {
++  await expect.poll(async () => ((await terminal.textContent()) ?? '').trim().length, {
++    timeout: 5000,
++    message: 'Expected terminal to render initial shell output',
++  }).toBeGreaterThan(0)
++}
+ 
+ // --- T1: Electron Shell ---
+ 
+@@ -19,26 +27,18 @@ test('T1: window has minimum dimensions', async ({ appWindow }) => {
+   expect(size.height).toBeGreaterThanOrEqual(WINDOW_CONFIG.minHeight)
+ })
+ 
+-test('T1: app launches in under 2 seconds', async () => {
++test('T1: app launches within the CI startup threshold', async () => {
+   // Launch a fresh instance and measure startup time.
+   // 5s is a generous CI threshold; actual target is <2s.
+   const start = Date.now()
+-  const testApp = await electron.launch({
+-    args: ['.'],
+-    cwd: process.cwd(),
+-    env: { ...process.env, NODE_ENV: 'test' },
+-  })
+-  const testPage = await testApp.firstWindow()
+-  const elapsed = Date.now() - start
+-
+-  try {
++  await withElectronApp(async (testApp) => {
++    const testPage = await getFirstAppWindow(testApp)
++    const elapsed = Date.now() - start
+     expect(elapsed).toBeLessThan(5000)
+     // Sanity-check the launched window
+     const title = await testPage.title()
+     expect(title).toBe(APP_NAME)
+-  } finally {
+-    await testApp.close()
+-  }
++  })
+ })
+ 
+ test('T1: app menu has required sections', async ({ electronApp }) => {
+@@ -113,8 +113,7 @@ test('T2: terminal takes up the full app area', async ({ appWindow }) => {
+ test('T3: typing a command produces output', async ({ appWindow }) => {
+   const terminal = appWindow.locator('.xterm')
+ 
+-  // Wait for shell to initialize and show a prompt
+-  await appWindow.waitForTimeout(2000)
++  await waitForTerminalToBeReady(terminal)
+ 
+   // Click the terminal to focus xterm's internal textarea
+   await terminal.click()
+@@ -128,6 +127,8 @@ test('T3: typing a command produces output', async ({ appWindow }) => {
+ test('T3: shell persists after command completes', async ({ appWindow }) => {
+   const terminal = appWindow.locator('.xterm')
+ 
++  await waitForTerminalToBeReady(terminal)
++
+   // Click the terminal to ensure focus
+   await terminal.click()
+ 
+@@ -140,7 +141,7 @@ test('T3: shell persists after command completes', async ({ appWindow }) => {
+ test('T3: ANSI color sequences render correctly', async ({ appWindow }) => {
+   const terminal = appWindow.locator('.xterm')
+ 
+-  await appWindow.waitForTimeout(1000)
++  await waitForTerminalToBeReady(terminal)
+   await terminal.click()
+ 
+   await appWindow.keyboard.type('printf "\\033[32mGREEN\\033[0m NORMAL"')
+@@ -163,19 +164,66 @@ test('T3: window resize reflows terminal', async ({ appWindow, electronApp }) =>
+     }
+   })
+ 
+-  await appWindow.waitForTimeout(500)
++  await expect.poll(async () => {
++    const boxAfter = await terminal.boundingBox()
++    return boxAfter?.width ?? 0
++  }, {
++    timeout: 5000,
++    message: 'Expected terminal width to grow after resizing the window',
++  }).toBeGreaterThan(boxBefore!.width)
++})
+ 
+-  const boxAfter = await terminal.boundingBox()
+-  expect(boxAfter).toBeTruthy()
+-  expect(boxAfter!.width).toBeGreaterThan(boxBefore!.width)
++test('T3: closing the window removes terminal IPC listeners', async () => {
++  await withElectronApp(async (isolatedApp) => {
++    const isolatedWindow = await getFirstAppWindow(isolatedApp)
++    await expect(isolatedWindow.locator('.xterm')).toBeVisible({ timeout: 5000 })
++
++    const listenerCounts = await isolatedApp.evaluate(({ BrowserWindow, ipcMain }, channels) => {
++      return new Promise<{
++        beforeInput: number
++        beforeResize: number
++        afterInput: number
++        afterResize: number
++      }>((resolve, reject) => {
++        const win = BrowserWindow.getAllWindows()[0]
++
++        if (!win) {
++          reject(new Error('No window available to close'))
++          return
++        }
++
++        const beforeInput = ipcMain.listenerCount(channels.input)
++        const beforeResize = ipcMain.listenerCount(channels.resize)
++
++        win.once('closed', () => {
++          resolve({
++            beforeInput,
++            beforeResize,
++            afterInput: ipcMain.listenerCount(channels.input),
++            afterResize: ipcMain.listenerCount(channels.resize),
++          })
++        })
++
++        win.close()
++      })
++    }, {
++      input: IPC_CHANNELS.TERMINAL_INPUT,
++      resize: IPC_CHANNELS.TERMINAL_RESIZE,
++    })
++
++    expect(listenerCounts.beforeInput).toBeGreaterThan(0)
++    expect(listenerCounts.beforeResize).toBeGreaterThan(0)
++    expect(listenerCounts.afterInput).toBe(0)
++    expect(listenerCounts.afterResize).toBe(0)
++  })
+ })
+ 
+ // --- T5: Keyboard Fidelity ---
+ 
+ test('T5: Ctrl+C sends SIGINT and interrupts a running process', async ({ appWindow }) => {
+   const term = appWindow.locator('.xterm')
++  await waitForTerminalToBeReady(term)
+   await term.click()
+-  await appWindow.waitForTimeout(1000)
+   await appWindow.keyboard.type('sleep 999')
+   await appWindow.keyboard.press('Enter')
+   await appWindow.waitForTimeout(500)
+@@ -189,7 +237,9 @@ test('T5: Ctrl+C sends SIGINT and interrupts a running process', async ({ appWin
+ })
+ 
+ test('T5: arrow keys produce escape sequences (command history)', async ({ appWindow }) => {
+-  await appWindow.locator('.xterm').click()
++  const terminal = appWindow.locator('.xterm')
++  await waitForTerminalToBeReady(terminal)
++  await terminal.click()
+   await appWindow.keyboard.type('echo __HISTORY_TEST__')
+   await appWindow.keyboard.press('Enter')
+   await appWindow.waitForTimeout(500)
+@@ -197,12 +247,13 @@ test('T5: arrow keys produce escape sequences (command history)', async ({ appWi
+   await appWindow.waitForTimeout(300)
+   await appWindow.keyboard.press('Enter')
+ 
+-  const terminal = appWindow.locator('.xterm')
+   await expect(terminal).toContainText('__HISTORY_TEST__', { timeout: 5000 })
+ })
+ 
+ test('T5: Ctrl+D on empty line exits subshell gracefully', async ({ appWindow }) => {
+-  await appWindow.locator('.xterm').click()
++  const terminal = appWindow.locator('.xterm')
++  await waitForTerminalToBeReady(terminal)
++  await terminal.click()
+   await appWindow.keyboard.type('bash')
+   await appWindow.keyboard.press('Enter')
+   await appWindow.waitForTimeout(500)
+@@ -211,18 +262,18 @@ test('T5: Ctrl+D on empty line exits subshell gracefully', async ({ appWindow })
+   await appWindow.keyboard.type('echo __AFTER_CTRL_D__')
+   await appWindow.keyboard.press('Enter')
+ 
+-  const terminal = appWindow.locator('.xterm')
+   await expect(terminal).toContainText('__AFTER_CTRL_D__', { timeout: 5000 })
+ })
+ 
+ test('T5: tab completion works', async ({ appWindow }) => {
+-  await appWindow.locator('.xterm').click()
++  const terminal = appWindow.locator('.xterm')
++  await waitForTerminalToBeReady(terminal)
++  await terminal.click()
+   await appWindow.keyboard.type('ech')
+   await appWindow.keyboard.press('Tab')
+   await appWindow.waitForTimeout(500)
+   await appWindow.keyboard.type(' __TAB_COMPLETE__')
+   await appWindow.keyboard.press('Enter')
+ 
+-  const terminal = appWindow.locator('.xterm')
+   await expect(terminal).toContainText('__TAB_COMPLETE__', { timeout: 5000 })
+ })
+\ No newline at end of file
+diff --git a/package-lock.json b/package-lock.json
+index 570a9b4..50d78fe 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -12,8 +12,10 @@
+         "@xterm/addon-fit": "^0.10.0",
+         "@xterm/xterm": "^5.5.0",
+         "better-sqlite3": "^11.0.0",
+-        "node-pty": "^1.0.0",
+-        "xterm": "^5.3.0"
++        "node-pty": "^1.0.0"
++      },
++      "bin": {
++        "canvas": "bin/canvas.js"
+       },
+       "devDependencies": {
+         "@electron-toolkit/utils": "^4.0.0",
+@@ -7316,13 +7318,6 @@
+         "node": ">=8.0"
+       }
+     },
+-    "node_modules/xterm": {
+-      "version": "5.3.0",
+-      "resolved": "https://registry.npmjs.org/xterm/-/xterm-5.3.0.tgz",
+-      "integrity": "sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg==",
+-      "deprecated": "This package is now deprecated. Move to @xterm/xterm instead.",
+-      "license": "MIT"
+-    },
+     "node_modules/y18n": {
+       "version": "5.0.8",
+       "resolved": "https://registry.npmjs.org/y18n/-/y18n-5.0.8.tgz",
+diff --git a/package.json b/package.json
+index 2fb850c..224a4a4 100644
+--- a/package.json
++++ b/package.json
+@@ -35,7 +35,6 @@
+     "@xterm/addon-fit": "^0.10.0",
+     "@xterm/xterm": "^5.5.0",
+     "better-sqlite3": "^11.0.0",
+-    "node-pty": "^1.0.0",
+-    "xterm": "^5.3.0"
++    "node-pty": "^1.0.0"
+   }
+ }
+diff --git a/src/main/ipc.ts b/src/main/ipc.ts
+index a349c26..699190d 100644
+--- a/src/main/ipc.ts
++++ b/src/main/ipc.ts
+@@ -4,22 +4,30 @@ import { spawnPty, writeToPty, resizePty, killPty } from './pty'
+ 
+ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
+   const ptyProcess = spawnPty(80, 24)
+-
+-  ptyProcess.onData((data) => {
+-    if (mainWindow && !mainWindow.isDestroyed()) {
++  const terminalDataSubscription = ptyProcess.onData((data) => {
++    if (!mainWindow.isDestroyed()) {
+       mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, data)
+     }
+   })
+ 
+-  ipcMain.on(IPC_CHANNELS.TERMINAL_INPUT, (_event, data: string) => {
++  const handleTerminalInput = (_event: Electron.IpcMainEvent, data: string): void => {
+     writeToPty(data)
+-  })
++  }
+ 
+-  ipcMain.on(IPC_CHANNELS.TERMINAL_RESIZE, (_event, { cols, rows }: { cols: number; rows: number }) => {
++  const handleTerminalResize = (
++    _event: Electron.IpcMainEvent,
++    { cols, rows }: { cols: number; rows: number }
++  ): void => {
+     resizePty(cols, rows)
+-  })
++  }
++
++  ipcMain.on(IPC_CHANNELS.TERMINAL_INPUT, handleTerminalInput)
++  ipcMain.on(IPC_CHANNELS.TERMINAL_RESIZE, handleTerminalResize)
+ 
+-  mainWindow.on('closed', () => {
++  mainWindow.once('closed', () => {
++    terminalDataSubscription.dispose()
++    ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, handleTerminalInput)
++    ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, handleTerminalResize)
+     killPty()
+   })
+-}
+\ No newline at end of file
++}

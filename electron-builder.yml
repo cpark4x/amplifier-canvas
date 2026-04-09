@@ -1,0 +1,17 @@
+appId: com.amplifier.canvas
+productName: Amplifier Canvas
+directories:
+  buildResources: resources
+  output: dist
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+npmRebuild: false

@@ -1,0 +1,13 @@
+:root {
+  --primary: #3B82F6;
+  --bg: #F2F0EB;
+  --text: #2C2825;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 16px;
+}
