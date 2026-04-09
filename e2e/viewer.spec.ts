@@ -30,62 +30,48 @@ test('V1: selecting a session shows the Viewer panel', async ({ appWindow }) => 
   await expect(viewer).toBeVisible({ timeout: 3000 })
 })
 
-test('V1: Viewer panel shows session info in header', async ({ appWindow }) => {
+test('V1: Viewer panel shows primary tabs when session selected', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
-
-  // Expand Team Pulse and click first session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
   for (let i = 0; i < count; i++) {
     const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
     if (name === 'Team Pulse') {
       const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
       break
     }
   }
-
   const session = appWindow.locator('[data-testid="session-item"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
-
-  // Viewer header should show project name and session ID
-  const viewerHeader = appWindow.locator('[data-testid="viewer-header"]')
-  await expect(viewerHeader).toBeVisible({ timeout: 3000 })
-
-  const headerText = await viewerHeader.textContent()
-  expect(headerText).toContain('Team Pulse')
-  // Session ID is now truncated to first 8 chars (tp-session-001 → tp-sessi)
-  expect(headerText).toContain('tp-sessi')
+  const primaryTabs = appWindow.locator('[data-testid="primary-tabs"]')
+  await expect(primaryTabs).toBeVisible({ timeout: 3000 })
+  const filesTab = appWindow.locator('[data-testid="tab-files"]')
+  await expect(filesTab).toBeVisible({ timeout: 3000 })
+  const filesColor = await filesTab.evaluate((el) => getComputedStyle(el).color)
+  expect(filesColor).not.toBe(await appWindow.locator('[data-testid="tab-app"]').evaluate((el) => getComputedStyle(el).color))
 })
 
-test('V1: Viewer panel shows status dot', async ({ appWindow }) => {
+test('V1: Viewer panel has four primary tabs', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
-
-  // Expand Team Pulse and click first session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
   for (let i = 0; i < count; i++) {
     const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
     if (name === 'Team Pulse') {
       const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
       break
     }
   }
-
   const session = appWindow.locator('[data-testid="session-item"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
-
-  const viewerDot = appWindow.locator('[data-testid="viewer-status-dot"]')
-  await expect(viewerDot).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-changes"]')).toBeVisible({ timeout: 3000 })
 })
 
 test('V1: terminal remains visible when Viewer opens', async ({ appWindow }) => {
@@ -761,37 +747,6 @@ test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   expect(box).toBeTruthy()
   expect(box!.width).toBeGreaterThanOrEqual(335)
   expect(box!.width).toBeLessThanOrEqual(345)
-})
-
-test('V4: viewer header shows truncated 8-char session ID', async ({ appWindow }) => {
-  await appWindow.waitForTimeout(2000)
-
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
-  await expect(session).toBeVisible({ timeout: 3000 })
-  await session.click()
-
-  const viewerHeader = appWindow.locator('[data-testid="viewer-header"]')
-  await expect(viewerHeader).toBeVisible({ timeout: 3000 })
-
-  const headerText = await viewerHeader.textContent()
-  // Session ID should be truncated to 8 chars (tp-sessi for tp-session-001)
-  expect(headerText).toContain('tp-sessi')
-  // Full session ID should NOT appear
-  expect(headerText).not.toContain('tp-session-001')
 })
 
 test('V4: close button has aria-label', async ({ appWindow }) => {
