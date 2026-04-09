@@ -821,6 +821,37 @@ test('V4: close button has aria-label', async ({ appWindow }) => {
   expect(ariaLabel).toBe('Close viewer')
 })
 
+test('V4: primary tabs use 12px font-size and are not uppercase', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') {
+        await projectItems.nth(i).click()
+        await appWindow.waitForTimeout(300)
+      }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const filesTab = appWindow.locator('[data-testid="tab-files"]')
+  await expect(filesTab).toBeVisible({ timeout: 3000 })
+
+  const fontSize = await filesTab.evaluate((el) => getComputedStyle(el).fontSize)
+  expect(fontSize).toBe('12px')
+
+  const textTransform = await filesTab.evaluate((el) => getComputedStyle(el).textTransform)
+  expect(textTransform).toBe('none')
+})
+
 test('V4: file entry rows have 28px height and 13px font', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 

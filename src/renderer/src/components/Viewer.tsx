@@ -105,19 +105,7 @@ function Viewer(): React.ReactElement | null {
             key={tab}
             data-testid={`tab-${tab.toLowerCase()}`}
             onClick={() => setPrimaryTab(tab)}
-            style={{
-              fontSize: '10px',
-              fontWeight: 600,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              padding: '0 10px',
-              height: '100%',
-              border: 'none',
-              borderBottom: primaryTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
-              background: 'none',
-              cursor: 'pointer',
-              color: primaryTab === tab ? 'var(--text-primary)' : 'var(--text-very-muted)',
-            }}
+            style={{ fontSize: '12px', fontWeight: 500, paddingBottom: 8, paddingLeft: 0, paddingRight: 0, paddingTop: 0, color: primaryTab === tab ? 'var(--text-primary)' : 'var(--text-very-muted)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: primaryTab === tab ? '2px solid var(--accent)' : '2px solid transparent', background: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const, marginBottom: -1 }}
           >
             {tab}
           </button>
@@ -163,20 +151,7 @@ function Viewer(): React.ReactElement | null {
               data-testid="browse-btn"
               onClick={() => setShowBrowser(!showBrowser)}
               title="Browse files"
-              style={{
-                fontSize: '12px',
-                width: 24,
-                height: 22,
-                border: 'none',
-                borderRadius: 3,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                background: showBrowser ? 'rgba(0,0,0,0.08)' : 'none',
-                color: showBrowser ? 'var(--text-primary)' : 'var(--text-muted)',
-              }}
+              style={{ fontSize: '13px', width: 22, height: 22, border: 'none', borderRadius: 3, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'transparent', color: showBrowser ? 'var(--amber)' : 'var(--text-very-muted)' }}
             >
               {'\u25A6'}
             </button>
@@ -185,20 +160,7 @@ function Viewer(): React.ReactElement | null {
                 key={file.path}
                 data-testid="file-tab"
                 onClick={() => { setActiveFileIdx(idx); setShowBrowser(false) }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '2px 6px',
-                  fontSize: '10px',
-                  cursor: 'pointer',
-                  borderRadius: 3,
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  backgroundColor: idx === activeFileIdx && !showBrowser ? 'rgba(0,0,0,0.08)' : 'transparent',
-                  color: idx === activeFileIdx && !showBrowser ? 'var(--text-primary)' : 'var(--text-muted)',
-                  fontWeight: idx === activeFileIdx && !showBrowser ? 600 : 400,
-                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, color: idx === activeFileIdx && !showBrowser ? 'var(--text-primary)' : 'var(--text-very-muted)', fontWeight: idx === activeFileIdx && !showBrowser ? 500 : 400, borderBottom: idx === activeFileIdx && !showBrowser ? '2px solid var(--amber)' : '2px solid transparent', marginBottom: -1 }}
               >
                 {file.name}
                 <span
