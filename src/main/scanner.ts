@@ -5,6 +5,10 @@ import { upsertProject, upsertSession } from './db'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
 import type { SessionState, FileActivity } from '../shared/types'
 
+// Only scan the N most recent sessions per project.
+// User has 29K+ sessions — scanning all of them blocks the UI for minutes.
+const MAX_SESSIONS_PER_PROJECT = 30
+
 export function getAmplifierHome(): string {
   return process.env['AMPLIFIER_HOME'] || join(os.homedir(), '.amplifier')
 }
@@ -41,14 +45,27 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     const sessionsDir = join(projectPath, 'sessions')
     if (!existsSync(sessionsDir)) continue
 
+    // Get all session directories, then sort by mtime (most recent first)
+    // and take only the top N to avoid scanning thousands of old sessions
     const sessionDirs = readdirSync(sessionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const eventsPath = join(sessionsDir, entry.name, 'events.jsonl')
+        let mtime = 0
+        try {
+          mtime = statSync(eventsPath).mtimeMs
+        } catch {
+          // No events.jsonl or can't stat — will be filtered below
+        }
+        return { name: entry.name, mtime }
+      })
+      .filter((entry) => entry.mtime > 0)
+      .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, MAX_SESSIONS_PER_PROJECT)
 
-    for (const sessionDir of sessionDirs) {
-      const sessionId = sessionDir.name
+    for (const sessionEntry of sessionDirs) {
+      const sessionId = sessionEntry.name
       const eventsPath = join(sessionsDir, sessionId, 'events.jsonl')
-
-      if (!existsSync(eventsPath)) continue
 
       try {
         const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
@@ -63,7 +80,7 @@ export function scanProjects(amplifierHome?: string): ScanResult {
         if (startEvent) {
           startedAt = startEvent.timestamp
         } else {
-          startedAt = statSync(eventsPath).mtime.toISOString()
+          startedAt = new Date(sessionEntry.mtime).toISOString()
         }
 
         upsertSession({
