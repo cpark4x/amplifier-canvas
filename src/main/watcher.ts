@@ -25,19 +25,17 @@ export function startWatching(amplifierHome: string, onChange: WatchCallback): v
     return
   }
 
-  // Watch for events.jsonl changes (session updates)
-  // and new directories (new projects/sessions)
-  watcher = chokidar.watch(projectsDir, {
+  // Watch ONLY for events.jsonl files — not the entire directory tree.
+  // Using a glob pattern so chokidar doesn't enumerate every subdirectory
+  // at startup (which hangs for minutes with 29K+ sessions).
+  watcher = chokidar.watch(join(projectsDir, '*/sessions/*/events.jsonl'), {
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: 200,
     },
-    depth: 4, // projects/{slug}/sessions/{id}/events.jsonl
   })
 
   watcher.on('change', (filePath: string) => {
-    if (!filePath.endsWith('events.jsonl')) return
-
     const parsed = parseEventPath(projectsDir, filePath)
     if (!parsed) return
 
@@ -55,17 +53,25 @@ export function startWatching(amplifierHome: string, onChange: WatchCallback): v
     )
   })
 
-  watcher.on('addDir', (dirPath: string) => {
-    const rel = relative(projectsDir, dirPath)
-    const parts = rel.split(sep)
+  // Also detect new events.jsonl files (new sessions starting)
+  watcher.on('add', (filePath: string) => {
+    const parsed = parseEventPath(projectsDir, filePath)
+    if (!parsed) return
 
-    // New project directory: just one segment, e.g. "my-project"
-    if (parts.length === 1 && parts[0].length > 0) {
-      onChange('project-added', { projectSlug: parts[0] })
-    }
+    const key = `${parsed.projectSlug}/${parsed.sessionId}`
+    const existing = debounceTimers.get(key)
+    if (existing) clearTimeout(existing)
+
+    debounceTimers.set(
+      key,
+      setTimeout(() => {
+        debounceTimers.delete(key)
+        onChange('session-updated', parsed)
+      }, 500)
+    )
   })
 
-  console.log('[watcher] Watching', projectsDir)
+  console.log('[watcher] Watching for events.jsonl changes in', projectsDir)
 }
 
 export function stopWatching(): void {
