@@ -76,14 +76,14 @@ function Viewer(): React.ReactElement | null {
     <div
       data-testid="viewer-panel"
       style={{
-        width: 400,
-        minWidth: 340,
+        width: 340,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'var(--bg-right)',
         borderLeft: '1px solid var(--border)',
         overflow: 'hidden',
+        flexShrink: 0,
       }}
     >
       {/* Primary tab row */}
@@ -91,12 +91,13 @@ function Viewer(): React.ReactElement | null {
         data-testid="primary-tabs"
         style={{
           display: 'flex',
-          alignItems: 'center',
-          height: 32,
+          alignItems: 'flex-end',
+          height: 36,
           borderBottom: '1px solid var(--border)',
           backgroundColor: 'var(--bg-header)',
-          padding: '0 8px',
-          gap: 0,
+          padding: '0 12px',
+          gap: 20,
+          flexShrink: 0,
         }}
       >
         {primaryTabs.map((tab) => (
@@ -149,12 +150,13 @@ function Viewer(): React.ReactElement | null {
             style={{
               display: 'flex',
               alignItems: 'center',
-              height: 28,
+              height: 30,
               borderBottom: '1px solid var(--border)',
               backgroundColor: 'var(--bg-header)',
-              padding: '0 6px',
+              padding: '0 8px',
               gap: 2,
               overflowX: 'auto',
+              flexShrink: 0,
             }}
           >
             <button
@@ -218,7 +220,7 @@ function Viewer(): React.ReactElement | null {
           {/* Panel content */}
           <div
             data-testid="panel-content"
-            style={{ flex: 1, overflow: 'auto', padding: '10px 12px' }}
+            style={{ flex: 1, overflow: 'auto', padding: 16 }}
           >
             {showBrowser && workDir ? (
               <FileBrowser
