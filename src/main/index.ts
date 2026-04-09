@@ -160,25 +160,12 @@ app.whenReady().then(() => {
   // Initialize database
   initDatabase()
 
-  // Scan existing projects from disk
-  const amplifierHome = getAmplifierHome()
-  const scanResult = scanProjects(amplifierHome)
-
-  // Set allowed directories for file access security
-  const projectsDir = join(amplifierHome, 'projects')
-  if (existsSync(projectsDir)) {
-    // Collect workDirs from scanned sessions for file access
-    const workDirs = scanResult.sessions
-      .map((s) => s.workDir)
-      .filter((dir): dir is string => !!dir && existsSync(dir))
-    const allowedDirs = [projectsDir, ...workDirs]
-    setAllowedDirs(allowedDirs)
-  }
+  // Create window FIRST so it appears immediately
+  const mainWindow = createWindow()
+  registerIpcHandlers(mainWindow)
 
   // Register canvas:// protocol handler for secure image serving
   protocol.handle('canvas', (request) => {
-    // canvas://file/absolute/path → extract the pathname
-    // Uses fixed "file" host to avoid case-mangling of path components
     const url = new URL(request.url)
     const filePath = decodeURIComponent(url.pathname)
 
@@ -187,39 +174,60 @@ app.whenReady().then(() => {
       return new Response('Forbidden', { status: 403 })
     }
 
-    // Use net.fetch with file:// to read the local file
     return net.fetch(`file://${filePath}`)
   })
 
-  const mainWindow = createWindow()
-  registerIpcHandlers(mainWindow)
+  // Scan projects AFTER window is visible — deferred so the app opens fast
+  const amplifierHome = getAmplifierHome()
 
-  // Push initial session state once the window is ready
-  mainWindow.webContents.once('did-finish-load', () => {
-    pushSessionsChanged(mainWindow, scanResult.sessions)
-  })
+  const doScan = (): void => {
+    try {
+      const scanResult = scanProjects(amplifierHome)
+
+      // Set allowed directories for file access security
+      const projectsDir = join(amplifierHome, 'projects')
+      if (existsSync(projectsDir)) {
+        const workDirs = scanResult.sessions
+          .map((s) => s.workDir)
+          .filter((dir): dir is string => !!dir && existsSync(dir))
+        const allowedDirs = [projectsDir, ...workDirs]
+        setAllowedDirs(allowedDirs)
+      }
+
+      pushSessionsChanged(mainWindow, scanResult.sessions)
+    } catch (err) {
+      console.error('[startup] Scan failed:', err instanceof Error ? err.message : String(err))
+      // Push empty state so the UI still works
+      pushSessionsChanged(mainWindow, [])
+    }
+  }
+
+  // Push initial sessions once window renderer is ready
+  mainWindow.webContents.once('did-finish-load', doScan)
 
   // Start file watching
   startWatching(amplifierHome, (event, data) => {
-    if (event === 'session-updated' && data.sessionId) {
-      const eventsPath = join(amplifierHome, 'projects', data.projectSlug, 'sessions', data.sessionId, 'events.jsonl')
-      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
-      const status = deriveSessionStatus(events)
-      const recentFiles = extractFileActivity(events)
+    try {
+      if (event === 'session-updated' && data.sessionId) {
+        const eventsPath = join(amplifierHome, 'projects', data.projectSlug, 'sessions', data.sessionId, 'events.jsonl')
+        const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
+        const status = deriveSessionStatus(events)
+        const recentFiles = extractFileActivity(events)
 
-      updateSessionStatus(data.sessionId, status)
-      updateByteOffset(data.sessionId, newByteOffset)
+        updateSessionStatus(data.sessionId, status)
+        updateByteOffset(data.sessionId, newByteOffset)
 
-      // Re-scan all sessions and push full state
-      const freshScan = scanProjects(amplifierHome)
-      pushSessionsChanged(mainWindow, freshScan.sessions)
-      pushFilesChanged(mainWindow, data.sessionId, recentFiles)
-    }
+        const freshScan = scanProjects(amplifierHome)
+        pushSessionsChanged(mainWindow, freshScan.sessions)
+        pushFilesChanged(mainWindow, data.sessionId, recentFiles)
+      }
 
-    if (event === 'project-added') {
-      // Re-scan to pick up the new project
-      const freshScan = scanProjects(amplifierHome)
-      pushSessionsChanged(mainWindow, freshScan.sessions)
+      if (event === 'project-added') {
+        const freshScan = scanProjects(amplifierHome)
+        pushSessionsChanged(mainWindow, freshScan.sessions)
+      }
+    } catch (err) {
+      console.warn('[watcher] Error handling event:', err instanceof Error ? err.message : String(err))
     }
   })
 
@@ -229,6 +237,8 @@ app.whenReady().then(() => {
       registerIpcHandlers(newWindow)
     }
   })
+}).catch((err) => {
+  console.error('[startup] Fatal error:', err)
 })
 
 app.on('before-quit', () => {
