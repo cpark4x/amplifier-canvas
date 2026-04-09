@@ -2,6 +2,7 @@ import { useState } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
+import NewProjectModal from './components/NewProjectModal'
 import { useCanvasStore } from './store'
 
 // Register IPC listeners eagerly at module level (before React mount)
@@ -21,6 +22,7 @@ function App(): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
 
+  const [showModal, setShowModal] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const hasSession = selectedSessionId !== null || showTerminal
 
@@ -75,7 +77,7 @@ function App(): React.ReactElement {
 
         {/* Center zone: welcome screen OR terminal depending on state */}
         {!hasSession ? (
-          /* Screen 1: Welcome — clean slate, no terminal */
+          /* Screen 1 + 2: Welcome with optional modal overlay */
           <div
             data-testid="welcome-main"
             style={{
@@ -84,6 +86,7 @@ function App(): React.ReactElement {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              position: 'relative',
             }}
           >
             <div style={{
@@ -112,7 +115,7 @@ function App(): React.ReactElement {
               </div>
               <button
                 data-testid="welcome-btn"
-                onClick={() => setShowTerminal(true)}
+                onClick={() => setShowModal(true)}
                 style={{
                   marginTop: '24px',
                   padding: '9px 18px',
@@ -131,6 +134,19 @@ function App(): React.ReactElement {
                 Create your first project <span style={{ color: 'var(--amber)' }}>{'\u2192'}</span>
               </button>
             </div>
+
+            {/* Screen 2: New Project modal */}
+            {showModal && (
+              <NewProjectModal
+                onClose={() => setShowModal(false)}
+                onCreate={(projectName, _source) => {
+                  setShowModal(false)
+                  setShowTerminal(true)
+                  // TODO: Wire to main process to create project directory
+                  console.log('[canvas] Create project:', projectName)
+                }}
+              />
+            )}
           </div>
         ) : (
           /* Screens 3+: Terminal zone with optional viewer */
