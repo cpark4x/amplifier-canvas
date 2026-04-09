@@ -15,13 +15,14 @@ import type { SessionState } from '../shared/types'
 const isMac = process.platform === 'darwin'
 const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
 
-// Prevent PTY write errors (EIO when shell exits) from crashing Electron
+// Prevent EIO errors from crashing Electron.
+// EIO happens when PTY shell exits OR when the dev server pipe breaks.
+// Cannot use console.log/warn/error here — if stderr IS the broken pipe,
+// logging would throw another EIO and loop.
 process.on('uncaughtException', (err) => {
-  if (err.message?.includes('EIO')) {
-    console.warn('[pty] Ignoring EIO error (shell exited)')
-    return
-  }
-  console.error('[fatal] Uncaught exception:', err)
+  if (err.message?.includes('EIO')) return // silently swallow
+  // For non-EIO errors, try to log but don't crash if that fails too
+  try { process.stderr.write(`[fatal] ${err.stack || err.message}\n`) } catch { /* nothing */ }
 })
 
 function openExternalUrl(url: string): void {
