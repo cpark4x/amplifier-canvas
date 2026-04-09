@@ -145,6 +145,14 @@ function App(): React.ReactElement {
                   createProject(projectName)
                   setShowModal(false)
                   setShowTerminal(true)
+
+                  // Launch Amplifier in the terminal after a short delay
+                  // so the PTY shell is ready to receive input
+                  setTimeout(() => {
+                    if (window.electronAPI) {
+                      window.electronAPI.sendTerminalInput('amplifier\r')
+                    }
+                  }, 300)
                 }}
               />
             )}
