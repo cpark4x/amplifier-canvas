@@ -3,6 +3,7 @@ import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
 import NewProjectModal from './components/NewProjectModal'
+import { ToastContainer } from './components/Toast'
 import { useCanvasStore } from './store'
 
 // Register IPC listeners eagerly at module level (before React mount)
@@ -209,6 +210,7 @@ function App(): React.ReactElement {
           })),
         )}
       </div>
+      <ToastContainer />
     </div>
   )
 }
