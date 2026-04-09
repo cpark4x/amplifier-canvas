@@ -141,12 +141,22 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
             border: 'none',
             cursor: 'pointer',
             padding: '6px 8px',
-            fontSize: '10px',
             color: 'var(--text-very-muted)',
-            textAlign: 'left',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-very-muted)'
           }}
         >
-          {'\u203a'}
+          {/* Right-pointing chevron (expand) */}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="3,1 7,5 3,9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+          </svg>
         </button>
       )}
 
@@ -194,16 +204,27 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                 data-testid="sidebar-toggle"
                 onClick={onToggle}
                 style={{
-                  fontSize: '14px',
                   color: 'var(--text-very-muted)',
                   background: 'none',
                   border: 'none',
                   lineHeight: 1,
-                  padding: 0,
+                  padding: '2px',
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-very-muted)'
                 }}
               >
-                {'\u2039'}
+                {/* Left-pointing chevron (collapse) */}
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <polyline points="7,1 3,5 7,9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                </svg>
               </button>
             </div>
           </div>
@@ -236,8 +257,6 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                   if (!b.endedAt) return -1
                   return new Date(b.endedAt).getTime() - new Date(a.endedAt).getTime()
                 })
-
-              const hasCompleted = historySessions.length > 0
 
               return (
                 <div key={project.slug}>
@@ -275,46 +294,25 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                     ))}
                   </div>
 
-                  {/* + New session slot — only when project has completed sessions */}
-                  {hasCompleted && (
-                    <div
-                      data-testid="new-session-slot"
-                      onClick={onNewProject}
-                      style={{
-                        height: 30,
-                        padding: '0 12px 0 22px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        cursor: 'pointer',
-                        opacity: 0.7,
-                      }}
-                      onMouseEnter={(e) => {
-                        ;(e.currentTarget as HTMLDivElement).style.opacity = '1'
-                      }}
-                      onMouseLeave={(e) => {
-                        ;(e.currentTarget as HTMLDivElement).style.opacity = '0.7'
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--text-very-muted)',
-                          lineHeight: 1,
-                        }}
-                      >
-                        +
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          color: 'var(--text-very-muted)',
-                        }}
-                      >
-                        New session
-                      </span>
-                    </div>
-                  )}
+                  {/* + New session — always visible when project is expanded */}
+                  <div
+                    data-testid="new-session-slot"
+                    onClick={onNewProject}
+                    style={{
+                      padding: '8px 14px',
+                      fontSize: '11px',
+                      color: 'var(--text-very-muted)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
+                    }}
+                    onMouseLeave={(e) => {
+                      ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
+                    }}
+                  >
+                    + New session
+                  </div>
 
                   {/* History section */}
                   {historySessions.length > 0 && (
