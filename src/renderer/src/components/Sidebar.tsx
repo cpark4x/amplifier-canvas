@@ -17,6 +17,7 @@ interface Project {
 // ---- Helpers ----------------------------------------------------------------
 
 const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input'])
+const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed'])
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',
@@ -34,7 +35,7 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
  * < 7 days     → "Xd ago"
  * else         → "Mon D"  (e.g. "Apr 7")
  */
-function relativeTime(isoString: string): string {
+function formatRelativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime()
   const minutes = Math.floor(diff / 60_000)
   if (minutes < 1) return 'just now'
@@ -44,6 +45,38 @@ function relativeTime(isoString: string): string {
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}d ago`
   return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/** Returns human-readable duration from two ISO timestamps. */
+function formatDuration(startedAt: string, endedAt: string): string {
+  const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime()
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 1) return '<1m'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`
+}
+
+/** Returns a stats summary line, e.g. "5m · 1 prompt · 2 files". Omits zero values. */
+function formatStats(session: SessionState): string {
+  const parts: string[] = []
+
+  if (session.startedAt && session.endedAt) {
+    parts.push(formatDuration(session.startedAt, session.endedAt))
+  }
+
+  const prompts = session.promptCount ?? 0
+  if (prompts > 0) {
+    parts.push(`${prompts} ${prompts === 1 ? 'prompt' : 'prompts'}`)
+  }
+
+  const files = session.filesChangedCount ?? 0
+  if (files > 0) {
+    parts.push(`${files} ${files === 1 ? 'file' : 'files'}`)
+  }
+
+  return parts.join(' · ')
 }
 
 // ---- Component --------------------------------------------------------------
@@ -196,7 +229,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
             {projects.map((project) => {
               const activeSessions = project.sessions.filter((s) => ACTIVE_STATUSES.has(s.status))
               const historySessions = project.sessions
-                .filter((s) => s.status === 'done' || s.status === 'failed')
+                .filter((s) => COMPLETED_STATUSES.has(s.status))
                 .sort((a, b) => {
                   if (!a.endedAt && !b.endedAt) return 0
                   if (!a.endedAt) return 1
@@ -204,15 +237,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                   return new Date(b.endedAt).getTime() - new Date(a.endedAt).getTime()
                 })
 
-              // Find a workDir from any session in this project
-              const workDir = project.sessions.find((s) => s.workDir)?.workDir
-
-              const handleNewSession = (): void => {
-                if (!workDir) return
-                // Navigate the terminal to the project workDir so the user can start a session
-                window.electronAPI.sendTerminalInput(`cd ${workDir}\n`)
-                openViewer()
-              }
+              const hasCompleted = historySessions.length > 0
 
               return (
                 <div key={project.slug}>
@@ -250,53 +275,53 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                     ))}
                   </div>
 
-                  {/* + New session slot */}
-                  <div
-                    data-testid="new-session-slot"
-                    onClick={workDir ? handleNewSession : undefined}
-                    style={{
-                      height: 30,
-                      padding: '0 12px 0 22px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      cursor: workDir ? 'pointer' : 'default',
-                      opacity: workDir ? 0.7 : 0.35,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (workDir) {
+                  {/* + New session slot — only when project has completed sessions */}
+                  {hasCompleted && (
+                    <div
+                      data-testid="new-session-slot"
+                      onClick={onNewProject}
+                      style={{
+                        height: 30,
+                        padding: '0 12px 0 22px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: 'pointer',
+                        opacity: 0.7,
+                      }}
+                      onMouseEnter={(e) => {
                         ;(e.currentTarget as HTMLDivElement).style.opacity = '1'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      ;(e.currentTarget as HTMLDivElement).style.opacity = workDir ? '0.7' : '0.35'
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        color: 'var(--text-very-muted)',
-                        lineHeight: 1,
+                      }}
+                      onMouseLeave={(e) => {
+                        ;(e.currentTarget as HTMLDivElement).style.opacity = '0.7'
                       }}
                     >
-                      +
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        color: 'var(--text-very-muted)',
-                      }}
-                    >
-                      New session
-                    </span>
-                  </div>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--text-very-muted)',
+                          lineHeight: 1,
+                        }}
+                      >
+                        +
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: 'var(--text-very-muted)',
+                        }}
+                      >
+                        New session
+                      </span>
+                    </div>
+                  )}
 
                   {/* History section */}
                   {historySessions.length > 0 && (
                     <>
-                      {/* HISTORY divider */}
+                      {/* HISTORY label */}
                       <div
-                        data-testid="history-divider"
+                        data-testid="history-label"
                         style={{
                           padding: '6px 12px 2px 14px',
                           fontSize: '10px',
@@ -429,7 +454,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
 function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
   return (
     <div
-      data-testid="session-item"
+      data-testid="history-item"
       data-project-slug={session.projectSlug}
       data-selected={isSelected ? 'true' : 'false'}
       onClick={onSelect}
@@ -474,7 +499,7 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
         {/* Title + relative time + resume button */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
           <span
-            data-testid="history-session-name"
+            data-testid="history-title"
             style={{
               fontSize: '12px',
               fontWeight: 400,
@@ -496,7 +521,7 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
                 whiteSpace: 'nowrap',
               }}
             >
-              {relativeTime(session.endedAt)}
+              {formatRelativeTime(session.endedAt)}
             </span>
           )}
           <button
@@ -522,14 +547,14 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
 
         {/* Stats line */}
         <span
-          data-testid="session-stats"
+          data-testid="history-stats"
           style={{
             fontSize: '10px',
             color: '#A0977D',
             display: 'block',
           }}
         >
-          {session.promptCount ?? 0} prompts · {session.filesChangedCount ?? 0} files
+          {formatStats(session)}
         </span>
       </div>
     </div>

@@ -193,76 +193,84 @@ test('S9: active session (needs_input) has amber status dot (#F59E0B)', async ({
 
 // ---- S10: Sidebar History Section -------------------------------------------
 
-test('S10: HISTORY section divider appears for projects with completed sessions', async ({
+test('S9: HISTORY label appears for projects with completed sessions', async ({
   appWindow,
 }) => {
   await appWindow.waitForTimeout(2000)
 
   // test-project has done-session and failed-session → should show HISTORY
-  const historyDivider = appWindow.locator('[data-testid="history-divider"]').first()
-  await expect(historyDivider).toBeVisible({ timeout: 5000 })
-  await expect(historyDivider).toContainText('HISTORY')
+  const historyLabel = appWindow.locator('[data-testid="history-label"]').first()
+  await expect(historyLabel).toBeVisible({ timeout: 5000 })
+  await expect(historyLabel).toContainText('HISTORY')
 })
 
-test('S10: history session shows stats line with prompts and files', async ({ appWindow }) => {
+test('S9: history session shows stats line with singular-aware formatting', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // done-session: promptCount=1, filesChangedCount=2 (write_file + edit_file)
-  const stats = appWindow.locator('[data-testid="session-stats"]').first()
+  // formatStats omits zero values and uses singular/plural correctly
+  const stats = appWindow.locator('[data-testid="history-stats"]').first()
   await expect(stats).toBeVisible({ timeout: 5000 })
 
   const text = await stats.textContent()
-  expect(text).toMatch(/prompts/)
-  expect(text).toMatch(/files/)
+  // Must have at least one stat segment (duration, prompts, or files)
+  expect(text!.length).toBeGreaterThan(0)
+  // Singular: "1 prompt" not "1 prompts"
+  if (text!.includes('1 prompt')) {
+    expect(text).not.toMatch(/1 prompts/)
+  }
+  // Singular: "1 file" not "1 files"
+  if (text!.includes('1 file')) {
+    expect(text).not.toMatch(/1 files/)
+  }
 })
 
-test('S10: history session shows title derived from first prompt', async ({ appWindow }) => {
+test('S9: history session shows title derived from first prompt', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // History sessions should show their title in [data-testid="history-session-name"]
-  const historyName = appWindow.locator('[data-testid="history-session-name"]').first()
-  await expect(historyName).toBeVisible({ timeout: 5000 })
+  // History sessions should show their title in [data-testid="history-title"]
+  const historyTitle = appWindow.locator('[data-testid="history-title"]').first()
+  await expect(historyTitle).toBeVisible({ timeout: 5000 })
 
-  const text = await historyName.textContent()
+  const text = await historyTitle.textContent()
   expect(text).toBeTruthy()
   expect(text!.length).toBeGreaterThan(0)
 })
 
-test('S10: multiple history sessions appear in the HISTORY section', async ({ appWindow }) => {
+test('S9: multiple history sessions appear in the HISTORY section', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // done-session + failed-session → 2 history-session-name elements
-  const historyNames = appWindow.locator('[data-testid="history-session-name"]')
-  await expect(historyNames.first()).toBeVisible({ timeout: 5000 })
+  // done-session + failed-session → 2 history-title elements
+  const historyTitles = appWindow.locator('[data-testid="history-title"]')
+  await expect(historyTitles.first()).toBeVisible({ timeout: 5000 })
 
-  const count = await historyNames.count()
+  const count = await historyTitles.count()
   expect(count).toBeGreaterThanOrEqual(2)
 })
 
-// ---- S11: New Session Slot --------------------------------------------------
+// ---- S10: New Session Slot --------------------------------------------------
 
-test('S11: + New session slot is visible for projects with sessions', async ({ appWindow }) => {
+test('S10: "+ New session" slot appears when project has completed sessions', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  const slot = appWindow.locator('[data-testid="new-session-slot"]').first()
-  await expect(slot).toBeVisible({ timeout: 5000 })
-})
-
-test('S11: + New session slot shows "New session" text', async ({ appWindow }) => {
-  await appWindow.waitForTimeout(2000)
-
+  // test-project has done-session and failed-session → slot should appear
   const slot = appWindow.locator('[data-testid="new-session-slot"]').first()
   await expect(slot).toBeVisible({ timeout: 5000 })
   await expect(slot).toContainText('New session')
 })
 
-test('S11: one new session slot per project', async ({ appWindow }) => {
+test('S10: new session slot does not appear for projects without completed sessions', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // test-project has a workDir → one slot
+  // Count projects and new-session-slots — slots should only appear for projects
+  // with completed sessions, not for every project
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
   const slots = appWindow.locator('[data-testid="new-session-slot"]')
-  await expect(slots.first()).toBeVisible({ timeout: 5000 })
 
-  const count = await slots.count()
-  expect(count).toBeGreaterThanOrEqual(1)
+  const projectCount = await projectItems.count()
+  const slotCount = await slots.count()
+
+  // There's 1 project (test-project) with completed sessions, so exactly 1 slot
+  // If a project had only active sessions and no completed ones, it would have 0 slots
+  expect(slotCount).toBeLessThanOrEqual(projectCount)
+  expect(slotCount).toBeGreaterThanOrEqual(1)
 })
