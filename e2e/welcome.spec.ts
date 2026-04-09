@@ -103,7 +103,7 @@ test('Screen 2: cancel closes modal, returns to welcome', async ({ appWindow }) 
   console.log('✓ Welcome screen still visible')
 })
 
-test('Screen 2→3: creating project transitions to terminal', async ({ appWindow }) => {
+test('Screen 2→3: creating project transitions to terminal + sidebar shows project', async ({ appWindow }) => {
   // Re-open modal
   await appWindow.locator('[data-testid="welcome-btn"]').click()
   await appWindow.waitForTimeout(500)
@@ -133,6 +133,21 @@ test('Screen 2→3: creating project transitions to terminal', async ({ appWindo
   const terminal = appWindow.locator('[data-testid="pane-title"]')
   await expect(terminal).toBeVisible({ timeout: 3000 })
   console.log('✓ Terminal visible (Screen 3)')
+
+  // Sidebar: "No projects yet" gone, project name visible
+  const emptyState = appWindow.locator('[data-testid="sidebar-empty"]')
+  await expect(emptyState).not.toBeVisible()
+  console.log('✓ Sidebar empty state gone')
+
+  const projectName = appWindow.locator('[data-testid="project-name"]')
+  await expect(projectName).toBeVisible({ timeout: 3000 })
+  await expect(projectName).toHaveText('Canvas-App')
+  console.log('✓ Sidebar shows project: Canvas-App')
+
+  // "+" button visible in sidebar
+  const addBtn = appWindow.locator('[data-testid="sidebar-add-btn"]')
+  await expect(addBtn).toBeVisible()
+  console.log('✓ Sidebar "+" button visible')
 
   await appWindow.screenshot({ path: '/tmp/canvas-screen3.png' })
   console.log('✓ Screenshot: /tmp/canvas-screen3.png')

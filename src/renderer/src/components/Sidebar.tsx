@@ -5,6 +5,7 @@ import type { SessionState, SessionStatus } from '../../../shared/types'
 type SidebarProps = {
   collapsed: boolean
   onToggle: () => void
+  onNewProject?: () => void
 }
 
 interface Project {
@@ -21,16 +22,24 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   failed: '#EF4444',
 }
 
-function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
+function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
+  const createdProjects = useCanvasStore((s) => s.createdProjects)
   const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
 
-  // Derive projects from sessions (stable reference via useMemo)
+  // Derive projects from created projects + sessions
   const projects: Project[] = useMemo(() => {
     const projectMap = new Map<string, Project>()
+
+    // Include manually created projects
+    for (const cp of createdProjects) {
+      projectMap.set(cp.slug, { slug: cp.slug, name: cp.name, sessions: [] })
+    }
+
+    // Merge session-derived projects
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {
@@ -44,7 +53,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
       }
     }
     return Array.from(projectMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [sessions])
+  }, [sessions, createdProjects])
 
   return (
     <div
@@ -105,21 +114,38 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
             >
               Projects
             </span>
-            <button
-              data-testid="sidebar-toggle"
-              onClick={onToggle}
-              style={{
-                fontSize: '14px',
-                color: 'var(--text-very-muted)',
-                background: 'none',
-                border: 'none',
-                lineHeight: 1,
-                padding: 0,
-                cursor: 'pointer',
-              }}
-            >
-              {'\u2039'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                data-testid="sidebar-add-btn"
+                onClick={onNewProject}
+                style={{
+                  fontSize: '14px',
+                  color: 'var(--text-very-muted)',
+                  background: 'none',
+                  border: 'none',
+                  lineHeight: 1,
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                +
+              </button>
+              <button
+                data-testid="sidebar-toggle"
+                onClick={onToggle}
+                style={{
+                  fontSize: '14px',
+                  color: 'var(--text-very-muted)',
+                  background: 'none',
+                  border: 'none',
+                  lineHeight: 1,
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                {'\u2039'}
+              </button>
+            </div>
           </div>
 
           {/* Content area */}

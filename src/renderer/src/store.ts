@@ -12,12 +12,14 @@ interface CanvasStore {
   sessions: SessionState[]
   selectedSessionId: string | null
   selectedProjectSlug: string | null
+  createdProjects: Project[] // Projects created via modal (before any session exists)
 
   // Actions
   setSessions: (sessions: SessionState[]) => void
   selectSession: (id: string | null) => void
   selectProject: (slug: string | null) => void
   updateFileActivity: (sessionId: string, files: FileActivity[]) => void
+  createProject: (name: string) => void
 
   // Derived
   getProjects: () => Project[]
@@ -30,6 +32,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   sessions: [],
   selectedSessionId: null,
   selectedProjectSlug: null,
+  createdProjects: [],
 
   // Actions
   setSessions: (sessions) => set({ sessions }),
@@ -48,11 +51,25 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       ),
     })),
 
+  createProject: (name) => {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    set((state) => ({
+      createdProjects: [...state.createdProjects, { slug, name, sessions: [] }],
+      selectedProjectSlug: slug,
+    }))
+  },
+
   // Derived
   getProjects: () => {
-    const { sessions } = get()
+    const { sessions, createdProjects } = get()
     const projectMap = new Map<string, Project>()
 
+    // Include manually created projects (from modal)
+    for (const cp of createdProjects) {
+      projectMap.set(cp.slug, { slug: cp.slug, name: cp.name, sessions: [] })
+    }
+
+    // Merge in session-derived projects
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {

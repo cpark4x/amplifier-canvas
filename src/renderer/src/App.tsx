@@ -21,6 +21,7 @@ function App(): React.ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
+  const createProject = useCanvasStore((s) => s.createProject)
 
   const [showModal, setShowModal] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
@@ -73,6 +74,7 @@ function App(): React.ReactElement {
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onNewProject={() => setShowModal(true)}
         />
 
         {/* Center zone: welcome screen OR terminal depending on state */}
@@ -140,10 +142,9 @@ function App(): React.ReactElement {
               <NewProjectModal
                 onClose={() => setShowModal(false)}
                 onCreate={(projectName, _source) => {
+                  createProject(projectName)
                   setShowModal(false)
                   setShowTerminal(true)
-                  // TODO: Wire to main process to create project directory
-                  console.log('[canvas] Create project:', projectName)
                 }}
               />
             )}
