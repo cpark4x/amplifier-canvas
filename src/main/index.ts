@@ -9,8 +9,11 @@ import { initDatabase, closeDatabase, upsertProject, upsertSession, updateSessio
 import { scanProjects, getAmplifierHome } from './scanner'
 import { startWatching, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
-import { tailReadEvents, deriveSessionStatus, extractFileActivity } from './events-parser'
+import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
 import type { SessionState } from '../shared/types'
+
+// Main-process session registry — watcher pushes new sessions here
+const liveSessions = new Map<string, SessionState>()
 
 const isMac = process.platform === 'darwin'
 const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
@@ -187,35 +190,19 @@ app.whenReady().then(() => {
     return net.fetch(`file://${filePath}`)
   })
 
-  // Scan projects AFTER window is visible — deferred so the app opens fast
+  // Clean slate per storyboard Screen 1: empty sidebar, welcome screen.
+  // Sessions appear only when the watcher detects live activity.
   const amplifierHome = getAmplifierHome()
-
-  const doScan = (): void => {
-    try {
-      const scanResult = scanProjects(amplifierHome)
-
-      // Set allowed directories for file access security
-      const projectsDir = join(amplifierHome, 'projects')
-      if (existsSync(projectsDir)) {
-        const workDirs = scanResult.sessions
-          .map((s) => s.workDir)
-          .filter((dir): dir is string => !!dir && existsSync(dir))
-        const allowedDirs = [projectsDir, ...workDirs]
-        setAllowedDirs(allowedDirs)
-      }
-
-      pushSessionsChanged(mainWindow, scanResult.sessions)
-    } catch (err) {
-      console.error('[startup] Scan failed:', err instanceof Error ? err.message : String(err))
-      // Push empty state so the UI still works
-      pushSessionsChanged(mainWindow, [])
-    }
+  const projectsDir = join(amplifierHome, 'projects')
+  if (existsSync(projectsDir)) {
+    setAllowedDirs([projectsDir])
   }
 
-  // Push initial sessions once window renderer is ready
-  mainWindow.webContents.once('did-finish-load', doScan)
+  mainWindow.webContents.once('did-finish-load', () => {
+    pushSessionsChanged(mainWindow, [])
+  })
 
-  // Start file watching
+  // Watcher picks up NEW activity and pushes it to the renderer
   startWatching(amplifierHome, (event, data) => {
     try {
       if (event === 'session-updated' && data.sessionId) {
@@ -227,14 +214,32 @@ app.whenReady().then(() => {
         updateSessionStatus(data.sessionId, status)
         updateByteOffset(data.sessionId, newByteOffset)
 
-        const freshScan = scanProjects(amplifierHome)
-        pushSessionsChanged(mainWindow, freshScan.sessions)
-        pushFilesChanged(mainWindow, data.sessionId, recentFiles)
-      }
+        const sessionPath = join(projectsDir, data.projectSlug, 'sessions', data.sessionId)
+        const workDir = extractWorkDir(events, sessionPath)
 
-      if (event === 'project-added') {
-        const freshScan = scanProjects(amplifierHome)
-        pushSessionsChanged(mainWindow, freshScan.sessions)
+        let startedAt: string
+        const startEvent = events.find((e: { type: string; timestamp: string }) => e.type === 'session:start')
+        if (startEvent) {
+          startedAt = startEvent.timestamp
+        } else {
+          startedAt = new Date().toISOString()
+        }
+
+        const session: SessionState = {
+          id: data.sessionId,
+          projectSlug: data.projectSlug,
+          projectName: slugToName(data.projectSlug),
+          status,
+          startedAt,
+          startedBy: 'external',
+          byteOffset: newByteOffset,
+          recentFiles,
+          workDir,
+        }
+
+        liveSessions.set(data.sessionId, session)
+        pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
+        pushFilesChanged(mainWindow, data.sessionId, recentFiles)
       }
     } catch (err) {
       console.warn('[watcher] Error handling event:', err instanceof Error ? err.message : String(err))
@@ -261,3 +266,10 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+function slugToName(slug: string): string {
+  return slug
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}

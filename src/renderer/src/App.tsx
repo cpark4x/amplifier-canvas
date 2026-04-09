@@ -21,6 +21,8 @@ function App(): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
 
+  const hasSession = selectedSessionId !== null
+
   return (
     <div id="app" style={{
       width: '100vw',
@@ -29,7 +31,7 @@ function App(): React.ReactElement {
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      {/* S5: Header bar */}
+      {/* Header bar */}
       <div
         data-testid="header-bar"
         style={{
@@ -39,20 +41,27 @@ function App(): React.ReactElement {
           borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 12px',
           paddingLeft: 80, // room for macOS traffic lights
           WebkitAppRegion: 'drag' as unknown as string,
-          fontSize: '13px',
-          fontWeight: 600,
-          color: 'var(--text-primary)',
-          letterSpacing: '0.04em',
         }}
       >
-        <span style={{ WebkitAppRegion: 'no-drag' as unknown as string }}>
-          Amplifier Canvas
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              WebkitAppRegion: 'no-drag' as unknown as string,
+            }}
+          >
+            Amplifier Canvas
+          </span>
+        </div>
       </div>
 
-      {/* Main content: sidebar + terminal + viewer */}
+      {/* Main content: sidebar + center + optional right panel */}
       <div style={{
         flex: 1,
         display: 'flex',
@@ -62,33 +71,97 @@ function App(): React.ReactElement {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column' as const,
-          overflow: 'hidden',
-        }}>
-          {/* Pane title bar above terminal */}
+
+        {/* Center zone: welcome screen OR terminal depending on state */}
+        {!hasSession ? (
+          /* Screen 1: Welcome — clean slate, no terminal */
           <div
-            data-testid="pane-title"
+            data-testid="welcome-main"
             style={{
-              height: 28,
-              minHeight: 28,
-              backgroundColor: 'var(--bg-pane-title)',
+              flex: 1,
+              background: 'var(--bg-right)',
               display: 'flex',
               alignItems: 'center',
-              paddingLeft: 12,
-              paddingRight: 12,
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              flexShrink: 0,
+              justifyContent: 'center',
             }}
           >
-            Terminal
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: '28px',
+                fontWeight: 700,
+                fontStyle: 'italic',
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.02em',
+              }}>
+                Welcome to Canvas
+              </div>
+              <div style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginTop: '8px',
+                maxWidth: '340px',
+                lineHeight: 1.5,
+              }}>
+                Your workspace for Amplifier sessions, files, and previews.
+              </div>
+              <button
+                data-testid="welcome-btn"
+                style={{
+                  marginTop: '24px',
+                  padding: '9px 18px',
+                  border: '1px solid #3A3530',
+                  background: 'var(--bg-modal)',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                Create your first project <span style={{ color: 'var(--amber)' }}>{'\u2192'}</span>
+              </button>
+            </div>
           </div>
-          <TerminalComponent />
-        </div>
-        {selectedSessionId && <Viewer />}
+        ) : (
+          /* Screens 3+: Terminal zone with optional viewer */
+          <>
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column' as const,
+              overflow: 'hidden',
+            }}>
+              {/* Pane title bar above terminal */}
+              <div
+                data-testid="pane-title"
+                style={{
+                  height: 28,
+                  minHeight: 28,
+                  backgroundColor: 'var(--bg-pane-title)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  fontSize: '11px',
+                  color: 'var(--text-muted)',
+                  flexShrink: 0,
+                }}
+              >
+                Terminal
+              </div>
+              <TerminalComponent />
+            </div>
+            <Viewer />
+          </>
+        )}
       </div>
 
       {/* Debug elements for e2e tests — hidden */}

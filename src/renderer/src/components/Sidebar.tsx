@@ -59,59 +59,110 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
         flexDirection: 'column',
         overflow: 'hidden',
         transition: 'width 0.15s ease, min-width 0.15s ease',
+        padding: collapsed ? 0 : '12px 0',
       }}
     >
-      {/* Toggle button */}
-      <button
-        data-testid="sidebar-toggle"
-        onClick={onToggle}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '6px 8px',
-          fontSize: '10px',
-          color: 'var(--text-very-muted)',
-          textAlign: 'left',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase' as const,
-        }}
-      >
-        {collapsed ? '\u203a' : '\u2039'}
-      </button>
+      {/* Collapsed: just the toggle */}
+      {collapsed && (
+        <button
+          data-testid="sidebar-toggle"
+          onClick={onToggle}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '6px 8px',
+            fontSize: '10px',
+            color: 'var(--text-very-muted)',
+            textAlign: 'left',
+          }}
+        >
+          {'\u203a'}
+        </button>
+      )}
 
-      {/* Project list (hidden when collapsed) */}
+      {/* Expanded sidebar */}
       {!collapsed && (
-        <div style={{ padding: '4px 8px', flex: 1, overflow: 'auto' }}>
-          {projects.map((project) => (
-            <div key={project.slug}>
+        <>
+          {/* Section header: "Projects" + "+" button — matches storyboard exactly */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 16px 8px',
+            }}
+          >
+            <span
+              data-testid="sidebar-section-label"
+              style={{
+                fontSize: '10px',
+                textTransform: 'uppercase',
+                color: 'var(--text-very-muted)',
+                letterSpacing: '0.08em',
+                fontWeight: 600,
+              }}
+            >
+              Projects
+            </span>
+            <button
+              data-testid="sidebar-toggle"
+              onClick={onToggle}
+              style={{
+                fontSize: '14px',
+                color: 'var(--text-very-muted)',
+                background: 'none',
+                border: 'none',
+                lineHeight: 1,
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              {'\u2039'}
+            </button>
+          </div>
+
+          {/* Content area */}
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {/* Empty state — storyboard Screen 1 */}
+            {projects.length === 0 && (
               <div
-                data-testid="project-item"
-                data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
-                onClick={() => selectProject(project.slug)}
+                data-testid="sidebar-empty"
                 style={{
-                  cursor: 'pointer',
-                  padding: '3px 0',
+                  fontSize: '11px',
+                  color: 'var(--text-very-muted)',
+                  textAlign: 'center',
+                  padding: '12px 16px',
                 }}
               >
-                <span
-                  data-testid="project-name"
+                No projects yet
+              </div>
+            )}
+
+            {/* Project + session list — storyboard Screens 3+ */}
+            {projects.map((project) => (
+              <div key={project.slug}>
+                {/* Project label */}
+                <div
+                  data-testid="project-item"
+                  data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
+                  onClick={() => selectProject(project.slug)}
                   style={{
+                    padding: '12px 12px 4px',
                     fontSize: '10px',
                     fontWeight: 600,
-                    textTransform: 'uppercase' as const,
                     letterSpacing: '0.1em',
-                    color:
-                      selectedProjectSlug === project.slug ? 'var(--text-primary)' : 'var(--text-very-muted)',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-very-muted)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
                   }}
                 >
-                  {project.name}
-                </span>
-              </div>
+                  <span data-testid="project-name">{project.name}</span>
+                </div>
 
-              {/* Session list (visible when project is selected) */}
-              {selectedProjectSlug === project.slug && (
-                <div style={{ paddingLeft: 0 }}>
+                {/* Session rows — always visible (session-first design per storyboard) */}
+                <div>
                   {project.sessions.map((session) => (
                     <div
                       key={session.id}
@@ -124,8 +175,8 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        position: 'relative' as const,
+                        gap: '8px',
+                        position: 'relative',
                         backgroundColor:
                           selectedSessionId === session.id
                             ? 'var(--bg-sidebar-active)'
@@ -146,6 +197,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                           selectedSessionId === session.id ? '#E8E0D4' : 'transparent'
                       }}
                     >
+                      {/* Status dot */}
                       <span
                         data-testid="status-dot"
                         data-status={session.status}
@@ -154,16 +206,20 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                           height: 6,
                           minWidth: 6,
                           borderRadius: '50%',
-                          backgroundColor: STATUS_COLORS[session.status] || 'var(--text-muted)',
+                          backgroundColor: STATUS_COLORS[session.status] || 'var(--text-very-muted)',
                           display: 'inline-block',
+                          flexShrink: 0,
                         }}
                       />
+
+                      {/* Session name */}
                       <span
                         data-testid="session-name"
                         style={{
                           fontSize: '12px',
-                          color:
-                            selectedSessionId === session.id ? 'var(--text-primary)' : 'var(--text-muted)',
+                          fontWeight:
+                            session.status === 'running' || session.status === 'active' ? 600 : 400,
+                          color: 'var(--text-primary)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -172,13 +228,33 @@ function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactElement {
                       >
                         {session.id.slice(0, 8)}
                       </span>
+
+                      {/* Session age */}
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          flexShrink: 0,
+                          color:
+                            session.status === 'running' || session.status === 'active'
+                              ? 'var(--amber)'
+                              : session.status === 'done'
+                                ? 'var(--green)'
+                                : 'var(--text-very-muted)',
+                        }}
+                      >
+                        {session.status === 'running' || session.status === 'active'
+                          ? 'running'
+                          : session.status === 'done'
+                            ? 'done'
+                            : ''}
+                      </span>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
