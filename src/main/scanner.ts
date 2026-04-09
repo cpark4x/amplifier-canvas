@@ -5,9 +5,9 @@ import { upsertProject, upsertSession } from './db'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
 import type { SessionState, FileActivity } from '../shared/types'
 
-// Only scan the N most recent sessions per project.
-// User has 29K+ sessions — scanning all of them blocks the UI for minutes.
-const MAX_SESSIONS_PER_PROJECT = 30
+// Only deep-scan this many sessions per project.
+// The rest are listed as directory entries but not parsed.
+const MAX_SESSIONS_PER_PROJECT = 20
 
 export function getAmplifierHome(): string {
   return process.env['AMPLIFIER_HOME'] || join(os.homedir(), '.amplifier')
@@ -31,8 +31,20 @@ export function scanProjects(amplifierHome?: string): ScanResult {
   const allSessions: SessionState[] = []
   let projectCount = 0
 
+  // Sort projects by mtime (only 96 dirs — fast to stat)
   const projectDirs = readdirSync(projectsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const projectPath = join(projectsDir, entry.name)
+      let mtime = 0
+      try {
+        mtime = statSync(projectPath).mtimeMs
+      } catch {
+        // skip
+      }
+      return { name: entry.name, mtime }
+    })
+    .sort((a, b) => b.mtime - a.mtime)
 
   for (const projectDir of projectDirs) {
     const projectSlug = projectDir.name
@@ -45,27 +57,19 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     const sessionsDir = join(projectPath, 'sessions')
     if (!existsSync(sessionsDir)) continue
 
-    // Get all session directories, then sort by mtime (most recent first)
-    // and take only the top N to avoid scanning thousands of old sessions
-    const sessionDirs = readdirSync(sessionsDir, { withFileTypes: true })
+    // Just list directory names — do NOT stat each one (that's 13K+ stat calls for big projects).
+    // Take the last N entries (directory names are often chronologically ordered).
+    // Reverse so most recent are first.
+    const allSessionNames = readdirSync(sessionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => {
-        const eventsPath = join(sessionsDir, entry.name, 'events.jsonl')
-        let mtime = 0
-        try {
-          mtime = statSync(eventsPath).mtimeMs
-        } catch {
-          // No events.jsonl or can't stat — will be filtered below
-        }
-        return { name: entry.name, mtime }
-      })
-      .filter((entry) => entry.mtime > 0)
-      .sort((a, b) => b.mtime - a.mtime)
-      .slice(0, MAX_SESSIONS_PER_PROJECT)
+      .map((entry) => entry.name)
 
-    for (const sessionEntry of sessionDirs) {
-      const sessionId = sessionEntry.name
+    const recentNames = allSessionNames.slice(-MAX_SESSIONS_PER_PROJECT).reverse()
+
+    for (const sessionId of recentNames) {
       const eventsPath = join(sessionsDir, sessionId, 'events.jsonl')
+
+      if (!existsSync(eventsPath)) continue
 
       try {
         const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
@@ -80,7 +84,7 @@ export function scanProjects(amplifierHome?: string): ScanResult {
         if (startEvent) {
           startedAt = startEvent.timestamp
         } else {
-          startedAt = new Date(sessionEntry.mtime).toISOString()
+          startedAt = statSync(eventsPath).mtime.toISOString()
         }
 
         upsertSession({
