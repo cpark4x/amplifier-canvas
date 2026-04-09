@@ -67,8 +67,8 @@ function Viewer(): React.ReactElement | null {
   }
 
   // Expose for external use (e.g. from terminal file detection)
-  ;(window as Record<string, unknown>).__canvasOpenFile = openFile
-  ;(window as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
+  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = openFile
+  ;(window as unknown as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
 
   const workDir = session?.workDir || null
 
