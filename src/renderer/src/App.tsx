@@ -21,7 +21,8 @@ function App(): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
 
-  const hasSession = selectedSessionId !== null
+  const [showTerminal, setShowTerminal] = useState(false)
+  const hasSession = selectedSessionId !== null || showTerminal
 
   return (
     <div id="app" style={{
@@ -111,6 +112,7 @@ function App(): React.ReactElement {
               </div>
               <button
                 data-testid="welcome-btn"
+                onClick={() => setShowTerminal(true)}
                 style={{
                   marginTop: '24px',
                   padding: '9px 18px',
