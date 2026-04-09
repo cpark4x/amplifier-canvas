@@ -50,41 +50,45 @@ export function scanProjects(amplifierHome?: string): ScanResult {
 
       if (!existsSync(eventsPath)) continue
 
-      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
-      const status = deriveSessionStatus(events)
-      const recentFiles = extractFileActivity(events)
-      const sessionPath = join(sessionsDir, sessionId)
-      const workDir = extractWorkDir(events, sessionPath)
+      try {
+        const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
+        const status = deriveSessionStatus(events)
+        const recentFiles = extractFileActivity(events)
+        const sessionPath = join(sessionsDir, sessionId)
+        const workDir = extractWorkDir(events, sessionPath)
 
-      // Extract startedAt from first event, or fall back to file mtime
-      let startedAt: string
-      const startEvent = events.find((e) => e.type === 'session:start')
-      if (startEvent) {
-        startedAt = startEvent.timestamp
-      } else {
-        startedAt = statSync(eventsPath).mtime.toISOString()
+        // Extract startedAt from first event, or fall back to file mtime
+        let startedAt: string
+        const startEvent = events.find((e) => e.type === 'session:start')
+        if (startEvent) {
+          startedAt = startEvent.timestamp
+        } else {
+          startedAt = statSync(eventsPath).mtime.toISOString()
+        }
+
+        upsertSession({
+          id: sessionId,
+          projectSlug,
+          startedBy: 'external',
+          startedAt,
+          status,
+          byteOffset: newByteOffset,
+        })
+
+        allSessions.push({
+          id: sessionId,
+          projectSlug,
+          projectName,
+          status,
+          startedAt,
+          startedBy: 'external',
+          byteOffset: newByteOffset,
+          recentFiles,
+          workDir,
+        })
+      } catch (err) {
+        console.warn(`[scanner] Skipping session ${sessionId}: ${err instanceof Error ? err.message : String(err)}`)
       }
-
-      upsertSession({
-        id: sessionId,
-        projectSlug,
-        startedBy: 'external',
-        startedAt,
-        status,
-        byteOffset: newByteOffset,
-      })
-
-      allSessions.push({
-        id: sessionId,
-        projectSlug,
-        projectName,
-        status,
-        startedAt,
-        startedBy: 'external',
-        byteOffset: newByteOffset,
-        recentFiles,
-        workDir,
-      })
     }
   }
 

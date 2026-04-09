@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'fs'
+import { readFileSync, statSync, openSync, readSync, closeSync } from 'fs'
 import path from 'path'
 import type { FileActivity, SessionStatus } from '../shared/types'
 
@@ -13,6 +13,10 @@ export interface TailReadResult {
   newByteOffset: number
 }
 
+// Max bytes to read from the tail of an events.jsonl file.
+// 256KB is enough for status derivation and recent file activity.
+const MAX_TAIL_BYTES = 256 * 1024
+
 export function tailReadEvents(filePath: string, fromByte: number): TailReadResult {
   let fileSize: number
   try {
@@ -25,27 +29,34 @@ export function tailReadEvents(filePath: string, fromByte: number): TailReadResu
     return { events: [], newByteOffset: fromByte }
   }
 
-  const buffer = Buffer.alloc(fileSize - fromByte)
-  const fd = require('fs').openSync(filePath, 'r')
+  // Cap the read to MAX_TAIL_BYTES from the end of the file.
+  // For initial scans (fromByte=0) on large files, we only need the tail.
+  const bytesToRead = Math.min(fileSize - fromByte, MAX_TAIL_BYTES)
+  const readStart = fileSize - bytesToRead
+
+  const buffer = Buffer.alloc(bytesToRead)
+  const fd = openSync(filePath, 'r')
   try {
-    require('fs').readSync(fd, buffer, 0, buffer.length, fromByte)
+    readSync(fd, buffer, 0, bytesToRead, readStart)
   } finally {
-    require('fs').closeSync(fd)
+    closeSync(fd)
   }
 
   const text = buffer.toString('utf-8')
   const lines = text.split('\n').filter((line) => line.trim().length > 0)
   const events: ParsedEvent[] = []
 
-  for (const line of lines) {
+  // If we read from mid-file, the first line is likely partial — skip it
+  const startIndex = readStart > fromByte ? 1 : 0
+
+  for (let i = startIndex; i < lines.length; i++) {
     try {
-      const parsed = JSON.parse(line) as ParsedEvent
+      const parsed = JSON.parse(lines[i]) as ParsedEvent
       if (parsed.type && parsed.timestamp) {
         events.push(parsed)
       }
     } catch {
-      // Skip malformed JSON lines — log and continue
-      console.warn(`[events-parser] Skipping malformed line in ${filePath}: ${line.substring(0, 80)}`)
+      // Skip malformed JSON lines (common for partial first line)
     }
   }
 
