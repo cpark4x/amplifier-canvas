@@ -821,6 +821,13 @@ test('I2: terminal persists when Viewer opens and closes', async ({ appWindow })
 test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
+  // Reset: close viewer if open (ensures viewer starts fresh)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
   // Open a session
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
@@ -840,7 +847,6 @@ test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
-  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
   await expect(viewer).toBeVisible({ timeout: 3000 })
 
   const box = await viewer.boundingBox()
