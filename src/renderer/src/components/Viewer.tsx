@@ -10,7 +10,7 @@ interface OpenFile {
   name: string
 }
 
-function Viewer(): React.ReactElement | null {
+function Viewer(): React.ReactElement {
   const viewerOpen = useCanvasStore((s) => s.viewerOpen)
   const closeViewer = useCanvasStore((s) => s.closeViewer)
   const getSelectedSession = useCanvasStore((s) => s.getSelectedSession)
@@ -31,8 +31,6 @@ function Viewer(): React.ReactElement | null {
       setAppUrl(null)
     }
   }, [viewerOpen])
-
-  if (!viewerOpen) return null
 
   const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS', 'CHANGES']
   const activeFile = openFiles[activeFileIdx] || null
@@ -76,14 +74,15 @@ function Viewer(): React.ReactElement | null {
     <div
       data-testid="viewer-panel"
       style={{
-        width: 340,
+        width: viewerOpen ? 340 : 0,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'var(--bg-right)',
-        borderLeft: '1px solid var(--border)',
+        borderLeft: viewerOpen ? '1px solid var(--border)' : 'none',
         overflow: 'hidden',
         flexShrink: 0,
+        transition: 'width 0.2s ease',
       }}
     >
       {/* Primary tab row */}

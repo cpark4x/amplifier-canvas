@@ -142,6 +142,74 @@ test('V1: close button dismisses the Viewer panel', async ({ appWindow }) => {
   await expect(viewer).not.toBeVisible({ timeout: 3000 })
 })
 
+// --- W1: Width Animation (progressive disclosure) ---
+
+test('W1: after closing, viewer panel is still in the DOM with width 0', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse and open a session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  await expect(viewer).toBeVisible({ timeout: 3000 })
+
+  // Close the viewer
+  const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
+  await expect(closeBtn).toBeVisible({ timeout: 3000 })
+  await closeBtn.click()
+
+  // Viewer should NOT be visually visible (width collapsed to 0)
+  await expect(viewer).not.toBeVisible({ timeout: 3000 })
+
+  // BUT it must still be in the DOM (not unmounted)
+  const viewerCount = await viewer.count()
+  expect(viewerCount).toBe(1)
+
+  // AND its rendered width must be 0 (not 340)
+  const viewerWidth = await viewer.evaluate((el) => el.getBoundingClientRect().width)
+  expect(viewerWidth).toBe(0)
+})
+
+test('W1: viewer panel has CSS transition on width property', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Expand Team Pulse and open a session
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
+      break
+    }
+  }
+
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  await expect(viewer).toBeVisible({ timeout: 3000 })
+
+  // The viewer root div must have a CSS transition on the width property
+  const transition = await viewer.evaluate((el) => getComputedStyle(el).transition)
+  expect(transition).toContain('width')
+})
+
 // --- V2: FileBrowser ---
 
 test('V2: session with workDir shows file browser', async ({ appWindow }) => {
