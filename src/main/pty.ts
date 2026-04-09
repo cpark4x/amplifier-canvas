@@ -66,7 +66,12 @@ export function writeToPty(sessionIdOrData: string, maybeData?: string): void {
 
   const ptyProcess = ptyProcesses.get(sessionId)
   if (ptyProcess) {
-    ptyProcess.write(data)
+    try {
+      ptyProcess.write(data)
+    } catch {
+      // EIO = shell exited or pipe broke — remove dead process
+      ptyProcesses.delete(sessionId)
+    }
   }
 }
 
