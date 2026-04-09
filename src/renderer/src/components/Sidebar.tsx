@@ -14,13 +14,39 @@ interface Project {
   sessions: SessionState[]
 }
 
+// ---- Helpers ----------------------------------------------------------------
+
+const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input'])
+
 const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',
   active: '#F59E0B',
   needs_input: '#F59E0B',
-  done: '#4CAF74',
+  done: '#3ECF8E', // Emerald
   failed: '#EF4444',
 }
+
+/**
+ * Returns a human-readable relative time string for a given ISO timestamp.
+ * < 1 minute  → "just now"
+ * < 60 minutes → "Xm ago"
+ * < 24 hours   → "Xh ago"
+ * < 7 days     → "Xd ago"
+ * else         → "Mon D"  (e.g. "Apr 7")
+ */
+function relativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime()
+  const minutes = Math.floor(diff / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// ---- Component --------------------------------------------------------------
 
 function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
@@ -167,123 +193,326 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
             )}
 
             {/* Project + session list — storyboard Screens 3+ */}
-            {projects.map((project) => (
-              <div key={project.slug}>
-                {/* Project label */}
-                <div
-                  data-testid="project-item"
-                  data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
-                  onClick={() => selectProject(project.slug)}
-                  style={{
-                    padding: '12px 12px 4px',
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-very-muted)',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                  }}
-                >
-                  <span data-testid="project-name">{project.name}</span>
-                </div>
+            {projects.map((project) => {
+              const activeSessions = project.sessions.filter((s) => ACTIVE_STATUSES.has(s.status))
+              const historySessions = project.sessions
+                .filter((s) => s.status === 'done' || s.status === 'failed')
+                .sort((a, b) => {
+                  if (!a.endedAt && !b.endedAt) return 0
+                  if (!a.endedAt) return 1
+                  if (!b.endedAt) return -1
+                  return new Date(b.endedAt).getTime() - new Date(a.endedAt).getTime()
+                })
 
-                {/* Session rows — always visible (session-first design per storyboard) */}
-                <div>
-                  {project.sessions.map((session) => (
-                    <div
-                      key={session.id}
-                      data-testid="session-item"
-                      data-project-slug={session.projectSlug}
-                      data-selected={selectedSessionId === session.id ? 'true' : 'false'}
-                      onClick={() => { selectSession(session.id); openViewer() }}
-                      style={{
-                        height: 36,
-                        padding: '0 12px 0 14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        position: 'relative',
-                        backgroundColor:
-                          selectedSessionId === session.id
-                            ? 'var(--bg-sidebar-active)'
-                            : 'transparent',
-                        borderLeft:
-                          selectedSessionId === session.id
-                            ? '2px solid var(--amber)'
-                            : '2px solid transparent',
-                        transition: 'background 0.12s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (selectedSessionId !== session.id) {
-                          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        ;(e.currentTarget as HTMLDivElement).style.backgroundColor =
-                          selectedSessionId === session.id ? '#E8E0D4' : 'transparent'
-                      }}
-                    >
-                      {/* Status dot */}
-                      <span
-                        data-testid="status-dot"
-                        data-status={session.status}
-                        style={{
-                          width: 6,
-                          height: 6,
-                          minWidth: 6,
-                          borderRadius: '50%',
-                          backgroundColor: STATUS_COLORS[session.status] || 'var(--text-very-muted)',
-                          display: 'inline-block',
-                          flexShrink: 0,
+              // Find a workDir from any session in this project
+              const workDir = project.sessions.find((s) => s.workDir)?.workDir
+
+              const handleNewSession = (): void => {
+                if (!workDir) return
+                // Navigate the terminal to the project workDir so the user can start a session
+                window.electronAPI.sendTerminalInput(`cd ${workDir}\n`)
+                openViewer()
+              }
+
+              return (
+                <div key={project.slug}>
+                  {/* Project label */}
+                  <div
+                    data-testid="project-item"
+                    data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
+                    onClick={() => selectProject(project.slug)}
+                    style={{
+                      padding: '12px 12px 4px',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-very-muted)',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <span data-testid="project-name">{project.name}</span>
+                  </div>
+
+                  {/* Active session rows */}
+                  <div>
+                    {activeSessions.map((session) => (
+                      <SessionRow
+                        key={session.id}
+                        session={session}
+                        isSelected={selectedSessionId === session.id}
+                        onSelect={() => {
+                          selectSession(session.id)
+                          openViewer()
                         }}
                       />
+                    ))}
+                  </div>
 
-                      {/* Session name */}
-                      <span
-                        data-testid="session-name"
+                  {/* + New session slot */}
+                  <div
+                    data-testid="new-session-slot"
+                    onClick={workDir ? handleNewSession : undefined}
+                    style={{
+                      height: 30,
+                      padding: '0 12px 0 22px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: workDir ? 'pointer' : 'default',
+                      opacity: workDir ? 0.7 : 0.35,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (workDir) {
+                        ;(e.currentTarget as HTMLDivElement).style.opacity = '1'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      ;(e.currentTarget as HTMLDivElement).style.opacity = workDir ? '0.7' : '0.35'
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--text-very-muted)',
+                        lineHeight: 1,
+                      }}
+                    >
+                      +
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--text-very-muted)',
+                      }}
+                    >
+                      New session
+                    </span>
+                  </div>
+
+                  {/* History section */}
+                  {historySessions.length > 0 && (
+                    <>
+                      {/* HISTORY divider */}
+                      <div
+                        data-testid="history-divider"
                         style={{
-                          fontSize: '12px',
-                          fontWeight:
-                            session.status === 'running' || session.status === 'active' ? 600 : 400,
-                          color: 'var(--text-primary)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          flex: 1,
+                          padding: '6px 12px 2px 14px',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          color: '#A0977D',
+                          letterSpacing: '0.08em',
+                          fontWeight: 600,
+                          userSelect: 'none',
                         }}
                       >
-                        {session.id}
-                      </span>
+                        HISTORY
+                      </div>
 
-                      {/* Session age */}
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          flexShrink: 0,
-                          color:
-                            session.status === 'running' || session.status === 'active'
-                              ? 'var(--amber)'
-                              : session.status === 'done'
-                                ? 'var(--green)'
-                                : 'var(--text-very-muted)',
-                        }}
-                      >
-                        {session.status === 'running' || session.status === 'active'
-                          ? 'running'
-                          : session.status === 'done'
-                            ? 'done'
-                            : ''}
-                      </span>
-                    </div>
-                  ))}
+                      {/* History session rows */}
+                      {historySessions.map((session) => (
+                        <HistorySessionRow
+                          key={session.id}
+                          session={session}
+                          isSelected={selectedSessionId === session.id}
+                          onSelect={() => {
+                            selectSession(session.id)
+                            openViewer()
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ---- Sub-components ---------------------------------------------------------
+
+interface SessionRowProps {
+  session: SessionState
+  isSelected: boolean
+  onSelect: () => void
+}
+
+/** Active session row (running / active / needs_input) */
+function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
+  return (
+    <div
+      data-testid="session-item"
+      data-project-slug={session.projectSlug}
+      data-selected={isSelected ? 'true' : 'false'}
+      onClick={onSelect}
+      style={{
+        height: 36,
+        padding: '0 12px 0 14px',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        position: 'relative',
+        backgroundColor: isSelected ? 'var(--bg-sidebar-active)' : 'transparent',
+        borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid transparent',
+        transition: 'background 0.12s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!isSelected) {
+          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? '#E8E0D4' : 'transparent'
+      }}
+    >
+      {/* Status dot */}
+      <span
+        data-testid="status-dot"
+        data-status={session.status}
+        style={{
+          width: 6,
+          height: 6,
+          minWidth: 6,
+          borderRadius: '50%',
+          backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
+          display: 'inline-block',
+          flexShrink: 0,
+        }}
+      />
+
+      {/* Session name */}
+      <span
+        data-testid="session-name"
+        style={{
+          fontSize: '12px',
+          fontWeight: session.status === 'running' || session.status === 'active' ? 600 : 400,
+          color: 'var(--text-primary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          flex: 1,
+        }}
+      >
+        {session.title ?? session.id}
+      </span>
+
+      {/* Status label */}
+      <span
+        style={{
+          fontSize: '11px',
+          flexShrink: 0,
+          color:
+            session.status === 'running' || session.status === 'active'
+              ? 'var(--amber)'
+              : session.status === 'done'
+                ? 'var(--green)'
+                : 'var(--text-very-muted)',
+        }}
+      >
+        {session.status === 'running' || session.status === 'active'
+          ? 'running'
+          : session.status === 'done'
+            ? 'done'
+            : ''}
+      </span>
+    </div>
+  )
+}
+
+/** History session row (done / failed) — shows title, relative time, and stats */
+function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
+  return (
+    <div
+      data-testid="session-item"
+      data-project-slug={session.projectSlug}
+      data-selected={isSelected ? 'true' : 'false'}
+      onClick={onSelect}
+      style={{
+        padding: '4px 12px 4px 14px',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '8px',
+        position: 'relative',
+        backgroundColor: isSelected ? 'var(--bg-sidebar-active)' : 'transparent',
+        borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid transparent',
+        transition: 'background 0.12s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!isSelected) {
+          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? '#E8E0D4' : 'transparent'
+      }}
+    >
+      {/* Status dot — vertically centered with title line */}
+      <span
+        data-testid="status-dot"
+        data-status={session.status}
+        style={{
+          width: 6,
+          height: 6,
+          minWidth: 6,
+          borderRadius: '50%',
+          backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
+          display: 'inline-block',
+          flexShrink: 0,
+          marginTop: 5,
+        }}
+      />
+
+      {/* Content: title + time, then stats */}
+      <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+        {/* Title + relative time */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
+          <span
+            data-testid="history-session-name"
+            style={{
+              fontSize: '12px',
+              fontWeight: 400,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}
+          >
+            {session.title ?? session.id}
+          </span>
+          {session.endedAt && (
+            <span
+              style={{
+                fontSize: '10px',
+                color: '#A0977D',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {relativeTime(session.endedAt)}
+            </span>
+          )}
+        </div>
+
+        {/* Stats line */}
+        <span
+          data-testid="session-stats"
+          style={{
+            fontSize: '10px',
+            color: '#A0977D',
+            display: 'block',
+          }}
+        >
+          {session.promptCount ?? 0} prompts · {session.filesChangedCount ?? 0} files
+        </span>
+      </div>
     </div>
   )
 }
