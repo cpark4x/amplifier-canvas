@@ -11,11 +11,23 @@ interface OpenFile {
   openedBy: 'amplifier' | 'user'
 }
 
+const OPERATION_BADGE_COLORS: Record<string, { bg: string; fg: string }> = {
+  read: { bg: '#2D5A3D', fg: '#7FBA9A' },
+  write: { bg: '#4A3520', fg: '#C4784A' },
+  edit: { bg: '#2A3F5A', fg: '#5A9AC4' },
+  create: { bg: '#3A4A1A', fg: '#8ABF3A' },
+  delete: { bg: '#5A1A1A', fg: '#C44A4A' },
+}
+
 function Viewer(): React.ReactElement {
   const viewerOpen = useCanvasStore((s) => s.viewerOpen)
   const closeViewer = useCanvasStore((s) => s.closeViewer)
-  const getSelectedSession = useCanvasStore((s) => s.getSelectedSession)
-  const session = getSelectedSession()
+  const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
+  const session = useCanvasStore((s) => {
+    const { sessions, selectedSessionId: sid } = s
+    if (!sid) return null
+    return sessions.find((sess) => sess.id === sid) || null
+  })
 
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('FILES')
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
@@ -32,6 +44,13 @@ function Viewer(): React.ReactElement {
       setAppUrl(null)
     }
   }, [viewerOpen])
+
+  // Reset open files when session changes (different session = fresh file view)
+  useEffect(() => {
+    setOpenFiles([])
+    setActiveFileIdx(0)
+    setShowBrowser(false)
+  }, [selectedSessionId])
 
   const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS', 'CHANGES']
   const activeFile = openFiles[activeFileIdx] || null
@@ -70,6 +89,11 @@ function Viewer(): React.ReactElement {
   ;(window as unknown as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
 
   const workDir = session?.workDir || null
+
+  function resolveFilePath(filePath: string): string {
+    if (filePath.startsWith('/') || !workDir) return filePath
+    return `${workDir}/${filePath}`
+  }
 
   return (
     <div
@@ -189,31 +213,95 @@ function Viewer(): React.ReactElement {
                 rootPath={workDir}
                 onSelectFile={(filePath) => openFile(filePath, 'user')}
               />
-            ) : activeFile ? (
-              <>
-                <div
-                  data-testid="provenance-label"
-                  style={{
-                    fontSize: '10px',
-                    color: 'var(--text-very-muted)',
-                    marginBottom: '8px',
-                  }}
-                >
-                  {activeFile.openedBy === 'amplifier' ? 'Opened by Amplifier' : 'Opened by you'}
-                </div>
-                <FileRenderer filePath={activeFile.path} />
-              </>
             ) : (
-              <div
-                style={{
-                  color: 'var(--text-very-muted)',
-                  fontSize: '11px',
-                  textAlign: 'center',
-                  marginTop: 60,
-                }}
-              >
-                Click {'\u25A6'} to browse files
-              </div>
+              <>
+                {/* Recent files — always visible when session has activity */}
+                {session && session.recentFiles && session.recentFiles.length > 0 && (
+                  <div data-testid="recent-files" style={{ marginBottom: 16 }}>
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        color: 'var(--text-very-muted)',
+                        marginBottom: 4,
+                      }}
+                    >
+                      Recent Files
+                    </div>
+                    {session.recentFiles.map((file, idx) => {
+                      const fileName = file.path.split('/').pop() || file.path
+                      const badgeColors = OPERATION_BADGE_COLORS[file.operation] ?? { bg: '#3A3530', fg: '#C8C4BC' }
+                      return (
+                        <div
+                          key={idx}
+                          data-testid="recent-file-item"
+                          onClick={() => openFile(resolveFilePath(file.path), 'amplifier')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            height: 28,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            borderRadius: 3,
+                            padding: '0 4px',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          <span style={{ color: 'var(--text-very-muted)', fontSize: '12px', flexShrink: 0 }}>
+                            {'\u2261'}
+                          </span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {fileName}
+                          </span>
+                          <span
+                            data-testid="operation-badge"
+                            style={{
+                              fontSize: '10px',
+                              padding: '1px 5px',
+                              borderRadius: 3,
+                              backgroundColor: badgeColors.bg,
+                              color: badgeColors.fg,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {file.operation}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* File content or browse hint */}
+                {activeFile ? (
+                  <>
+                    <div
+                      data-testid="provenance-label"
+                      style={{
+                        fontSize: '10px',
+                        color: 'var(--text-very-muted)',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      {activeFile.openedBy === 'amplifier' ? 'Opened by Amplifier' : 'Opened by you'}
+                    </div>
+                    <FileRenderer filePath={activeFile.path} />
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      color: 'var(--text-very-muted)',
+                      fontSize: '11px',
+                      textAlign: 'center',
+                      marginTop: session?.recentFiles?.length ? 8 : 60,
+                    }}
+                  >
+                    Click {'\u25A6'} to browse files
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

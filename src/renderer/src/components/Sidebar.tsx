@@ -254,7 +254,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                           flex: 1,
                         }}
                       >
-                        {session.id.slice(0, 8)}
+                        {session.id}
                       </span>
 
                       {/* Session age */}
