@@ -210,56 +210,58 @@ test('W1: viewer panel has CSS transition on width property', async ({ appWindow
   expect(transition).toContain('width')
 })
 
-// --- V2: FileBrowser ---
+// --- V2: FileBrowser (browse-button-gated flow) ---
+// NOTE: Uses [data-project-slug="team-pulse"] to target a session whose workDir
+// has src/ and assets/ subdirectories. Ridecast sessions only have README.md.
+// Each test closes the viewer first to reset showBrowser state (toggle safety).
 
-test('V2: session with workDir shows file browser', async ({ appWindow }) => {
+test('V2: session with workDir shows file browser after browse-btn click', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session (has workDir)
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
   }
 
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ and assets/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
-  // File browser should be visible
+  // File browser should NOT auto-appear — browse button must be clicked first
   const fileBrowser = appWindow.locator('[data-testid="file-browser"]')
+  await expect(fileBrowser).not.toBeVisible()
+
+  // Click the browse button to open the file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Now file browser should be visible
   await expect(fileBrowser).toBeVisible({ timeout: 5000 })
 })
 
 test('V2: file browser lists files from workDir', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
   }
 
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ and assets/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click the browse button to open the file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file entries to appear
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -275,24 +277,22 @@ test('V2: file browser lists files from workDir', async ({ appWindow }) => {
 test('V2: clicking a folder navigates into it', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
   }
 
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
+
+  // Click the browse button to open the file browser
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
 
   // Wait for file entries
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
@@ -321,7 +321,7 @@ test('V2: clicking a folder navigates into it', async ({ appWindow }) => {
 test('V2: back button navigates up one level', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
 
-  // Close any existing viewer to reset state (tests share window)
+  // Reset: close viewer if open (ensures showBrowser starts as false)
   const viewer = appWindow.locator('[data-testid="viewer-panel"]')
   if (await viewer.isVisible()) {
     const closeBtn = appWindow.locator('[data-testid="viewer-close"]')
@@ -329,26 +329,17 @@ test('V2: back button navigates up one level', async ({ appWindow }) => {
     await appWindow.waitForTimeout(300)
   }
 
-  // Expand Team Pulse and click first session
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-  for (let i = 0; i < count; i++) {
-    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
-    if (name === 'Team Pulse') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(300)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
+  // Click a Team Pulse session (has src/ in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
   await expect(session).toBeVisible({ timeout: 3000 })
   await session.click()
 
-  // Wait for file entries (should be at root since viewer was reset)
+  // Click the browse button to open the file browser (fresh state since viewer was reset)
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Wait for file entries at root
   const fileEntries = appWindow.locator('[data-testid="file-entry"]')
   await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
 
@@ -379,6 +370,75 @@ test('V2: back button navigates up one level', async ({ appWindow }) => {
   const allText = rootTexts.join(' ')
   expect(allText).toContain('README.md')
   expect(allText).toContain('src')
+})
+
+test('V2: browse button shows amber color when file browser is active', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+
+  // Before clicking: should NOT be amber (#F59E0B = rgb(245, 158, 11))
+  const colorBefore = await browseBtn.evaluate((el) => getComputedStyle(el).color)
+  expect(colorBefore).not.toBe('rgb(245, 158, 11)')
+
+  // Click to open file browser
+  await browseBtn.click()
+  await appWindow.locator('[data-testid="file-browser"]').waitFor({ state: 'visible', timeout: 5000 })
+
+  // After clicking: color should be amber
+  const colorAfter = await browseBtn.evaluate((el) => getComputedStyle(el).color)
+  expect(colorAfter).toBe('rgb(245, 158, 11)')
+})
+
+test('V2: selecting a file dismisses the file browser and opens the file', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open (ensures showBrowser starts as false)
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session (has README.md in workDir)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Open the file browser via browse button
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Wait for file entries to load
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+
+  // Click README.md to open it
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  // File browser should be dismissed (hidden)
+  const fileBrowser = appWindow.locator('[data-testid="file-browser"]')
+  await expect(fileBrowser).not.toBeVisible({ timeout: 3000 })
+
+  // File renderer should appear with the file content
+  const fileRenderer = appWindow.locator('[data-testid="file-renderer"]')
+  await expect(fileRenderer).toBeVisible({ timeout: 5000 })
 })
 
 // --- V3: FileRenderer + MarkdownRenderer ---

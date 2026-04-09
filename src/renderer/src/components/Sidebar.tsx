@@ -194,6 +194,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                     <div
                       key={session.id}
                       data-testid="session-item"
+                      data-project-slug={session.projectSlug}
                       data-selected={selectedSessionId === session.id ? 'true' : 'false'}
                       onClick={() => { selectSession(session.id); openViewer() }}
                       style={{
