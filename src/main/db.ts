@@ -199,3 +199,8 @@ export function getAllSessions(): SessionRow[] {
   const d = getDatabase()
   return d.prepare('SELECT * FROM sessions ORDER BY startedAt DESC').all() as SessionRow[]
 }
+
+export function getSessionById(id: string): SessionRow | null {
+  const d = getDatabase()
+  return (d.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as SessionRow | undefined) ?? null
+}

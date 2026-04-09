@@ -471,7 +471,7 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
 
       {/* Content: title + time, then stats */}
       <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-        {/* Title + relative time */}
+        {/* Title + relative time + resume button */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
           <span
             data-testid="history-session-name"
@@ -499,6 +499,25 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
               {relativeTime(session.endedAt)}
             </span>
           )}
+          <button
+            data-testid="resume-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              window.electronAPI.resumeSession(session.id)
+            }}
+            style={{
+              fontSize: '10px',
+              color: 'var(--text-very-muted)',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Resume →
+          </button>
         </div>
 
         {/* Stats line */}
