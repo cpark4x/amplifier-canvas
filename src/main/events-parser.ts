@@ -131,6 +131,13 @@ export function extractFileActivity(events: ParsedEvent[]): FileActivity[] {
   return activities
 }
 
+export function extractFirstPrompt(events: ParsedEvent[]): string | undefined {
+  const firstUserMessage = events.find((e) => e.type === 'user_message')
+  if (!firstUserMessage) return undefined
+  const text = firstUserMessage.data.text
+  return typeof text === 'string' ? text : undefined
+}
+
 export function extractWorkDir(events: ParsedEvent[], sessionDir?: string): string | undefined {
   const startEvent = events.find((e) => e.type === 'session:start')
   if (!startEvent) return undefined
