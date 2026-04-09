@@ -1023,6 +1023,69 @@ test('V4: file entries use text icons instead of emoji', async ({ appWindow }) =
   expect(fileText).not.toContain('\uD83D\uDCC4')
 })
 
+// --- P1: Provenance Tracking ("Opened by Amplifier" / "Opened by you") ---
+
+test('P1: clicking a file in the file browser shows "Opened by you" provenance label', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session (has workDir with files)
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Open file browser via browse button
+  const browseBtn = appWindow.locator('[data-testid="browse-btn"]')
+  await expect(browseBtn).toBeVisible({ timeout: 3000 })
+  await browseBtn.click()
+
+  // Wait for file entries and click README.md
+  const fileEntries = appWindow.locator('[data-testid="file-entry"]')
+  await expect(fileEntries.first()).toBeVisible({ timeout: 5000 })
+  const readmeEntry = appWindow.locator('[data-testid="file-entry"]', { hasText: 'README.md' })
+  await expect(readmeEntry).toBeVisible({ timeout: 3000 })
+  await readmeEntry.click()
+
+  // Provenance label should show "Opened by you"
+  const provenanceLabel = appWindow.locator('[data-testid="provenance-label"]')
+  await expect(provenanceLabel).toBeVisible({ timeout: 5000 })
+  await expect(provenanceLabel).toHaveText('Opened by you')
+})
+
+test('P1: calling window.__canvasOpenFile shows "Opened by Amplifier" provenance label', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+
+  // Reset: close viewer if open
+  const viewer = appWindow.locator('[data-testid="viewer-panel"]')
+  if (await viewer.isVisible()) {
+    await appWindow.locator('[data-testid="viewer-close"]').click()
+    await appWindow.waitForTimeout(300)
+  }
+
+  // Click a Team Pulse session so the viewer is open and active
+  const session = appWindow.locator('[data-testid="session-item"][data-project-slug="team-pulse"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+  await expect(appWindow.locator('[data-testid="viewer-panel"]')).toBeVisible({ timeout: 3000 })
+
+  // Simulate Amplifier opening a file via the external API
+  await appWindow.evaluate(() => {
+    const openFile = (window as Record<string, unknown>).__canvasOpenFile as (path: string) => void
+    openFile('/tmp/amplifier-provenance-test.md')
+  })
+
+  // Provenance label should show "Opened by Amplifier"
+  const provenanceLabel = appWindow.locator('[data-testid="provenance-label"]')
+  await expect(provenanceLabel).toBeVisible({ timeout: 5000 })
+  await expect(provenanceLabel).toHaveText('Opened by Amplifier')
+})
+
 // --- V6: MarkdownRenderer + ImageRenderer Design System ---
 
 test('V6a: markdown renderer wrapper uses design-system text color (--text-primary)', async ({ appWindow }) => {

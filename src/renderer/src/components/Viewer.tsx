@@ -8,6 +8,7 @@ type PrimaryTab = 'FILES' | 'APP' | 'ANALYSIS' | 'CHANGES'
 interface OpenFile {
   path: string
   name: string
+  openedBy: 'amplifier' | 'user'
 }
 
 function Viewer(): React.ReactElement {
@@ -35,13 +36,13 @@ function Viewer(): React.ReactElement {
   const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS', 'CHANGES']
   const activeFile = openFiles[activeFileIdx] || null
 
-  function openFile(path: string): void {
+  function openFile(path: string, openedBy: 'amplifier' | 'user'): void {
     const name = path.split('/').pop() || path
     const existingIdx = openFiles.findIndex((f) => f.path === path)
     if (existingIdx >= 0) {
       setActiveFileIdx(existingIdx)
     } else {
-      const newFiles = [...openFiles, { path, name }]
+      const newFiles = [...openFiles, { path, name, openedBy }]
       setOpenFiles(newFiles)
       setActiveFileIdx(newFiles.length - 1)
     }
@@ -65,7 +66,7 @@ function Viewer(): React.ReactElement {
   }
 
   // Expose for external use (e.g. from terminal file detection)
-  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = openFile
+  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = (path: string) => openFile(path, 'amplifier')
   ;(window as unknown as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
 
   const workDir = session?.workDir || null
@@ -186,10 +187,22 @@ function Viewer(): React.ReactElement {
             {showBrowser && workDir ? (
               <FileBrowser
                 rootPath={workDir}
-                onSelectFile={(filePath) => openFile(filePath)}
+                onSelectFile={(filePath) => openFile(filePath, 'user')}
               />
             ) : activeFile ? (
-              <FileRenderer filePath={activeFile.path} />
+              <>
+                <div
+                  data-testid="provenance-label"
+                  style={{
+                    fontSize: '10px',
+                    color: 'var(--text-very-muted)',
+                    marginBottom: '8px',
+                  }}
+                >
+                  {activeFile.openedBy === 'amplifier' ? 'Opened by Amplifier' : 'Opened by you'}
+                </div>
+                <FileRenderer filePath={activeFile.path} />
+              </>
             ) : (
               <div
                 style={{
