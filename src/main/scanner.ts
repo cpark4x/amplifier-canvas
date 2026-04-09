@@ -1,12 +1,14 @@
 import { readdirSync, existsSync, statSync } from 'fs'
-import { join, basename } from 'path'
+import { join } from 'path'
 import os from 'os'
 import { upsertProject, upsertSession } from './db'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
-import type { SessionState, FileActivity } from '../shared/types'
+import type { SessionState } from '../shared/types'
 
-// Only deep-scan this many sessions per project.
-// The rest are listed as directory entries but not parsed.
+// Only show projects with activity in the last N days
+const RECENCY_DAYS = 14
+
+// Only deep-scan this many sessions per project (from tail of directory listing)
 const MAX_SESSIONS_PER_PROJECT = 20
 
 export function getAmplifierHome(): string {
@@ -30,8 +32,9 @@ export function scanProjects(amplifierHome?: string): ScanResult {
 
   const allSessions: SessionState[] = []
   let projectCount = 0
+  const cutoff = Date.now() - RECENCY_DAYS * 24 * 60 * 60 * 1000
 
-  // Sort projects by mtime (only 96 dirs — fast to stat)
+  // Stat the ~96 project dirs — cheap. Filter to recently modified only.
   const projectDirs = readdirSync(projectsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
@@ -44,6 +47,7 @@ export function scanProjects(amplifierHome?: string): ScanResult {
       }
       return { name: entry.name, mtime }
     })
+    .filter((entry) => entry.mtime > cutoff)
     .sort((a, b) => b.mtime - a.mtime)
 
   for (const projectDir of projectDirs) {
@@ -57,9 +61,8 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     const sessionsDir = join(projectPath, 'sessions')
     if (!existsSync(sessionsDir)) continue
 
-    // Just list directory names — do NOT stat each one (that's 13K+ stat calls for big projects).
-    // Take the last N entries (directory names are often chronologically ordered).
-    // Reverse so most recent are first.
+    // List directory names — take the last N (roughly chronological).
+    // Do NOT stat individual sessions (13K+ stat calls kills startup).
     const allSessionNames = readdirSync(sessionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
@@ -78,7 +81,6 @@ export function scanProjects(amplifierHome?: string): ScanResult {
         const sessionPath = join(sessionsDir, sessionId)
         const workDir = extractWorkDir(events, sessionPath)
 
-        // Extract startedAt from first event, or fall back to file mtime
         let startedAt: string
         const startEvent = events.find((e) => e.type === 'session:start')
         if (startEvent) {
