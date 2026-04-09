@@ -1,11 +1,16 @@
 import { create } from 'zustand'
-import type { SessionState, FileActivity } from '../../shared/types'
+import type { SessionState, FileActivity, Toast } from '../../shared/types'
 
 interface Project {
   slug: string
   name: string
   sessions: SessionState[]
 }
+
+const ACTIVE_STATUSES = new Set(['running', 'active', 'needs_input'])
+const COMPLETED_STATUSES = new Set(['done', 'failed'])
+
+let toastCounter = 0
 
 interface CanvasStore {
   // State
@@ -14,6 +19,7 @@ interface CanvasStore {
   selectedProjectSlug: string | null
   createdProjects: Project[] // Projects created via modal (before any session exists)
   viewerOpen: boolean
+  toasts: Toast[]
 
   // Actions
   setSessions: (sessions: SessionState[]) => void
@@ -23,6 +29,8 @@ interface CanvasStore {
   createProject: (name: string) => void
   openViewer: () => void
   closeViewer: () => void
+  addToast: (toast: Omit<Toast, 'id'>) => void
+  dismissToast: (id: string) => void
 
   // Derived
   getProjects: () => Project[]
@@ -37,9 +45,35 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedProjectSlug: null,
   createdProjects: [],
   viewerOpen: false,
+  toasts: [],
 
   // Actions
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (incoming) => {
+    const current = get().sessions
+    const selectedId = get().selectedSessionId
+
+    for (const newSession of incoming) {
+      if (newSession.id === selectedId) continue
+      const oldSession = current.find((s) => s.id === newSession.id)
+      if (!oldSession) continue
+      const wasActive = ACTIVE_STATUSES.has(oldSession.status)
+      const isCompleted = COMPLETED_STATUSES.has(newSession.status)
+      if (wasActive && isCompleted) {
+        get().addToast({
+          sessionId: newSession.id,
+          message: `${newSession.title || newSession.id} completed`,
+          action: {
+            label: 'Review',
+            onClick: () => {
+              get().selectSession(newSession.id)
+              get().openViewer()
+            },
+          },
+        })
+      }
+    }
+    set({ sessions: incoming })
+  },
 
   selectSession: (id) => set({ selectedSessionId: id }),
 
@@ -65,6 +99,18 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   openViewer: () => set({ viewerOpen: true }),
   closeViewer: () => set({ viewerOpen: false }),
+
+  addToast: (toast) => {
+    const id = `toast-${++toastCounter}`
+    set((state) => ({
+      toasts: [...state.toasts, { ...toast, id }],
+    }))
+  },
+
+  dismissToast: (id) =>
+    set((state) => ({
+      toasts: state.toasts.filter((t) => t.id !== id),
+    })),
 
   // Derived
   getProjects: () => {

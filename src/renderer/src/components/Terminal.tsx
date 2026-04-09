@@ -3,7 +3,12 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 
+// Padding applied around the terminal (matches spec, slightly tightened for real content)
+const PAD_V = 12 // top + bottom per side (px)
+const PAD_H = 16 // left + right per side (px)
+
 function TerminalComponent(): React.ReactElement {
+  const outerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -30,14 +35,27 @@ function TerminalComponent(): React.ReactElement {
     xterm.loadAddon(fitAddon)
 
     xterm.open(terminalRef.current)
+
+    // FitAddon measures terminalRef (the inner div), which already accounts for
+    // padding because the inner div fills the outer container's content area.
     fitAddon.fit()
 
     xtermRef.current = xterm
+    fitAddonRef.current = fitAddon
 
     const handleResize = (): void => {
       fitAddon.fit()
     }
     window.addEventListener('resize', handleResize)
+
+    // ResizeObserver watches the inner div (not the padded outer), so fit() is
+    // always called with accurate dimensions.
+    const ro = new ResizeObserver(() => {
+      fitAddon.fit()
+    })
+    if (terminalRef.current) {
+      ro.observe(terminalRef.current)
+    }
 
     // Wire up IPC if available (connected to PTY in T3)
     if (window.electronAPI) {
@@ -65,27 +83,44 @@ function TerminalComponent(): React.ReactElement {
         cleanupData()
         cleanupExit()
         window.removeEventListener('resize', handleResize)
+        ro.disconnect()
         xterm.dispose()
         xtermRef.current = null
+        fitAddonRef.current = null
       }
     }
 
     return () => {
       window.removeEventListener('resize', handleResize)
+      ro.disconnect()
       xterm.dispose()
       xtermRef.current = null
+      fitAddonRef.current = null
     }
   }, [])
 
   return (
     <div
-      ref={terminalRef}
+      ref={outerRef}
+      data-testid="terminal-wrapper"
       style={{
+        padding: `${PAD_V}px ${PAD_H}px`,
         width: '100%',
         height: '100%',
+        backgroundColor: '#0F0E0C',
+        boxSizing: 'border-box',
         overflow: 'hidden',
       }}
-    />
+    >
+      <div
+        ref={terminalRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      />
+    </div>
   )
 }
 

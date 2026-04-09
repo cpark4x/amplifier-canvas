@@ -351,7 +351,7 @@ body {
 .terminal-area {
   flex: 1;
   background: var(--bg-terminal);
-  padding: 16px 18px;
+  padding: 20px 24px;
   font-family: var(--font-mono);
   font-size: 11.5px;
   line-height: 1.65;
@@ -1138,6 +1138,44 @@ body {
 /* Open items */
 .open-item { display: flex; gap: 6px; padding: 4px 0; font: 11px/1.4 var(--font-ui); color: var(--text-primary); border-bottom: 1px solid var(--border); }
 .open-item-arrow { color: var(--amber); flex-shrink:0; }
+
+/* Summary tab — Option D: compact stats + expandable details */
+.summary-hero { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.summary-tldr { font: 13px/1.6 var(--font-ui); color: var(--text-primary); margin-bottom: 8px; }
+.summary-status { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.summary-status-icon { font-size: 11px; flex-shrink: 0; }
+.summary-status-text { font: 11px/1.3 var(--font-ui); }
+.summary-status.done .summary-status-icon,
+.summary-status.done .summary-status-text { color: var(--green); }
+.summary-status.failed .summary-status-icon,
+.summary-status.failed .summary-status-text { color: #D94545; }
+.summary-status.failed .summary-status-text { font-weight: 600; }
+.summary-status.paused .summary-status-icon,
+.summary-status.paused .summary-status-text { color: var(--amber); }
+.summary-stats { display: flex; gap: 6px; font: 10px var(--font-mono); color: var(--text-very-muted); }
+.summary-stats span:not(:last-child)::after { content: '\00b7'; margin-left: 6px; }
+
+.summary-details-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.summary-details-toggle { display: flex; align-items: center; gap: 5px; }
+.summary-details-chevron { font-size: 8px; color: var(--text-very-muted); transition: transform .15s; }
+.summary-details-label { font: 11px var(--font-ui); font-weight: 600; color: var(--text-primary); }
+.summary-details-preview { font: 10px var(--font-mono); color: var(--text-very-muted); }
+
+.summary-trail-row { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.summary-trail-row:last-child { border-bottom: none; }
+.summary-trail-turn { font: 10px/1.4 var(--font-mono); color: var(--text-very-muted); flex-shrink: 0; width: 28px; }
+.summary-trail-text { font: 11px/1.4 var(--font-ui); color: var(--text-muted); }
+
+.summary-collapsed-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 0; font: 10px var(--font-ui); color: var(--text-very-muted); cursor: pointer;
+}
+.summary-collapsed-chevron { font-size: 8px; }
+.summary-collapsed-count { margin-left: auto; font: 10px var(--font-mono); }
 
 /* Continue button */
 .continue-btn {
@@ -2023,7 +2061,7 @@ body {
   <div class="screen-label">
     <span class="screen-label-step">ACT 3 &middot; STEP 3</span>
     <span class="screen-label-title">Review completed session</span>
-    <span class="screen-label-desc">User clicks Auth module in the left nav. The terminal switches to that session. Right panel surfaces the full picture: prompt history, key moments, and what&rsquo;s next &mdash; no scrolling through history.</span>
+    <span class="screen-label-desc">User clicks Auth module in the left nav. The SUMMARY tab grounds them instantly: one-line TLDR, status + stats as a hero block, session details collapsed with a preview line, and a &ldquo;where you left off&rdquo; trail. No scrolling through chat history.</span>
   </div>
   <div class="screen">
     <div class="app-header">
@@ -2085,78 +2123,367 @@ body {
           <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
         </div>
       </div>
-      <!-- Right panel: ANALYSIS with Prompt History, Key Moments, Possible Next Steps -->
+      <!-- Right panel: SUMMARY (Option D — compact stats + expandable details) -->
       <div class="right-panel">
         <div class="tab-row-primary">
           <span class="tab-primary">FILES</span>
           <span class="tab-primary">APP</span>
-          <span class="tab-primary active">ANALYSIS</span>
+          <span class="tab-primary active">SUMMARY</span>
           <span class="tab-primary">CHANGES</span>
         </div>
         <div class="panel-content" style="padding:14px;overflow-y:auto;">
 
-          <div class="analysis-section">
-            <div style="font:13px/1.6 var(--font-ui);color:var(--text-primary);margin-bottom:8px;">Built the session panel sidebar with live status indicators, duration counters, and worktree badges.</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-              <span style="color:var(--green);font-size:11px;">&#x2713;</span>
-              <span style="font:11px var(--font-ui);color:var(--green);">14/14 tests passing &nbsp;&middot;&nbsp; build clean</span>
+          <!-- Hero block: TLDR + status + stats as one unit -->
+          <div class="summary-hero">
+            <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+            <div class="summary-tldr">Built the auth module with JWT validation, role-based middleware, and integration tests.</div>
+            <div class="summary-status done">
+              <span class="summary-status-icon">&#x2713;</span>
+              <span class="summary-status-text">All tests passing &middot; build clean &middot; PR #47 opened</span>
             </div>
-            <div style="display:flex;gap:10px;font:10px var(--font-mono);color:var(--text-very-muted);padding-bottom:12px;border-bottom:1px solid var(--border);">
-              <span>1h 12m</span><span>&middot;</span><span>8 prompts</span><span>&middot;</span><span>142k tokens</span>
-            </div>
-          </div>
-
-          <div class="analysis-section">
-            <div class="analysis-section-header">
-              <span class="analysis-section-label">Prompt History</span>
-              <span class="analysis-section-toggle">&#x25BE;</span>
-            </div>
-            <div class="analysis-section-body">
-              <div style="display:flex;flex-direction:column;gap:5px;">
-                <div style="display:flex;gap:8px;align-items:baseline;">
-                  <span style="font:10px var(--font-mono);color:var(--text-very-muted);flex-shrink:0;width:18px;">1.</span>
-                  <span style="font:11px/1.45 var(--font-mono);color:var(--text-muted);">&ldquo;build the session panel sidebar&rdquo;</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:baseline;">
-                  <span style="font:10px var(--font-mono);color:var(--text-very-muted);flex-shrink:0;width:18px;">2.</span>
-                  <span style="font:11px/1.45 var(--font-mono);color:var(--text-muted);">&ldquo;add worktree badge and duration counter&rdquo;</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:baseline;">
-                  <span style="font:10px var(--font-mono);color:var(--text-very-muted);flex-shrink:0;width:18px;">3.</span>
-                  <span style="font:11px/1.45 var(--font-mono);color:var(--text-muted);">&ldquo;make the session dot pulse when running&rdquo;</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:baseline;">
-                  <span style="font:10px var(--font-mono);color:var(--text-very-muted);flex-shrink:0;width:18px;">4.</span>
-                  <span style="font:11px/1.45 var(--font-mono);color:var(--text-muted);">&ldquo;add session name from first user prompt&rdquo;</span>
-                </div>
-                <div style="font:11px var(--font-ui);color:var(--amber);cursor:pointer;padding-top:2px;padding-left:26px;">+ 4 more &rarr;</div>
-              </div>
+            <div class="summary-stats">
+              <span>1h 12m</span>
+              <span>8 prompts</span>
+              <span>12 files</span>
+              <span>142k tokens</span>
+              <span>Today, 8:14 AM</span>
             </div>
           </div>
 
-          <div class="analysis-section">
-            <div class="analysis-section-header">
-              <span class="analysis-section-label">Key Moments</span>
-              <span class="analysis-section-toggle">&#x25BE;</span>
+          <!-- Collapsed session details with preview -->
+          <div class="summary-details-row">
+            <div class="summary-details-toggle">
+              <span class="summary-details-chevron">&#x25B8;</span>
+              <span class="summary-details-label">Session details</span>
             </div>
-            <div class="analysis-section-body">
-              <div class="moment-row"><span class="moment-time">T:3</span><span class="moment-text">First file read &mdash; SessionPanel.tsx</span></div>
-              <div class="moment-row"><span class="moment-time">T:14</span><span class="moment-text">All tests passing for the first time</span></div>
-              <div class="moment-row"><span class="moment-time">T:22</span><span class="moment-text">Worktree badge design finalized</span></div>
-              <div class="moment-row" style="border-bottom:none;"><span class="moment-time">T:31</span><span class="moment-text">Session complete &mdash; 14/14 tests green</span></div>
+            <span class="summary-details-preview">main &middot; claude-sonnet-4 &middot; 3 agents</span>
+          </div>
+
+          <!-- Where you left off -->
+          <div class="analysis-section">
+            <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:31</span><span class="summary-trail-text">Pushed to main, created PR #47</span></div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:28</span><span class="summary-trail-text">All 14 tests passing after final refactor</span></div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:22</span><span class="summary-trail-text">Added role-based middleware to auth routes</span></div>
+          </div>
+
+          <!-- Collapsed expandable sections -->
+          <div style="margin-top:10px;">
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Prompts</span>
+              <span class="summary-collapsed-count">8 prompts</span>
+            </div>
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Key moments</span>
+              <span class="summary-collapsed-count">4 milestones</span>
+            </div>
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Next steps</span>
+              <span class="summary-collapsed-count">4 suggestions</span>
             </div>
           </div>
 
-          <div class="analysis-section">
-            <div class="analysis-section-header">
-              <span class="analysis-section-label">Possible Next Steps</span>
-              <span class="analysis-section-toggle">&#x25BE;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SCREEN 3-3a: FAILED STATE — USER TRIAGES A BROKEN SESSION -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 3 &middot; STEP 3a</span>
+    <span class="screen-label-title">Triage a failed session</span>
+    <span class="screen-label-desc">Variant: the session failed. Red status is visually louder &mdash; the eye goes to the failure first. The &ldquo;where you left off&rdquo; trail explains <em>why</em> it broke (Stripe version upgrade). Collapsed session details let the user check which model was used.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="project-label">Canvas-App</div>
+        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="session-name">Auth module</span>
+              <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
             </div>
-            <div class="analysis-section-body">
-              <div class="open-item"><span class="open-item-arrow">&#x2192;</span>SessionStatus.tsx needs error state handling</div>
-              <div class="open-item"><span class="open-item-arrow">&#x2192;</span>Keyboard navigation for session rows</div>
-              <div class="open-item"><span class="open-item-arrow">&#x2192;</span>Build the file viewer panel next</div>
-              <div class="open-item" style="border-bottom:none;"><span class="open-item-arrow">&#x2192;</span>Write integration tests for session panel</div>
+            <div class="worktree-badge">main</div>
+          </div>
+        </div>
+        <div class="session-sep"></div>
+        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+          <div class="session-dot" style="margin-top:3px;flex-shrink:0;background:#D94545;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="session-name bold">Stripe migration</span>
+              <span class="session-age" style="color:#D94545;">failed &middot; 42m</span>
+            </div>
+            <div class="worktree-badge">main</div>
+          </div>
+        </div>
+        <div class="session-sep"></div>
+        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="session-name">Dark mode</span>
+              <span class="session-age">31m</span>
+            </div>
+            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+          </div>
+        </div>
+        <div class="new-session-link">+ New session</div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Stripe migration &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="terminal-area">
+          <span class="t-user-prompt">&gt; npm install @stripe/stripe-node@14</span>
+          <span class="t dim">&nbsp;&nbsp;+ @stripe/stripe-node@14.12.0</span>
+          <span class="t dim">&nbsp;&nbsp;updated 1 package in 3.2s</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; npx tsc --noEmit</span>
+          <span class="t" style="color:#D94545;">&nbsp;&nbsp;src/payments/stripe-webhook.ts(34,5): error TS2339:</span>
+          <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;Property 'payment_method_types' does not exist</span>
+          <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;on type 'PaymentIntentCreateParams'.</span>
+          <span class="t blank"></span>
+          <span class="t" style="color:#D94545;">&nbsp;&nbsp;src/payments/stripe-webhook.ts(58,12): error TS2339:</span>
+          <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;Property 'charges' does not exist on type</span>
+          <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;'PaymentIntent'.</span>
+          <span class="t blank"></span>
+          <span class="t dim">&nbsp;&nbsp;Found 2 errors in 1 file.</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+      <!-- Right panel: SUMMARY — failed state -->
+      <div class="right-panel">
+        <div class="tab-row-primary">
+          <span class="tab-primary">FILES</span>
+          <span class="tab-primary">APP</span>
+          <span class="tab-primary active">SUMMARY</span>
+          <span class="tab-primary">CHANGES</span>
+        </div>
+        <div class="panel-content" style="padding:14px;overflow-y:auto;">
+
+          <!-- Hero block: failed state -->
+          <div class="summary-hero">
+            <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+            <div class="summary-tldr">Refactored payment processing to use Stripe API v2024-12 with new PaymentIntent flow and webhook handlers.</div>
+            <div class="summary-status failed">
+              <span class="summary-status-icon">&#x2717;</span>
+              <span class="summary-status-text">Build broken &middot; 2 type errors in stripe-webhook.ts</span>
+            </div>
+            <div class="summary-stats">
+              <span>42m</span>
+              <span>11 prompts</span>
+              <span>7 files</span>
+              <span>89k tokens</span>
+              <span>Friday, 3:47 PM</span>
+            </div>
+          </div>
+
+          <!-- Collapsed session details with preview -->
+          <div class="summary-details-row">
+            <div class="summary-details-toggle">
+              <span class="summary-details-chevron">&#x25B8;</span>
+              <span class="summary-details-label">Session details</span>
+            </div>
+            <span class="summary-details-preview">main &middot; claude-sonnet-4 &middot; 2 agents</span>
+          </div>
+
+          <!-- Where you left off — explains WHY it failed -->
+          <div class="analysis-section">
+            <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:11</span><span class="summary-trail-text">Type error: &lsquo;payment_method_types&rsquo; does not exist on &lsquo;PaymentIntentCreateParams&rsquo;</span></div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:9</span><span class="summary-trail-text">Replaced all checkout.sessions.create with paymentIntents.create</span></div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:7</span><span class="summary-trail-text">Installed @stripe/stripe-node@14.x &mdash; breaking change from v12</span></div>
+          </div>
+
+          <!-- Collapsed expandable sections -->
+          <div style="margin-top:10px;">
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Prompts</span>
+              <span class="summary-collapsed-count">11 prompts</span>
+            </div>
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Key moments</span>
+              <span class="summary-collapsed-count">3 milestones</span>
+            </div>
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Next steps</span>
+              <span class="summary-collapsed-count">2 suggestions</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SCREEN 3-3b: PAUSED STATE — USER REVISITS A STALE SESSION -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 3 &middot; STEP 3b</span>
+    <span class="screen-label-title">Revisit a stale session</span>
+    <span class="screen-label-desc">Variant: the session was paused mid-work a week ago. Amber status is neutral &mdash; not alarming, just &ldquo;hey, this is incomplete.&rdquo; The stat line shows an absolute date (Mon, Mar 31) instead of &ldquo;Today.&rdquo; The trail anchors you: filter sidebar is scaffolded but empty.</span>
+  </div>
+  <div class="screen">
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+    <div class="body-row">
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">Projects</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="project-label">Canvas-App</div>
+        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="session-name">API endpoints</span>
+              <span class="session-age" style="color:var(--green);">done &middot; 2h 5m</span>
+            </div>
+            <div class="worktree-badge">main</div>
+          </div>
+        </div>
+        <div class="session-sep"></div>
+        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="session-name">Database layer</span>
+              <span class="session-age" style="color:var(--green);">done &middot; 1h 34m</span>
+            </div>
+            <div class="worktree-badge">main</div>
+          </div>
+        </div>
+        <div class="session-sep"></div>
+        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="session-name bold">Frontend components</span>
+              <span class="session-age" style="color:var(--amber);">paused &middot; 34m</span>
+            </div>
+            <div class="worktree-badge">feat/dashboard-components</div>
+          </div>
+        </div>
+        <div class="new-session-link">+ New session</div>
+      </div>
+      <div class="terminal-zone">
+        <div class="pane-title">Frontend components &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="terminal-area">
+          <span class="t-user-prompt">&gt; npx jest --verbose</span>
+          <span class="t success">&nbsp;&nbsp;PASS  src/components/DataTable.test.tsx</span>
+          <span class="t success">&nbsp;&nbsp;PASS  src/components/ChartWidget.test.tsx</span>
+          <span class="t dim">&nbsp;&nbsp;Test Suites: 2 passed, 2 total</span>
+          <span class="t dim">&nbsp;&nbsp;Tests:       8 passed, 8 total</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; cat src/components/FilterSidebar.tsx</span>
+          <span class="t dim">&nbsp;&nbsp;import React from 'react';</span>
+          <span class="t dim">&nbsp;&nbsp;</span>
+          <span class="t dim">&nbsp;&nbsp;export const FilterSidebar: React.FC = () =&gt; {</span>
+          <span class="t dim">&nbsp;&nbsp;&nbsp;&nbsp;// TODO: implement filter logic</span>
+          <span class="t dim">&nbsp;&nbsp;&nbsp;&nbsp;return &lt;div className="filter-sidebar"&gt;&lt;/div&gt;;</span>
+          <span class="t dim">&nbsp;&nbsp;};</span>
+          <span class="t blank"></span>
+          <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+      <!-- Right panel: SUMMARY — paused state -->
+      <div class="right-panel">
+        <div class="tab-row-primary">
+          <span class="tab-primary">FILES</span>
+          <span class="tab-primary">APP</span>
+          <span class="tab-primary active">SUMMARY</span>
+          <span class="tab-primary">CHANGES</span>
+        </div>
+        <div class="panel-content" style="padding:14px;overflow-y:auto;">
+
+          <!-- Hero block: paused state -->
+          <div class="summary-hero">
+            <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+            <div class="summary-tldr">Building React components for the dashboard &mdash; completed data table and chart widgets, started on filter sidebar.</div>
+            <div class="summary-status paused">
+              <span class="summary-status-icon">&#x23F8;</span>
+              <span class="summary-status-text">Session paused &middot; last active 8 days ago</span>
+            </div>
+            <div class="summary-stats">
+              <span>34m</span>
+              <span>6 prompts</span>
+              <span>4 files</span>
+              <span>67k tokens</span>
+              <span>Mon, Mar 31</span>
+            </div>
+          </div>
+
+          <!-- Collapsed session details with preview -->
+          <div class="summary-details-row">
+            <div class="summary-details-toggle">
+              <span class="summary-details-chevron">&#x25B8;</span>
+              <span class="summary-details-label">Session details</span>
+            </div>
+            <span class="summary-details-preview">feat/dashboard-components &middot; claude-sonnet-4 &middot; 1 agent</span>
+          </div>
+
+          <!-- Where you left off — anchors you to the incomplete work -->
+          <div class="analysis-section">
+            <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:6</span><span class="summary-trail-text">Scaffolded FilterSidebar.tsx &mdash; basic structure, no logic yet</span></div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:5</span><span class="summary-trail-text">Chart widget passing all tests &mdash; 4 chart types supported</span></div>
+            <div class="summary-trail-row"><span class="summary-trail-turn">T:4</span><span class="summary-trail-text">DataTable component complete with sorting and pagination</span></div>
+          </div>
+
+          <!-- Collapsed expandable sections -->
+          <div style="margin-top:10px;">
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Prompts</span>
+              <span class="summary-collapsed-count">6 prompts</span>
+            </div>
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Key moments</span>
+              <span class="summary-collapsed-count">2 milestones</span>
+            </div>
+            <div class="summary-collapsed-row">
+              <span class="summary-collapsed-chevron">&#x25B8;</span>
+              <span>Next steps</span>
+              <span class="summary-collapsed-count">3 suggestions</span>
             </div>
           </div>
 

@@ -5,11 +5,11 @@ import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
 import { existsSync } from 'fs'
-import { initDatabase, closeDatabase, upsertProject, upsertSession, updateSessionStatus, updateByteOffset } from './db'
+import { initDatabase, closeDatabase, upsertProject, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
 import { scanProjects, getAmplifierHome } from './scanner'
 import { startWatching, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
-import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir } from './events-parser'
+import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
 
 // Main-process session registry — watcher pushes new sessions here
@@ -245,6 +245,29 @@ app.whenReady().then(() => {
           startedAt = new Date().toISOString()
         }
 
+        const firstPrompt = extractFirstPrompt(events)
+        const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
+        const stats = extractSessionStats(events)
+        const endEvent = events.find((e: { type: string; timestamp: string; data: Record<string, unknown> }) => e.type === 'session:end')
+        const endedAt = endEvent?.timestamp
+        const exitCode =
+          endEvent !== undefined
+            ? ((endEvent.data as Record<string, unknown>).exitCode as number)
+            : undefined
+
+        if ((status === 'done' || status === 'failed') && endedAt) {
+          finalizeSession(data.sessionId, {
+            status,
+            endedAt,
+            exitCode: exitCode ?? null,
+            title: title ?? null,
+            firstPrompt: firstPrompt ?? null,
+            promptCount: stats.promptCount,
+            toolCallCount: stats.toolCallCount,
+            filesChangedCount: stats.filesChanged.size,
+          })
+        }
+
         const session: SessionState = {
           id: data.sessionId,
           projectSlug: data.projectSlug,
@@ -255,6 +278,12 @@ app.whenReady().then(() => {
           byteOffset: newByteOffset,
           recentFiles,
           workDir,
+          endedAt,
+          exitCode,
+          title,
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+          filesChangedCount: stats.filesChanged.size,
         }
 
         liveSessions.set(data.sessionId, session)

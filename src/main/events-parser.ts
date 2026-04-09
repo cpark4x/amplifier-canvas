@@ -131,6 +131,73 @@ export function extractFileActivity(events: ParsedEvent[]): FileActivity[] {
   return activities
 }
 
+export function extractFirstPrompt(events: ParsedEvent[]): string | undefined {
+  const firstUserMessage = events.find((e) => e.type === 'user_message')
+  if (!firstUserMessage) return undefined
+  const text = firstUserMessage.data.text
+  return typeof text === 'string' ? text : undefined
+}
+
+export interface SessionStats {
+  promptCount: number
+  toolCallCount: number
+  filesChanged: Set<string>
+  lastEventTimestamp: string | undefined
+}
+
+export const WRITE_OPERATIONS = new Set([
+  'write_file',
+  'edit_file',
+  'create_file',
+  'apply_patch',
+  'delete_file',
+])
+
+export function extractSessionStats(events: ParsedEvent[]): SessionStats {
+  let promptCount = 0
+  let toolCallCount = 0
+  const filesChanged = new Set<string>()
+  let lastEventTimestamp: string | undefined
+
+  for (const event of events) {
+    lastEventTimestamp = event.timestamp
+
+    if (event.type === 'user_message') {
+      promptCount++
+    } else if (event.type === 'tool_call') {
+      toolCallCount++
+      const data = event.data as Record<string, unknown>
+      const tool = data.tool as string | undefined
+      if (tool && WRITE_OPERATIONS.has(tool)) {
+        const args = data.args as Record<string, unknown> | undefined
+        const filePath = args?.path as string | undefined
+        if (filePath) {
+          filesChanged.add(filePath)
+        }
+      }
+    }
+  }
+
+  return { promptCount, toolCallCount, filesChanged, lastEventTimestamp }
+}
+
+export function deriveSessionTitle(firstPrompt: string): string {
+  if (!firstPrompt) return ''
+
+  // Strip markdown bold (**text**) and inline code (`text`)
+  const stripped = firstPrompt
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+
+  if (stripped.length <= 60) return stripped
+
+  // Truncate at last word boundary at or before position 60
+  const truncated = stripped.slice(0, 60)
+  const lastSpace = truncated.lastIndexOf(' ')
+  const cutPoint = lastSpace > 0 ? lastSpace : 60
+  return stripped.slice(0, cutPoint) + '...'
+}
+
 export function extractWorkDir(events: ParsedEvent[], sessionDir?: string): string | undefined {
   const startEvent = events.find((e) => e.type === 'session:start')
   if (!startEvent) return undefined

@@ -5,6 +5,7 @@ import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty } from './pty'
 import { getAmplifierHome } from './scanner'
+import { getSessionById } from './db'
 
 // Track allowed directories for file access security
 let allowedDirs: string[] = []
@@ -95,11 +96,30 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     }
   })
 
+  ipcMain.handle(
+    IPC_CHANNELS.SESSION_RESUME,
+    (_event, { sessionId }: { sessionId: string }): { success: boolean; error?: string } => {
+      try {
+        const session = getSessionById(sessionId)
+        if (!session) {
+          return { success: false, error: `Session not found: ${sessionId}` }
+        }
+        writeToPty(`amplifier session resume ${sessionId}\n`)
+        return { success: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] SESSION_RESUME failed:', message)
+        return { success: false, error: message }
+      }
+    },
+  )
+
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
     ipcMain.removeHandler(IPC_CHANNELS.LIST_DIR)
     ipcMain.removeHandler(IPC_CHANNELS.READ_TEXT)
+    ipcMain.removeHandler(IPC_CHANNELS.SESSION_RESUME)
     killPty()
   })
 }

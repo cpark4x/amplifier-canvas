@@ -67,6 +67,11 @@ const api = {
   readTextFile: (path: string): Promise<string> => {
     return ipcRenderer.invoke(IPC_CHANNELS.READ_TEXT, { path })
   },
+
+  // Sessions: resume a completed session
+  resumeSession: (sessionId: string): Promise<{ success: boolean; error?: string }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SESSION_RESUME, { sessionId })
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

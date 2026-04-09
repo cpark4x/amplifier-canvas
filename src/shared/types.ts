@@ -9,6 +9,7 @@ export const IPC_CHANNELS = {
   // Renderer → Main (request)
   TERMINAL_INPUT: 'terminal:input',
   TERMINAL_RESIZE: 'terminal:resize',
+  SESSION_RESUME: 'session:resume',
   // Renderer → Main (invoke/handle)
   LIST_DIR: 'files:list-dir',
   READ_TEXT: 'files:read-text',
@@ -34,6 +35,25 @@ export interface SessionState {
   byteOffset: number
   recentFiles: FileActivity[]
   workDir?: string
+  // New optional fields added in task-1
+  endedAt?: string
+  exitCode?: number
+  title?: string
+  promptCount?: number
+  toolCallCount?: number
+  filesChangedCount?: number
+}
+
+// --- Toast types ---
+
+export interface Toast {
+  id: string
+  sessionId: string
+  message: string
+  action?: {
+    label: string
+    onClick: () => void
+  }
 }
 
 // --- File types ---
