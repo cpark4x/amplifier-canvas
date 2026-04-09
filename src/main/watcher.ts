@@ -25,10 +25,13 @@ export function startWatching(amplifierHome: string, onChange: WatchCallback): v
     return
   }
 
-  // Watch ONLY for events.jsonl files — not the entire directory tree.
-  // Using a glob pattern so chokidar doesn't enumerate every subdirectory
-  // at startup (which hangs for minutes with 29K+ sessions).
-  watcher = chokidar.watch(join(projectsDir, '*/sessions/*/events.jsonl'), {
+  // Watch the projects directory recursively.
+  // Chokidar v5 uses native OS recursive watching (fs.watch {recursive: true})
+  // which does NOT enumerate the directory tree at startup — it registers a
+  // kernel-level watch. The previous glob-based approach silently stopped
+  // firing 'add' events in chokidar v5, so we watch the directory and let
+  // parseEventPath filter to events.jsonl files in the right location.
+  watcher = chokidar.watch(projectsDir, {
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: 200,
