@@ -65,6 +65,7 @@ function makeMockWindow(isDestroyed = false) {
 
 let mockGetAnalysisResult: unknown = null
 let mockTriggerAnalysisResult: unknown = null
+let mockTriggerAnalysisShouldThrow = false
 
 // --------------------------------------------------------------------------
 // Register require.cache stubs for every module that ipc.ts imports
@@ -107,6 +108,7 @@ injectCache('../src/main/analysisService', {
     return mockGetAnalysisResult
   },
   async triggerAnalysis(_sessionId: string) {
+    if (mockTriggerAnalysisShouldThrow) throw new Error('service error')
     return mockTriggerAnalysisResult
   },
 })
@@ -159,6 +161,7 @@ function reset() {
   sentMessages.length = 0
   mockGetAnalysisResult = null
   mockTriggerAnalysisResult = null
+  mockTriggerAnalysisShouldThrow = false
 }
 
 // Cleanup cache entries after all tests
@@ -279,15 +282,28 @@ describe('registerIpcHandlers — analysis IPC channels', () => {
     assert.equal(readyMsg, undefined, 'ANALYSIS_READY must NOT be sent when result is null')
   })
 
-  test('TRIGGER_ANALYSIS returns null on service error', async () => {
+  test('TRIGGER_ANALYSIS returns null when service returns null', async () => {
     const win = makeMockWindow()
     registerIpcHandlers(win)
 
     mockTriggerAnalysisResult = null
 
     const handler = registeredHandlers.get(CH.TRIGGER_ANALYSIS)!
+    const result = await handler({}, { sessionId: 'no-result' })
+    assert.equal(result, null)
+  })
+
+  test('TRIGGER_ANALYSIS returns null when service throws', async () => {
+    const win = makeMockWindow()
+    registerIpcHandlers(win)
+
+    mockTriggerAnalysisShouldThrow = true
+
+    const handler = registeredHandlers.get(CH.TRIGGER_ANALYSIS)!
     const result = await handler({}, { sessionId: 'err' })
     assert.equal(result, null)
+    const readyMsg = sentMessages.find((m) => m.channel === CH.ANALYSIS_READY)
+    assert.equal(readyMsg, undefined, 'ANALYSIS_READY must NOT be sent when service throws')
   })
 
   // ---------- AC 3: Cleanup on window closed ----------
