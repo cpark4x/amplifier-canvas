@@ -4,11 +4,11 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { existsSync } from 'fs'
-import { initDatabase, closeDatabase, getAllProjects, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
-import { getAmplifierHome } from './scanner'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
+import { getAmplifierHome, scanSessionsAsync } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
-import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
+import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, isPathAllowed } from './ipc'
+import { getWorkspaceState } from './workspace'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
 
@@ -203,19 +203,27 @@ app.whenReady().then(() => {
   const amplifierHome = getAmplifierHome()
   const projectsDir = join(amplifierHome, 'projects')
 
-  // Load only user-added projects from the DB. NO filesystem scan.
-  // Projects appear here only when the user creates them via the UI.
+  // Load only user-registered projects from the DB. NO filesystem scan.
+  // Projects appear here only when the user explicitly registers them via the UI.
   mainWindow.webContents.once('did-finish-load', () => {
     try {
-      if (existsSync(projectsDir)) {
-        setAllowedDirs([projectsDir])
+      // (1) Set allowed dirs from projectsDir
+      setAllowedDirs([projectsDir])
+
+      // (2) Load only registered projects via getRegisteredProjects()
+      const registeredProjects = getRegisteredProjects()
+
+      // (3) If no registered projects, push empty sessions and return (first-time user)
+      if (registeredProjects.length === 0) {
+        pushSessionsChanged(mainWindow, [])
+        return
       }
 
-      const dbProjects = getAllProjects()
+      // (4) For returning users, build lightweight SessionState stubs from DB
       const sessions: SessionState[] = []
 
-      for (const project of dbProjects) {
-        const dbSessions = getProjectSessions(project.slug)
+      for (const project of registeredProjects) {
+        const dbSessions = getVisibleProjectSessions(project.slug)
         for (const row of dbSessions) {
           sessions.push({
             id: row.id,
@@ -236,20 +244,30 @@ app.whenReady().then(() => {
           })
         }
 
+        // (5) Start watchers only for registered projects
         addProjectWatch(project.slug)
       }
 
+      // Seed liveSessions map and push stubs to renderer
       for (const session of sessions) {
         liveSessions.set(session.id, session)
       }
       pushSessionsChanged(mainWindow, sessions)
 
-      console.log(`[startup] Loaded ${dbProjects.length} projects, ${sessions.length} sessions from DB`)
+      // (7) Log project and session counts
+      console.log(`[startup] Loaded ${registeredProjects.length} projects, ${sessions.length} sessions from DB`)
+
+      // (6) Async hydration via scanSessionsAsync
+      void scanSessionsAsync(amplifierHome, sessions, (hydrated) => {
+        for (const session of hydrated) {
+          liveSessions.set(session.id, session)
+        }
+        pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
+      })
+
     } catch (err) {
       console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
-      if (existsSync(projectsDir)) {
-        setAllowedDirs([projectsDir])
-      }
+      setAllowedDirs([projectsDir])
       pushSessionsChanged(mainWindow, [])
     }
   })
@@ -335,13 +353,18 @@ app.whenReady().then(() => {
       registerIpcHandlers(newWindow)
     }
   })
+
+  // Check for running sessions before quit and notify the user
+  app.on('before-quit', () => {
+    const runningSessions = Array.from(liveSessions.values()).filter(s => s.status === 'running')
+    if (runningSessions.length > 0) {
+      pushRunningSessionsToast(mainWindow, runningSessions.length)
+    }
+    stopWatching()
+    closeDatabase()
+  })
 }).catch((err) => {
   console.error('[startup] Fatal error:', err)
-})
-
-app.on('before-quit', () => {
-  stopWatching()
-  closeDatabase()
 })
 
 app.on('window-all-closed', () => {
@@ -356,3 +379,5 @@ function slugToName(slug: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
+
+
