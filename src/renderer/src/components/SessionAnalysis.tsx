@@ -72,7 +72,7 @@ export interface SessionAnalysisProps {
 
 // --- Main component ---
 
-function SessionAnalysis({
+export function SessionAnalysis({
   sessionId,
   title,
   promptCount,

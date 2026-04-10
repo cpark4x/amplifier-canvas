@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useCanvasStore } from '../store'
 import FileBrowser from './FileBrowser'
 import FileRenderer from './FileRenderer'
+import { SessionAnalysis } from './SessionAnalysis'
 
-type PrimaryTab = 'FILES' | 'APP' | 'ANALYSIS' | 'CHANGES'
+type PrimaryTab = 'FILES' | 'APP' | 'ANALYSIS'
 
 interface OpenFile {
   path: string
@@ -52,7 +53,7 @@ function Viewer(): React.ReactElement {
     setShowBrowser(false)
   }, [selectedSessionId])
 
-  const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS', 'CHANGES']
+  const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS']
   const activeFile = openFiles[activeFileIdx] || null
 
   function openFile(path: string, openedBy: 'amplifier' | 'user'): void {
@@ -352,34 +353,12 @@ function Viewer(): React.ReactElement {
 
       {/* ANALYSIS tab content */}
       {primaryTab === 'ANALYSIS' && (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text-very-muted)',
-            fontSize: '11px',
-          }}
-        >
-          Analysis view coming soon
-        </div>
-      )}
-
-      {/* CHANGES tab content */}
-      {primaryTab === 'CHANGES' && (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text-very-muted)',
-            fontSize: '11px',
-          }}
-        >
-          Changes view coming soon
-        </div>
+        <SessionAnalysis
+          sessionId={session?.id ?? ''}
+          title={session?.title ?? undefined}
+          promptCount={session?.promptCount ?? undefined}
+          toolCallCount={session?.toolCallCount ?? undefined}
+        />
       )}
     </div>
   )
