@@ -59,7 +59,7 @@ export async function triggerAnalysis(sessionId: string): Promise<SessionAnalysi
 
     // Populate mechanical data on first trigger
     if (!row.prompt_history) {
-      populateMechanicalData(sessionId, row, events)
+      populateMechanicalData(sessionId, events)
     }
 
     const digest = buildSessionDigest(sessionId, row.projectSlug, events)
@@ -84,7 +84,7 @@ function buildEventsPath(projectSlug: string, sessionId: string): string {
   return join(getAmplifierHome(), 'projects', projectSlug, 'sessions', sessionId, 'events.jsonl')
 }
 
-function populateMechanicalData(sessionId: string, row: SessionRow, events: ReturnType<typeof tailReadEvents>['events']): void {
+function populateMechanicalData(sessionId: string, events: ReturnType<typeof tailReadEvents>['events']): void {
   const prompts = extractAllPrompts(events)
   const testResults = extractTestResults(events)
   const gitOps = extractGitOperations(events)
