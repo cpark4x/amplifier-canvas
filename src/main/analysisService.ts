@@ -54,22 +54,14 @@ export async function triggerAnalysis(sessionId: string): Promise<SessionAnalysi
   try {
     updateAnalysisStatus(sessionId, 'loading')
 
+    // Read events once — reused for mechanical population and digest building
+    const { events } = tailReadEvents(buildEventsPath(row.projectSlug, sessionId), 0)
+
     // Populate mechanical data on first trigger
     if (!row.prompt_history) {
-      populateMechanicalData(sessionId, row)
+      populateMechanicalData(sessionId, row, events)
     }
 
-    const amplifierHome = getAmplifierHome()
-    const eventsPath = join(
-      amplifierHome,
-      'projects',
-      row.projectSlug,
-      'sessions',
-      sessionId,
-      'events.jsonl',
-    )
-
-    const { events } = tailReadEvents(eventsPath, 0)
     const digest = buildSessionDigest(sessionId, row.projectSlug, events)
     const analysisResult = generateMockAnalysis(digest)
 
@@ -88,18 +80,11 @@ export async function triggerAnalysis(sessionId: string): Promise<SessionAnalysi
 
 // --- Private helpers ---
 
-function populateMechanicalData(sessionId: string, row: SessionRow): void {
-  const amplifierHome = getAmplifierHome()
-  const eventsPath = join(
-    amplifierHome,
-    'projects',
-    row.projectSlug,
-    'sessions',
-    sessionId,
-    'events.jsonl',
-  )
+function buildEventsPath(projectSlug: string, sessionId: string): string {
+  return join(getAmplifierHome(), 'projects', projectSlug, 'sessions', sessionId, 'events.jsonl')
+}
 
-  const { events } = tailReadEvents(eventsPath, 0)
+function populateMechanicalData(sessionId: string, row: SessionRow, events: ReturnType<typeof tailReadEvents>['events']): void {
   const prompts = extractAllPrompts(events)
   const testResults = extractTestResults(events)
   const gitOps = extractGitOperations(events)
