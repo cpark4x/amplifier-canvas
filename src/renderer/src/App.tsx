@@ -308,6 +308,7 @@ function App(): React.ReactElement {
                     useCanvasStore.getState().selectProject(project.slug)
                     useCanvasStore.getState().toggleProjectExpanded(project.slug)
                     setShowModal(false)
+                    setShowTerminal(true)
                   })
                 }}
               />
