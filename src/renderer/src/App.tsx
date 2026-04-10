@@ -40,7 +40,6 @@ function App(): React.ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
-  const createProject = useCanvasStore((s) => s.createProject)
   const viewerOpen = useCanvasStore((s) => s.viewerOpen)
   const openViewer = useCanvasStore((s) => s.openViewer)
   const closeViewer = useCanvasStore((s) => s.closeViewer)
@@ -240,8 +239,7 @@ function App(): React.ReactElement {
             {showModal && (
               <NewProjectModal
                 onClose={() => setShowModal(false)}
-                onCreate={(projectName, _source) => {
-                  createProject(projectName)
+                onCreate={(_projectName, _source) => {
                   setShowModal(false)
                   setShowTerminal(true)
 

@@ -84,23 +84,16 @@ function formatStats(session: SessionState): string {
 
 function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
-  const createdProjects = useCanvasStore((s) => s.createdProjects)
   const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
   const openViewer = useCanvasStore((s) => s.openViewer)
 
-  // Derive projects from created projects + sessions
+  // Derive projects from sessions
   const projects: Project[] = useMemo(() => {
     const projectMap = new Map<string, Project>()
 
-    // Include manually created projects
-    for (const cp of createdProjects) {
-      projectMap.set(cp.slug, { slug: cp.slug, name: cp.name, sessions: [] })
-    }
-
-    // Merge session-derived projects
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {
@@ -114,7 +107,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
       }
     }
     return Array.from(projectMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [sessions, createdProjects])
+  }, [sessions])
 
   return (
     <div
