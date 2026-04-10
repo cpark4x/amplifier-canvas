@@ -209,6 +209,7 @@ export interface ProjectRow {
   path: string
   name: string
   addedAt: string
+  registered: number
 }
 
 export interface SessionRow {
@@ -232,6 +233,7 @@ export interface SessionRow {
   analysis_json: string | null
   analysis_generated_at: string | null
   analysis_status: string | null
+  hidden: number
 }
 
 export function getAllProjects(): ProjectRow[] {
