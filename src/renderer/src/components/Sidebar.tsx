@@ -19,7 +19,7 @@ interface Project {
 // ---- Helpers ----------------------------------------------------------------
 
 const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input'])
-const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed'])
+const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed', 'stopped'])
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',

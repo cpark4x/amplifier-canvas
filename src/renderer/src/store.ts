@@ -9,7 +9,7 @@ interface Project {
 }
 
 const ACTIVE_STATUSES = new Set(['running', 'active', 'needs_input'])
-const COMPLETED_STATUSES = new Set(['done', 'failed'])
+const COMPLETED_STATUSES = new Set(['done', 'failed', 'stopped'])
 
 let toastCounter = 0
 
