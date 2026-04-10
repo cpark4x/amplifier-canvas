@@ -17,11 +17,21 @@ export const IPC_CHANNELS = {
   TRIGGER_ANALYSIS: 'analysis:trigger',
   // Main → Renderer (push)
   ANALYSIS_READY: 'analysis:ready',
+  // Workspace model channels
+  PROJECT_DISCOVER: 'project:discover',
+  PROJECT_REGISTER: 'project:register',
+  PROJECT_UNREGISTER: 'project:unregister',
+  SESSION_HIDE: 'session:hide',
+  SESSION_STOP: 'session:stop',
+  WORKSPACE_SAVE: 'workspace:save-state',
+  WORKSPACE_GET: 'workspace:get-state',
+  WORKSPACE_STATE: 'workspace:state',
+  RUNNING_SESSIONS_TOAST: 'app:running-sessions-toast',
 } as const
 
 // --- Session types ---
 
-export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active' | 'loading'
+export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active' | 'loading' | 'stopped'
 
 export interface FileActivity {
   path: string
