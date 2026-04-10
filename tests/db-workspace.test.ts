@@ -6,6 +6,11 @@ import {
   upsertProject,
   upsertSession,
   getDatabase,
+  getRegisteredProjects,
+  setProjectRegistered,
+  getVisibleProjectSessions,
+  setSessionHidden,
+  getRegisteredProjectCount,
 } from '../src/main/db'
 
 function setupDb() {
@@ -65,5 +70,124 @@ describe('Workspace model schema migrations', () => {
     d.prepare('INSERT INTO workspace_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('selectedProjectSlug', 'project-b')
     const row = d.prepare('SELECT value FROM workspace_state WHERE key = ?').get('selectedProjectSlug') as { value: string }
     assert.equal(row.value, 'project-b')
+  })
+})
+
+describe('getRegisteredProjects', () => {
+  beforeEach(() => setupDb())
+  afterEach(() => closeDatabase())
+
+  test('returns only registered=1 projects', () => {
+    upsertProject('project-a', '/path/a', 'Project A')
+    upsertProject('project-b', '/path/b', 'Project B')
+    setProjectRegistered('project-a', 1)
+    const registered = getRegisteredProjects()
+    assert.equal(registered.length, 1)
+    assert.equal(registered[0].slug, 'project-a')
+  })
+
+  test('returns empty array when no projects are registered', () => {
+    upsertProject('project-a', '/path/a', 'Project A')
+    const registered = getRegisteredProjects()
+    assert.equal(registered.length, 0)
+  })
+
+  test('returns projects sorted by name', () => {
+    upsertProject('slug-z', '/path/z', 'Zebra Project')
+    upsertProject('slug-a', '/path/a', 'Apple Project')
+    upsertProject('slug-m', '/path/m', 'Mango Project')
+    setProjectRegistered('slug-z', 1)
+    setProjectRegistered('slug-a', 1)
+    setProjectRegistered('slug-m', 1)
+    const registered = getRegisteredProjects()
+    assert.equal(registered.length, 3)
+    assert.equal(registered[0].name, 'Apple Project')
+    assert.equal(registered[1].name, 'Mango Project')
+    assert.equal(registered[2].name, 'Zebra Project')
+  })
+})
+
+describe('setProjectRegistered', () => {
+  beforeEach(() => setupDb())
+  afterEach(() => closeDatabase())
+
+  test('sets registered to 1', () => {
+    createTestProject()
+    setProjectRegistered('test-project', 1)
+    const registered = getRegisteredProjects()
+    assert.equal(registered.length, 1)
+    assert.equal(registered[0].slug, 'test-project')
+  })
+
+  test('sets registered back to 0', () => {
+    createTestProject()
+    setProjectRegistered('test-project', 1)
+    setProjectRegistered('test-project', 0)
+    const registered = getRegisteredProjects()
+    assert.equal(registered.length, 0)
+  })
+})
+
+describe('getVisibleProjectSessions', () => {
+  beforeEach(() => setupDb())
+  afterEach(() => closeDatabase())
+
+  test('returns only hidden=0 sessions', () => {
+    createTestProject()
+    createTestSession('session-1')
+    createTestSession('session-2')
+    setSessionHidden('session-1', 1)
+    const visible = getVisibleProjectSessions('test-project')
+    assert.equal(visible.length, 1)
+    assert.equal(visible[0].id, 'session-2')
+  })
+
+  test('returns empty when all sessions are hidden', () => {
+    createTestProject()
+    createTestSession('session-1')
+    setSessionHidden('session-1', 1)
+    const visible = getVisibleProjectSessions('test-project')
+    assert.equal(visible.length, 0)
+  })
+})
+
+describe('setSessionHidden', () => {
+  beforeEach(() => setupDb())
+  afterEach(() => closeDatabase())
+
+  test('hides a session', () => {
+    createTestProject()
+    createTestSession()
+    setSessionHidden('test-session-1', 1)
+    const visible = getVisibleProjectSessions('test-project')
+    assert.equal(visible.length, 0)
+  })
+
+  test('unhides a session', () => {
+    createTestProject()
+    createTestSession()
+    setSessionHidden('test-session-1', 1)
+    setSessionHidden('test-session-1', 0)
+    const visible = getVisibleProjectSessions('test-project')
+    assert.equal(visible.length, 1)
+  })
+})
+
+describe('getRegisteredProjectCount', () => {
+  beforeEach(() => setupDb())
+  afterEach(() => closeDatabase())
+
+  test('returns count of registered projects', () => {
+    upsertProject('project-a', '/path/a', 'Project A')
+    upsertProject('project-b', '/path/b', 'Project B')
+    setProjectRegistered('project-a', 1)
+    const count = getRegisteredProjectCount()
+    assert.equal(count, 1)
+  })
+
+  test('returns 0 when no projects are registered', () => {
+    createTestProject()
+    const count = getRegisteredProjectCount()
+    assert.equal(count, 0)
   })
 })

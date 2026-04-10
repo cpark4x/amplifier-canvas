@@ -298,3 +298,31 @@ export function updateAnalysisStatus(id: string, status: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET analysis_status = ? WHERE id = ?').run(status, id)
 }
+
+export function getRegisteredProjects(): ProjectRow[] {
+  const d = getDatabase()
+  return d.prepare('SELECT * FROM projects WHERE registered = 1 ORDER BY name').all() as ProjectRow[]
+}
+
+export function setProjectRegistered(slug: string, registered: number): void {
+  const d = getDatabase()
+  d.prepare('UPDATE projects SET registered = ? WHERE slug = ?').run(registered, slug)
+}
+
+export function getVisibleProjectSessions(projectSlug: string): SessionRow[] {
+  const d = getDatabase()
+  return d
+    .prepare('SELECT * FROM sessions WHERE projectSlug = ? AND hidden = 0 ORDER BY startedAt DESC')
+    .all(projectSlug) as SessionRow[]
+}
+
+export function setSessionHidden(id: string, hidden: number): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET hidden = ? WHERE id = ?').run(hidden, id)
+}
+
+export function getRegisteredProjectCount(): number {
+  const d = getDatabase()
+  const row = d.prepare('SELECT COUNT(*) as count FROM projects WHERE registered = 1').get() as { count: number }
+  return row.count
+}
