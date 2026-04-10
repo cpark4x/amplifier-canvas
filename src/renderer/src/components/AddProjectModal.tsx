@@ -19,21 +19,23 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting }: AddProjectModa
   const [discovered, setDiscovered] = useState<DiscoveredProject[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedExisting, setSelectedExisting] = useState<DiscoveredProject | null>(null)
+  const [discoveryError, setDiscoveryError] = useState(false)
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null)
 
   // Discover projects when "Existing" tab is first opened
   useEffect(() => {
     if (activeTab === 'existing' && discovered.length === 0 && !loading) {
       setLoading(true)
-      const amplifierHome =
-        (typeof process !== 'undefined' && process.env['AMPLIFIER_HOME']) ||
-        `${(typeof process !== 'undefined' && process.env['HOME']) || '~'}/.amplifier`
+      // amplifierHome is owned by the main process (getAmplifierHome()); the
+      // IPC handler ignores any payload, so we pass an empty string.
       window.electronAPI
-        .discoverProjects(amplifierHome)
+        .discoverProjects('')
         .then((projects) => {
           setDiscovered(projects)
           setLoading(false)
         })
         .catch(() => {
+          setDiscoveryError(true)
           setLoading(false)
         })
     }
@@ -272,7 +274,20 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting }: AddProjectModa
                     Scanning...
                   </div>
                 )}
-                {!loading && filteredProjects.length === 0 && (
+                {!loading && discoveryError && (
+                  <div
+                    data-testid="discovery-error"
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--text-muted)',
+                      padding: '12px 0',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Could not scan for projects. Please try again.
+                  </div>
+                )}
+                {!loading && !discoveryError && filteredProjects.length === 0 && (
                   <div
                     style={{
                       fontSize: 12,
@@ -289,6 +304,8 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting }: AddProjectModa
                     key={project.slug}
                     data-testid="discovered-project"
                     onClick={() => setSelectedExisting(project)}
+                    onMouseEnter={() => setHoveredSlug(project.slug)}
+                    onMouseLeave={() => setHoveredSlug(null)}
                     style={{
                       padding: '8px 10px',
                       borderRadius: 4,
@@ -296,21 +313,13 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting }: AddProjectModa
                       backgroundColor:
                         selectedExisting?.slug === project.slug
                           ? 'rgba(0,0,0,0.06)'
-                          : 'transparent',
+                          : hoveredSlug === project.slug
+                            ? 'rgba(0,0,0,0.03)'
+                            : 'transparent',
                       border:
                         selectedExisting?.slug === project.slug
                           ? '1px solid var(--border)'
                           : '1px solid transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedExisting?.slug !== project.slug) {
-                        ;(e.currentTarget as HTMLDivElement).style.backgroundColor =
-                          'rgba(0,0,0,0.03)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      ;(e.currentTarget as HTMLDivElement).style.backgroundColor =
-                        selectedExisting?.slug === project.slug ? 'rgba(0,0,0,0.06)' : 'transparent'
                     }}
                   >
                     <div
