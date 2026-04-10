@@ -1,0 +1,14 @@
+{"type":"session:start","timestamp":"2026-04-08T09:00:00Z","data":{"sessionId":"tp-session-analysis","projectSlug":"team-pulse","cwd":"../../workdir"}}
+{"type":"user_message","timestamp":"2026-04-08T09:00:01Z","data":{"text":"Build the user authentication module with login and signup"}}
+{"type":"tool_call","timestamp":"2026-04-08T09:00:05Z","data":{"tool":"read_file","args":{"path":"src/auth.ts"}}}
+{"type":"tool_call","timestamp":"2026-04-08T09:00:10Z","data":{"tool":"write_file","args":{"path":"src/auth.ts"}}}
+{"type":"tool_call","timestamp":"2026-04-08T09:00:15Z","data":{"tool":"create_file","args":{"path":"src/login.ts"}}}
+{"type":"tool_call","timestamp":"2026-04-08T09:00:20Z","data":{"tool":"edit_file","args":{"path":"src/utils.ts"}}}
+{"type":"tool_result","timestamp":"2026-04-08T09:00:30Z","data":{"tool":"bash","output":"5 passed, 1 failed"}}
+{"type":"error","timestamp":"2026-04-08T09:00:35Z","data":{"message":"Type error in login.ts line 42"}}
+{"type":"user_message","timestamp":"2026-04-08T09:00:40Z","data":{"text":"Fix the type error and run tests again"}}
+{"type":"tool_call","timestamp":"2026-04-08T09:00:45Z","data":{"tool":"edit_file","args":{"path":"src/login.ts"}}}
+{"type":"tool_result","timestamp":"2026-04-08T09:00:55Z","data":{"tool":"bash","output":"6 passed"}}
+{"type":"tool_result","timestamp":"2026-04-08T09:01:00Z","data":{"tool":"bash","output":"[main abc1234] feat: add auth module\n 3 files changed"}}
+{"type":"assistant_message","timestamp":"2026-04-08T09:01:05Z","data":{"text":"Done. Auth module with login and signup is ready."}}
+{"type":"session:end","timestamp":"2026-04-08T09:01:10Z","data":{"exitCode":0}}

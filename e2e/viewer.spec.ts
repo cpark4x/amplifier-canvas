@@ -827,6 +827,7 @@ test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   await session.click()
 
   await expect(viewer).toBeVisible({ timeout: 3000 })
+  await appWindow.waitForTimeout(300) // Allow CSS width transition (0.2s) to complete
 
   const box = await viewer.boundingBox()
   expect(box).toBeTruthy()

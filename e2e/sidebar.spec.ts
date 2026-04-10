@@ -250,7 +250,9 @@ test('S6: clicking a different session deselects the previous one', async ({ app
     }
   }
 
-  const sessions = appWindow.locator('[data-testid="session-item"]')
+  // Done/failed sessions render as history-items; active sessions as session-items.
+  // Use combined selector so we can test deselection regardless of status.
+  const sessions = appWindow.locator('[data-testid="session-item"], [data-testid="history-item"]')
   await expect(sessions.first()).toBeVisible({ timeout: 3000 })
   const sessionCount = await sessions.count()
   expect(sessionCount).toBeGreaterThanOrEqual(2)
