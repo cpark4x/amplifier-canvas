@@ -15,7 +15,15 @@ export function getWorkspaceState(): WorkspaceState {
   const map = new Map(rows.map((r) => [r.key, r.value]))
 
   const expandedRaw = map.get('expandedProjectSlugs')
-  const expandedProjectSlugs: string[] = expandedRaw ? (JSON.parse(expandedRaw) as string[]) : []
+  let expandedProjectSlugs: string[] = []
+  if (expandedRaw) {
+    try {
+      expandedProjectSlugs = JSON.parse(expandedRaw) as string[]
+    } catch {
+      // Corrupted value — silently fall back to empty list
+      expandedProjectSlugs = []
+    }
+  }
 
   const sidebarRaw = map.get('sidebarCollapsed')
   const sidebarCollapsed: boolean = sidebarRaw === 'true'
