@@ -68,11 +68,11 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
   }
 
   // Sessions table migrations
-  const existingColumns = (
+  const existingSessionColumns = (
     db.pragma('table_info(sessions)') as Array<{ name: string }>
   ).map((col) => col.name)
 
-  const migrations: Array<{ column: string; ddl: string }> = [
+  const sessionMigrations: Array<{ column: string; ddl: string }> = [
     { column: 'title', ddl: 'ALTER TABLE sessions ADD COLUMN title TEXT' },
     { column: 'exitCode', ddl: 'ALTER TABLE sessions ADD COLUMN exitCode INTEGER' },
     { column: 'firstPrompt', ddl: 'ALTER TABLE sessions ADD COLUMN firstPrompt TEXT' },
@@ -107,8 +107,8 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
     },
   ]
 
-  for (const { column, ddl } of migrations) {
-    if (!existingColumns.includes(column)) {
+  for (const { column, ddl } of sessionMigrations) {
+    if (!existingSessionColumns.includes(column)) {
       db.exec(ddl)
     }
   }
