@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
-import NewProjectModal from './components/NewProjectModal'
+import AddProjectModal from './components/AddProjectModal'
 import { ToastContainer } from './components/Toast'
 import { useCanvasStore } from './store'
 
@@ -15,6 +15,12 @@ if (typeof window !== 'undefined' && window.electronAPI) {
   })
   window.electronAPI.onFilesChanged(({ sessionId, files }) => {
     useCanvasStore.getState().updateFileActivity(sessionId, files)
+  })
+  window.electronAPI.onRunningSessionsToast(({ count }) => {
+    useCanvasStore.getState().addToast({
+      sessionId: 'app-quit',
+      message: `${count} ${count === 1 ? 'session is' : 'sessions are'} still running. They'll continue in the background.`,
+    })
   })
 }
 
@@ -38,8 +44,11 @@ const HEADER_BTN_STYLE: React.CSSProperties = {
 
 function App(): React.ReactElement {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const sessions = useCanvasStore((s) => s.sessions)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
+  const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
+  const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
   const viewerOpen = useCanvasStore((s) => s.viewerOpen)
   const openViewer = useCanvasStore((s) => s.openViewer)
   const closeViewer = useCanvasStore((s) => s.closeViewer)
@@ -48,6 +57,43 @@ function App(): React.ReactElement {
   const [showModal, setShowModal] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const hasSession = selectedSessionId !== null || showTerminal
+
+  // Restore workspace state on mount
+  useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.getWorkspaceState().then(({ state, isFirstTime }) => {
+        if (!isFirstTime && state) {
+          if (state.selectedProjectSlug) {
+            useCanvasStore.getState().selectProject(state.selectedProjectSlug)
+          }
+          if (state.selectedSessionId) {
+            useCanvasStore.getState().selectSession(state.selectedSessionId)
+            useCanvasStore.getState().openViewer()
+          }
+          if (state.expandedProjectSlugs.length > 0) {
+            useCanvasStore.getState().setExpandedProjectSlugs(state.expandedProjectSlugs)
+          }
+          setSidebarCollapsed(state.sidebarCollapsed)
+        }
+        setWorkspaceLoaded(true)
+      }).catch(() => {
+        setWorkspaceLoaded(true)
+      })
+    } else {
+      setWorkspaceLoaded(true)
+    }
+  }, [])
+
+  // Persist workspace state on every relevant change
+  useEffect(() => {
+    if (!workspaceLoaded || !window.electronAPI) return
+    window.electronAPI.saveWorkspaceState({
+      selectedProjectSlug,
+      expandedProjectSlugs,
+      selectedSessionId,
+      sidebarCollapsed,
+    })
+  }, [selectedSessionId, selectedProjectSlug, expandedProjectSlugs, sidebarCollapsed, workspaceLoaded])
 
   // Test utility: reset app state back to the welcome screen.
   // Called by E2E tests that need the welcome screen to be visible
@@ -235,21 +281,34 @@ function App(): React.ReactElement {
               </button>
             </div>
 
-            {/* Screen 2: New Project modal */}
+            {/* Screen 2: Add Project modal */}
             {showModal && (
-              <NewProjectModal
+              <AddProjectModal
                 onClose={() => setShowModal(false)}
-                onCreate={(_projectName, _source) => {
-                  setShowModal(false)
-                  setShowTerminal(true)
+                onCreateNew={(projectName) => {
+                  const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+                  const amplifierHome = process.env['AMPLIFIER_HOME'] || `${process.env['HOME'] || '~'}/.amplifier`
+                  const path = `${amplifierHome}/projects/${slug}`
 
-                  // Launch Amplifier in the terminal after a short delay
-                  // so the PTY shell is ready to receive input
-                  setTimeout(() => {
-                    if (window.electronAPI) {
-                      window.electronAPI.sendTerminalInput('amplifier\r')
-                    }
-                  }, 300)
+                  window.electronAPI.registerProject(slug, path, projectName).then(() => {
+                    useCanvasStore.getState().selectProject(slug)
+                    useCanvasStore.getState().toggleProjectExpanded(slug)
+                    setShowModal(false)
+                    setShowTerminal(true)
+
+                    setTimeout(() => {
+                      if (window.electronAPI) {
+                        window.electronAPI.sendTerminalInput('amplifier\r')
+                      }
+                    }, 300)
+                  })
+                }}
+                onAddExisting={(project) => {
+                  window.electronAPI.registerProject(project.slug, project.path, project.name).then(() => {
+                    useCanvasStore.getState().selectProject(project.slug)
+                    useCanvasStore.getState().toggleProjectExpanded(project.slug)
+                    setShowModal(false)
+                  })
                 }}
               />
             )}
