@@ -5,7 +5,18 @@ import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty } from './pty'
 import { getAmplifierHome } from './scanner'
-import { getSessionById } from './db'
+import {
+  getSessionById,
+  getRegisteredProjects,
+  setProjectRegistered,
+  setSessionHidden,
+  upsertProject,
+  getRegisteredProjectCount,
+} from './db'
+import { getWorkspaceState, saveWorkspaceState } from './workspace'
+import type { WorkspaceState } from './workspace'
+import { discoverProjects } from './discovery'
+import type { DiscoveredProject } from './discovery'
 import { getAnalysis, triggerAnalysis } from './analysisService'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
@@ -153,6 +164,113 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     },
   )
 
+  // --- Workspace model IPC handlers ---
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_DISCOVER, async (): Promise<DiscoveredProject[]> => {
+    try {
+      return discoverProjects(getAmplifierHome())
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[ipc] PROJECT_DISCOVER failed:', message)
+      return []
+    }
+  })
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_REGISTER,
+    async (
+      _event,
+      { slug, path: projPath, name }: { slug: string; path: string; name: string },
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        upsertProject(slug, projPath, name)
+        setProjectRegistered(slug, 1)
+        return { success: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] PROJECT_REGISTER failed:', message)
+        return { success: false, error: message }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_UNREGISTER,
+    async (
+      _event,
+      { slug }: { slug: string },
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        setProjectRegistered(slug, 0)
+        return { success: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] PROJECT_UNREGISTER failed:', message)
+        return { success: false, error: message }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SESSION_HIDE,
+    async (
+      _event,
+      { sessionId }: { sessionId: string },
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        setSessionHidden(sessionId, 1)
+        return { success: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] SESSION_HIDE failed:', message)
+        return { success: false, error: message }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SESSION_STOP,
+    async (): Promise<{ success: boolean; error: string }> => {
+      return { success: false, error: 'Not yet wired' }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_SAVE,
+    async (
+      _event,
+      { state }: { state: WorkspaceState },
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        saveWorkspaceState(state)
+        return { success: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] WORKSPACE_SAVE failed:', message)
+        return { success: false, error: message }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_GET,
+    async (): Promise<{
+      state: WorkspaceState
+      isFirstTime: boolean
+      error?: string
+    }> => {
+      try {
+        const state = getWorkspaceState()
+        const isFirstTime = getRegisteredProjectCount() === 0
+        return { state, isFirstTime }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] WORKSPACE_GET failed:', message)
+        return { state: {} as WorkspaceState, isFirstTime: true, error: message }
+      }
+    },
+  )
+
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
@@ -161,6 +279,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_RESUME)
     ipcMain.removeHandler(IPC_CHANNELS.GET_ANALYSIS)
     ipcMain.removeHandler(IPC_CHANNELS.TRIGGER_ANALYSIS)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_DISCOVER)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_REGISTER)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_UNREGISTER)
+    ipcMain.removeHandler(IPC_CHANNELS.SESSION_HIDE)
+    ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
+    ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
+    ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)
     killPty()
   })
 }
@@ -180,5 +305,17 @@ export function pushFilesChanged(
 ): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC_CHANNELS.FILES_CHANGED, { sessionId, files })
+  }
+}
+
+export function pushWorkspaceState(mainWindow: BrowserWindow, state: WorkspaceState): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC_CHANNELS.WORKSPACE_STATE, state)
+  }
+}
+
+export function pushRunningSessionsToast(mainWindow: BrowserWindow, count: number): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, count)
   }
 }

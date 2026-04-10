@@ -22,15 +22,35 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 **Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 1
 
-### Scene 1.2 — New Project
+### Scene 1.2 — Returning to Canvas
+
+*Chris opens Canvas on Thursday morning. He last used it Tuesday evening, working on amplifier-canvas.*
+
+Canvas opens instantly. The sidebar shows exactly what he left — amplifier-canvas is expanded, the last session he was working on is selected, the viewer panel shows its analysis. Two other projects (team-pulse, budget-tracker) are collapsed in the sidebar below.
+
+He notices the session he left running Tuesday has a green dot now — it finished overnight. He clicks it, sees the analysis summary, and moves on.
+
+He clicks "+" to start a new session on amplifier-canvas. Canvas launches Amplifier, a new session appears in the sidebar with an amber "running" dot, and the terminal is active. He's coding within 3 seconds of clicking "+".
+
+Later, he decides he's done with budget-tracker for now. Right-click, "Remove from Canvas." It disappears. His workspace is cleaner. If he needs it again, "+" > "Existing" tab > search > add.
+
+**Key UX principles:**
+- Zero-load time for returning users — no scanning, no discovery, just render from DB
+- Sessions that ran in the background show their final state naturally
+- Starting work is one click from the sidebar
+- Removing projects is non-destructive and reversible
+
+**Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 2
+
+### Scene 1.3 — New Project
 
 **The beat.** You click the button. A modal appears over a subtle overlay. "New Project" at the top. Two fields: project name and source (blank project or existing folder). The folder path is grayed out until you select "Existing folder." Footer: Cancel and "Create project →".
 
 **Why this moment matters.** This is the only configuration moment in the entire onboarding. Two choices, both obvious. The "existing folder" option signals that Canvas respects your existing workflow — it doesn't force you to start from scratch. The modal is small, centered, and feels like a quick aside, not a commitment.
 
-**Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 2
+**Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 3
 
-### Scene 1.3 — Session Started
+### Scene 1.4 — Session Started
 
 **The beat.** You hit create. The sidebar immediately shows your project name as a label ("Canvas-App") with one session below it: "main" — amber dot, bold text, "just started" in amber. The main area is now a full-width terminal. The Amplifier CLI banner appears: session ID, version, bundle, provider. A blinking amber cursor waits for your first prompt.
 

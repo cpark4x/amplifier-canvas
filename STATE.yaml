@@ -1,7 +1,7 @@
 # Amplifier Canvas — Build State
 # Read this at every session start.
 
-phase: "Act 3 — between phases (Phase 1 merged, ready for Phase 2 or polish)"
+phase: "Workspace Model — implementation complete, pending verification"
 
 completed_acts:
   act1:
@@ -29,7 +29,26 @@ completed_acts_continued:
     design: "docs/plans/2026-04-09-act3-design.md"
     delivered: "Session completion lifecycle, toast notifications, session history with resume, UI polish (header buttons, terminal padding, dynamic pane title)"
 
-current_work: null
+current_work:
+  workspace_model:
+    name: "Workspace Model"
+    plan: "docs/plans/2026-04-10-workspace-model-implementation.md"
+    status: "all 15 tasks implemented — pending verification"
+    delivered:
+      - "Workspace DB (projects table, workspace_state table)"
+      - "Project discovery via amplifier CLI"
+      - "Register/unregister project IPC"
+      - "Hide session / stop session IPC"
+      - "Workspace state save/restore (sidebar, selection, expanded)"
+      - "AddProjectModal (create new + add existing with discovery)"
+      - "ContextMenu (right-click remove project, remove/stop session)"
+      - "Sidebar expand/collapse per project"
+      - "Stopped session status rendering"
+      - "Running sessions toast on quit"
+    commits:
+      - "fd3994e: ContextMenu + Sidebar integration (Task 12)"
+      - "51fcb14: App.tsx wiring + AddProjectModal + state restore (Task 13)"
+      - "244939b: Stopped status rendering (Task 14)"
 
 upcoming:
   act3_phase2:
@@ -83,6 +102,20 @@ features:
   P3: { name: Dynamic pane title + Ctrl+C hint, status: done }
   P4: { name: SVG chevrons for sidebar collapse, status: done }
   P5: { name: New session slot always visible, status: done }
+  # Workspace Model
+  W1: { name: Workspace DB schema + migrations, status: done }
+  W2: { name: Project discovery via amplifier CLI, status: done }
+  W3: { name: Register/unregister project IPC, status: done }
+  W4: { name: Hide session IPC, status: done }
+  W5: { name: Stop session IPC, status: done }
+  W6: { name: Workspace state save/restore IPC, status: done }
+  W7: { name: Running sessions toast IPC, status: done }
+  W8: { name: Store workspace actions, status: done }
+  W9: { name: AddProjectModal component, status: done }
+  W10: { name: ContextMenu component, status: done }
+  W11: { name: Sidebar expand/collapse + context menu wiring, status: done }
+  W12: { name: App.tsx wiring (AddProjectModal + state restore), status: done }
+  W13: { name: Stopped status rendering, status: done }
 
 review_1A:
   status: passed
@@ -98,9 +131,12 @@ review_1A:
 test_health:
   status: "5 pre-existing failures fixed (9e85ec8)"
   remaining: "S6 may still be flaky — investigate next session if observed"
+  known_issues:
+    - "Unit tests: Node.js v24 ESM cycle error (ERR_REQUIRE_CYCLE_MODULE) — pre-existing, not related to workspace model"
+    - "E2E tests: Electron app launch >120s in CI-style invocation — pre-existing"
 
 open_items:
   - "Fix #2: Native folder picker for project selection (UX improvement)"
   - "Scene 2.5: App Preview (deferred indefinitely)"
 
-next_action: "Start fresh session — pick up Act 3 Phase 2 (AI analysis + git changes tabs) or tackle folder picker"
+next_action: "Verify workspace model (build + E2E), then finish (PR or merge)"

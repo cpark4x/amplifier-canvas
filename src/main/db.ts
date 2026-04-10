@@ -39,15 +39,40 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
       byteOffset INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (projectSlug) REFERENCES projects(slug)
     );
+
+    CREATE TABLE IF NOT EXISTS workspace_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `)
 
   // Additive column migrations — safe to run on existing databases.
   // Each block checks whether the column exists before attempting ADD COLUMN.
-  const existingColumns = (
+
+  // Projects table migrations
+  const existingProjectColumns = (
+    db.pragma('table_info(projects)') as Array<{ name: string }>
+  ).map((col) => col.name)
+
+  const projectMigrations: Array<{ column: string; ddl: string }> = [
+    {
+      column: 'registered',
+      ddl: 'ALTER TABLE projects ADD COLUMN registered INTEGER NOT NULL DEFAULT 0',
+    },
+  ]
+
+  for (const { column, ddl } of projectMigrations) {
+    if (!existingProjectColumns.includes(column)) {
+      db.exec(ddl)
+    }
+  }
+
+  // Sessions table migrations
+  const existingSessionColumns = (
     db.pragma('table_info(sessions)') as Array<{ name: string }>
   ).map((col) => col.name)
 
-  const migrations: Array<{ column: string; ddl: string }> = [
+  const sessionMigrations: Array<{ column: string; ddl: string }> = [
     { column: 'title', ddl: 'ALTER TABLE sessions ADD COLUMN title TEXT' },
     { column: 'exitCode', ddl: 'ALTER TABLE sessions ADD COLUMN exitCode INTEGER' },
     { column: 'firstPrompt', ddl: 'ALTER TABLE sessions ADD COLUMN firstPrompt TEXT' },
@@ -76,10 +101,14 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
       column: 'analysis_status',
       ddl: "ALTER TABLE sessions ADD COLUMN analysis_status TEXT DEFAULT 'none'",
     },
+    {
+      column: 'hidden',
+      ddl: 'ALTER TABLE sessions ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0',
+    },
   ]
 
-  for (const { column, ddl } of migrations) {
-    if (!existingColumns.includes(column)) {
+  for (const { column, ddl } of sessionMigrations) {
+    if (!existingSessionColumns.includes(column)) {
       db.exec(ddl)
     }
   }
@@ -180,6 +209,7 @@ export interface ProjectRow {
   path: string
   name: string
   addedAt: string
+  registered: number
 }
 
 export interface SessionRow {
@@ -203,6 +233,7 @@ export interface SessionRow {
   analysis_json: string | null
   analysis_generated_at: string | null
   analysis_status: string | null
+  hidden: number
 }
 
 export function getAllProjects(): ProjectRow[] {
@@ -266,4 +297,32 @@ export function saveAnalysisResult(
 export function updateAnalysisStatus(id: string, status: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET analysis_status = ? WHERE id = ?').run(status, id)
+}
+
+export function getRegisteredProjects(): ProjectRow[] {
+  const d = getDatabase()
+  return d.prepare('SELECT * FROM projects WHERE registered = 1 ORDER BY name').all() as ProjectRow[]
+}
+
+export function setProjectRegistered(slug: string, registered: number): void {
+  const d = getDatabase()
+  d.prepare('UPDATE projects SET registered = ? WHERE slug = ?').run(registered, slug)
+}
+
+export function getVisibleProjectSessions(projectSlug: string): SessionRow[] {
+  const d = getDatabase()
+  return d
+    .prepare('SELECT * FROM sessions WHERE projectSlug = ? AND hidden = 0 ORDER BY startedAt DESC')
+    .all(projectSlug) as SessionRow[]
+}
+
+export function setSessionHidden(id: string, hidden: number): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET hidden = ? WHERE id = ?').run(hidden, id)
+}
+
+export function getRegisteredProjectCount(): number {
+  const d = getDatabase()
+  const row = d.prepare('SELECT COUNT(*) as count FROM projects WHERE registered = 1').get() as { count: number }
+  return row.count
 }

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, WorkspaceState } from '../shared/types'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
@@ -92,6 +92,63 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.ANALYSIS_READY, handler)
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.ANALYSIS_READY, handler)
+    }
+  },
+
+  // Workspace: discover available Amplifier projects
+  discoverProjects: (amplifierHome: string): Promise<Array<{ slug: string; name: string; path: string }>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_DISCOVER, { amplifierHome })
+  },
+
+  // Workspace: register a project (add to Canvas)
+  registerProject: (slug: string, path: string, name: string): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_REGISTER, { slug, path, name })
+  },
+
+  // Workspace: unregister a project (remove from Canvas)
+  unregisterProject: (slug: string): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_UNREGISTER, { slug })
+  },
+
+  // Sessions: hide a session from view
+  hideSession: (sessionId: string): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SESSION_HIDE, { sessionId })
+  },
+
+  // Sessions: stop a running session
+  stopSession: (sessionId: string): Promise<{ success: boolean; error?: string }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SESSION_STOP, { sessionId })
+  },
+
+  // Workspace state: save current state
+  saveWorkspaceState: (state: WorkspaceState): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_SAVE, state)
+  },
+
+  // Workspace state: get saved state
+  getWorkspaceState: (): Promise<{ state: WorkspaceState; isFirstTime: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_GET)
+  },
+
+  // Workspace state: subscribe to workspace state push events
+  onWorkspaceState: (callback: (state: WorkspaceState) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: WorkspaceState): void => {
+      callback(state)
+    }
+    ipcRenderer.on(IPC_CHANNELS.WORKSPACE_STATE, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.WORKSPACE_STATE, handler)
+    }
+  },
+
+  // App: subscribe to running sessions toast on quit
+  onRunningSessionsToast: (callback: (data: { count: number }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { count: number }): void => {
+      callback(data)
+    }
+    ipcRenderer.on(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, handler)
     }
   },
 }

@@ -4,11 +4,11 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { existsSync } from 'fs'
-import { initDatabase, closeDatabase, getAllProjects, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
-import { getAmplifierHome, scanProjects, scanSessionsAsync } from './scanner'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
+import { getAmplifierHome, scanSessionsAsync } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
-import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
+import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, isPathAllowed } from './ipc'
+import { getWorkspaceState } from './workspace'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
 
@@ -203,45 +203,71 @@ app.whenReady().then(() => {
   const amplifierHome = getAmplifierHome()
   const projectsDir = join(amplifierHome, 'projects')
 
-  // Scan existing sessions on startup and push to renderer once ready
+  // Load only user-registered projects from the DB. NO filesystem scan.
+  // Projects appear here only when the user explicitly registers them via the UI.
   mainWindow.webContents.once('did-finish-load', () => {
     try {
-      // Scan filesystem for projects/sessions (handles fresh/empty-DB environments).
-      // scanProjects upserts discovered projects to the DB as a side effect.
-      const scanResult = scanProjects(amplifierHome)
+      // (1) Set allowed dirs from projectsDir
+      setAllowedDirs([projectsDir])
 
-      if (existsSync(projectsDir)) {
-        setAllowedDirs([projectsDir])
+      // (2) Load only registered projects via getRegisteredProjects()
+      const registeredProjects = getRegisteredProjects()
+
+      // (3) If no registered projects, push empty sessions and return (first-time user)
+      if (registeredProjects.length === 0) {
+        pushSessionsChanged(mainWindow, [])
+        return
       }
 
-      // Seed liveSessions so watcher updates merge with historical sessions
-      for (const session of scanResult.sessions) {
-        liveSessions.set(session.id, session)
-      }
+      // (4) For returning users, build lightweight SessionState stubs from DB
+      const sessions: SessionState[] = []
 
-      pushSessionsChanged(mainWindow, scanResult.sessions)
+      for (const project of registeredProjects) {
+        const dbSessions = getVisibleProjectSessions(project.slug)
+        for (const row of dbSessions) {
+          sessions.push({
+            id: row.id,
+            projectSlug: row.projectSlug,
+            projectName: project.name,
+            status: (row.status as SessionState['status']) || 'active',
+            startedAt: row.startedAt,
+            startedBy: 'external',
+            byteOffset: row.byteOffset || 0,
+            recentFiles: [],
+            workDir: undefined,
+            title: row.title ?? undefined,
+            endedAt: row.endedAt ?? undefined,
+            exitCode: row.exitCode ?? undefined,
+            promptCount: row.promptCount ?? undefined,
+            toolCallCount: row.toolCallCount ?? undefined,
+            filesChangedCount: row.filesChangedCount ?? undefined,
+          })
+        }
 
-      // Watch all discovered projects
-      const dbProjects = getAllProjects()
-      for (const project of dbProjects) {
+        // (5) Start watchers only for registered projects
         addProjectWatch(project.slug)
       }
 
-      // Async hydration: enrich stubs with events.jsonl data (workDir, recentFiles, etc.)
-      // Sessions start as 'loading' stubs; hydration replaces them with full data.
-      void scanSessionsAsync(amplifierHome, scanResult.sessions, (hydratedSessions) => {
-        for (const session of hydratedSessions) {
+      // Seed liveSessions map and push stubs to renderer
+      for (const session of sessions) {
+        liveSessions.set(session.id, session)
+      }
+      pushSessionsChanged(mainWindow, sessions)
+
+      // (7) Log project and session counts
+      console.log(`[startup] Loaded ${registeredProjects.length} projects, ${sessions.length} sessions from DB`)
+
+      // (6) Async hydration via scanSessionsAsync
+      void scanSessionsAsync(amplifierHome, sessions, (hydrated) => {
+        for (const session of hydrated) {
           liveSessions.set(session.id, session)
         }
         pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
       })
 
-      console.log(`[startup] Scanned ${scanResult.projectCount} projects, ${scanResult.sessionCount} sessions`)
     } catch (err) {
-      console.error('[startup] Scan failed:', err instanceof Error ? err.message : String(err))
-      if (existsSync(projectsDir)) {
-        setAllowedDirs([projectsDir])
-      }
+      console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
+      setAllowedDirs([projectsDir])
       pushSessionsChanged(mainWindow, [])
     }
   })
@@ -327,13 +353,18 @@ app.whenReady().then(() => {
       registerIpcHandlers(newWindow)
     }
   })
+
+  // Check for running sessions before quit and notify the user
+  app.on('before-quit', () => {
+    const runningSessions = Array.from(liveSessions.values()).filter(s => s.status === 'running')
+    if (runningSessions.length > 0) {
+      pushRunningSessionsToast(mainWindow, runningSessions.length)
+    }
+    stopWatching()
+    closeDatabase()
+  })
 }).catch((err) => {
   console.error('[startup] Fatal error:', err)
-})
-
-app.on('before-quit', () => {
-  stopWatching()
-  closeDatabase()
 })
 
 app.on('window-all-closed', () => {
@@ -348,3 +379,5 @@ function slugToName(slug: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
+
+

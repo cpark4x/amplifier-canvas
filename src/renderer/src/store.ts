@@ -9,7 +9,7 @@ interface Project {
 }
 
 const ACTIVE_STATUSES = new Set(['running', 'active', 'needs_input'])
-const COMPLETED_STATUSES = new Set(['done', 'failed'])
+const COMPLETED_STATUSES = new Set(['done', 'failed', 'stopped'])
 
 let toastCounter = 0
 
@@ -18,7 +18,7 @@ interface CanvasStore {
   sessions: SessionState[]
   selectedSessionId: string | null
   selectedProjectSlug: string | null
-  createdProjects: Project[] // Projects created via modal (before any session exists)
+  expandedProjectSlugs: string[]
   viewerOpen: boolean
   toasts: Toast[]
   analysisStatusMap: Record<string, AnalysisStatus>
@@ -27,8 +27,9 @@ interface CanvasStore {
   setSessions: (sessions: SessionState[]) => void
   selectSession: (id: string | null) => void
   selectProject: (slug: string | null) => void
+  toggleProjectExpanded: (slug: string) => void
+  setExpandedProjectSlugs: (slugs: string[]) => void
   updateFileActivity: (sessionId: string, files: FileActivity[]) => void
-  createProject: (name: string) => void
   openViewer: () => void
   closeViewer: () => void
   addToast: (toast: Omit<Toast, 'id'>) => void
@@ -47,7 +48,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   sessions: [],
   selectedSessionId: null,
   selectedProjectSlug: null,
-  createdProjects: [],
+  expandedProjectSlugs: [],
   viewerOpen: false,
   toasts: [],
   analysisStatusMap: {},
@@ -82,10 +83,16 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   selectSession: (id) => set({ selectedSessionId: id }),
 
-  selectProject: (slug) =>
+  selectProject: (slug) => set({ selectedProjectSlug: slug }),
+
+  toggleProjectExpanded: (slug) =>
     set((state) => ({
-      selectedProjectSlug: state.selectedProjectSlug === slug ? null : slug,
+      expandedProjectSlugs: state.expandedProjectSlugs.includes(slug)
+        ? state.expandedProjectSlugs.filter((s) => s !== slug)
+        : [...state.expandedProjectSlugs, slug],
     })),
+
+  setExpandedProjectSlugs: (slugs) => set({ expandedProjectSlugs: slugs }),
 
   updateFileActivity: (sessionId, files) =>
     set((state) => ({
@@ -93,14 +100,6 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         s.id === sessionId ? { ...s, recentFiles: files } : s
       ),
     })),
-
-  createProject: (name) => {
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    set((state) => ({
-      createdProjects: [...state.createdProjects, { slug, name, sessions: [] }],
-      selectedProjectSlug: slug,
-    }))
-  },
 
   openViewer: () => set({ viewerOpen: true }),
   closeViewer: () => set({ viewerOpen: false }),
@@ -126,15 +125,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   // Derived
   getProjects: () => {
-    const { sessions, createdProjects } = get()
+    const { sessions } = get()
     const projectMap = new Map<string, Project>()
 
-    // Include manually created projects (from modal)
-    for (const cp of createdProjects) {
-      projectMap.set(cp.slug, { slug: cp.slug, name: cp.name, sessions: [] })
-    }
-
-    // Merge in session-derived projects
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {

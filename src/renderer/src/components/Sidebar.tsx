@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useCanvasStore } from '../store'
+import ContextMenu from './ContextMenu'
+import type { ContextMenuItem } from './ContextMenu'
 import type { SessionState, SessionStatus } from '../../../shared/types'
 
 type SidebarProps = {
@@ -17,7 +19,7 @@ interface Project {
 // ---- Helpers ----------------------------------------------------------------
 
 const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input'])
-const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed'])
+const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed', 'stopped'])
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',
@@ -26,6 +28,7 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   done: '#3ECF8E', // Emerald
   failed: '#EF4444',
   loading: '#6B7280', // Gray — analysis loading
+  stopped: '#6B7280', // Gray — neutral indicator
 }
 
 /**
@@ -84,23 +87,62 @@ function formatStats(session: SessionState): string {
 
 function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.ReactElement {
   const sessions = useCanvasStore((s) => s.sessions)
-  const createdProjects = useCanvasStore((s) => s.createdProjects)
   const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
   const openViewer = useCanvasStore((s) => s.openViewer)
+  const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
+  const toggleProjectExpanded = useCanvasStore((s) => s.toggleProjectExpanded)
 
-  // Derive projects from created projects + sessions
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    items: ContextMenuItem[]
+  } | null>(null)
+
+  const handleProjectContextMenu = (e: React.MouseEvent, projectSlug: string) => {
+    e.preventDefault()
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        {
+          label: 'Remove from Canvas',
+          onClick: () => {
+            window.electronAPI.unregisterProject(projectSlug)
+          },
+        },
+      ],
+    })
+  }
+
+  const handleSessionContextMenu = (e: React.MouseEvent, session: SessionState) => {
+    e.preventDefault()
+    const items: ContextMenuItem[] = [
+      {
+        label: 'Remove from view',
+        onClick: () => {
+          window.electronAPI.hideSession(session.id)
+        },
+      },
+    ]
+    if (session.status === 'running' || session.status === 'active' || session.status === 'needs_input') {
+      items.unshift({
+        label: 'Stop',
+        danger: true,
+        onClick: () => {
+          window.electronAPI.stopSession(session.id)
+        },
+      })
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY, items })
+  }
+
+  // Derive projects from sessions
   const projects: Project[] = useMemo(() => {
     const projectMap = new Map<string, Project>()
 
-    // Include manually created projects
-    for (const cp of createdProjects) {
-      projectMap.set(cp.slug, { slug: cp.slug, name: cp.name, sessions: [] })
-    }
-
-    // Merge session-derived projects
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {
@@ -114,7 +156,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
       }
     }
     return Array.from(projectMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [sessions, createdProjects])
+  }, [sessions])
 
   return (
     <div
@@ -249,6 +291,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
 
             {/* Project + session list — storyboard Screens 3+ */}
             {projects.map((project) => {
+              const isExpanded = expandedProjectSlugs.includes(project.slug)
               const activeSessions = project.sessions.filter((s) => ACTIVE_STATUSES.has(s.status))
               const historySessions = project.sessions
                 .filter((s) => COMPLETED_STATUSES.has(s.status))
@@ -265,7 +308,11 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                   <div
                     data-testid="project-item"
                     data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
-                    onClick={() => selectProject(project.slug)}
+                    onClick={() => {
+                      selectProject(project.slug)
+                      toggleProjectExpanded(project.slug)
+                    }}
+                    onContextMenu={(e) => handleProjectContextMenu(e, project.slug)}
                     style={{
                       padding: '12px 12px 4px',
                       fontSize: '10px',
@@ -280,72 +327,79 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                     <span data-testid="project-name">{project.name}</span>
                   </div>
 
-                  {/* Active session rows */}
-                  <div>
-                    {activeSessions.map((session) => (
-                      <SessionRow
-                        key={session.id}
-                        session={session}
-                        isSelected={selectedSessionId === session.id}
-                        onSelect={() => {
-                          selectSession(session.id)
-                          openViewer()
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* + New session — always visible when project is expanded */}
-                  <div
-                    data-testid="new-session-slot"
-                    onClick={onNewProject}
-                    style={{
-                      padding: '8px 14px',
-                      fontSize: '11px',
-                      color: 'var(--text-very-muted)',
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
-                    }}
-                    onMouseLeave={(e) => {
-                      ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
-                    }}
-                  >
-                    + New session
-                  </div>
-
-                  {/* History section */}
-                  {historySessions.length > 0 && (
+                  {/* Show sessions only when project is expanded */}
+                  {isExpanded && (
                     <>
-                      {/* HISTORY label */}
-                      <div
-                        data-testid="history-label"
-                        style={{
-                          padding: '6px 12px 2px 14px',
-                          fontSize: '10px',
-                          textTransform: 'uppercase',
-                          color: '#A0977D',
-                          letterSpacing: '0.08em',
-                          fontWeight: 600,
-                          userSelect: 'none',
-                        }}
-                      >
-                        HISTORY
+                      {/* Active session rows */}
+                      <div>
+                        {activeSessions.map((session) => (
+                          <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
+                            <SessionRow
+                              session={session}
+                              isSelected={selectedSessionId === session.id}
+                              onSelect={() => {
+                                selectSession(session.id)
+                                openViewer()
+                              }}
+                            />
+                          </div>
+                        ))}
                       </div>
 
-                      {/* History session rows */}
-                      {historySessions.map((session) => (
-                        <HistorySessionRow
-                          key={session.id}
-                          session={session}
-                          isSelected={selectedSessionId === session.id}
-                          onSelect={() => {
-                            selectSession(session.id)
-                            openViewer()
-                          }}
-                        />
-                      ))}
+                      {/* + New session — always visible when project is expanded */}
+                      <div
+                        data-testid="new-session-slot"
+                        onClick={onNewProject}
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '11px',
+                          color: 'var(--text-very-muted)',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
+                        }}
+                        onMouseLeave={(e) => {
+                          ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
+                        }}
+                      >
+                        + New session
+                      </div>
+
+                      {/* History section */}
+                      {historySessions.length > 0 && (
+                        <>
+                          {/* HISTORY label */}
+                          <div
+                            data-testid="history-label"
+                            style={{
+                              padding: '6px 12px 2px 14px',
+                              fontSize: '10px',
+                              textTransform: 'uppercase',
+                              color: '#A0977D',
+                              letterSpacing: '0.08em',
+                              fontWeight: 600,
+                              userSelect: 'none',
+                            }}
+                          >
+                            HISTORY
+                          </div>
+
+                          {/* History session rows */}
+                          {historySessions.map((session) => (
+                            <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
+                              <HistorySessionRow
+                                session={session}
+                                isSelected={selectedSessionId === session.id}
+                                onSelect={() => {
+                                  selectSession(session.id)
+                                  openViewer()
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -353,6 +407,15 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
             })}
           </div>
         </>
+      )}
+
+      {contextMenu && (
+        <ContextMenu
+          items={contextMenu.items}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   )
@@ -450,7 +513,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
   )
 }
 
-/** History session row (done / failed) — shows title, relative time, and stats */
+/** History session row (done / failed / stopped) — shows title, relative time, and stats */
 function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
   return (
     <div
@@ -542,7 +605,7 @@ function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): 
               whiteSpace: 'nowrap',
             }}
           >
-            Resume →
+            Resume {'\u2192'}
           </button>
         </div>
 

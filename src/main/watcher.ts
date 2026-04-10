@@ -68,6 +68,20 @@ export function addProjectWatch(slug: string): void {
   }
 }
 
+/**
+ * Stop watching a specific project's sessions directory.
+ * Called when a project is unregistered (removed from Canvas).
+ */
+export function removeProjectWatch(slug: string): void {
+  if (!amplifierProjectsDir || !watcher) {
+    return
+  }
+
+  const sessionsDir = join(amplifierProjectsDir, slug, 'sessions')
+  watcher.unwatch(sessionsDir)
+  console.log(`[watcher] Removed project from watch: ${slug}`)
+}
+
 function attachListeners(w: FSWatcher): void {
   const handler = (filePath: string): void => {
     if (!amplifierProjectsDir || !watchCallback) return
