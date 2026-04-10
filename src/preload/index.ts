@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, WorkspaceState } from '../shared/types'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
@@ -121,41 +121,18 @@ const api = {
   },
 
   // Workspace state: save current state
-  saveWorkspaceState: (state: {
-    selectedProjectSlug: string | null
-    expandedProjectSlugs: string[]
-    selectedSessionId: string | null
-    sidebarCollapsed: boolean
-  }): Promise<{ success: boolean }> => {
+  saveWorkspaceState: (state: WorkspaceState): Promise<{ success: boolean }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_SAVE, state)
   },
 
   // Workspace state: get saved state
-  getWorkspaceState: (): Promise<{
-    state: {
-      selectedProjectSlug: string | null
-      expandedProjectSlugs: string[]
-      selectedSessionId: string | null
-      sidebarCollapsed: boolean
-    }
-    isFirstTime: boolean
-  }> => {
+  getWorkspaceState: (): Promise<{ state: WorkspaceState; isFirstTime: boolean }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_GET)
   },
 
   // Workspace state: subscribe to workspace state push events
-  onWorkspaceState: (callback: (state: {
-    selectedProjectSlug: string | null
-    expandedProjectSlugs: string[]
-    selectedSessionId: string | null
-    sidebarCollapsed: boolean
-  }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, state: {
-      selectedProjectSlug: string | null
-      expandedProjectSlugs: string[]
-      selectedSessionId: string | null
-      sidebarCollapsed: boolean
-    }): void => {
+  onWorkspaceState: (callback: (state: WorkspaceState) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: WorkspaceState): void => {
       callback(state)
     }
     ipcRenderer.on(IPC_CHANNELS.WORKSPACE_STATE, handler)

@@ -70,6 +70,15 @@ export interface Toast {
   }
 }
 
+// --- Workspace state types ---
+
+export interface WorkspaceState {
+  selectedProjectSlug: string | null
+  expandedProjectSlugs: string[]
+  selectedSessionId: string | null
+  sidebarCollapsed: boolean
+}
+
 // --- File types ---
 
 export interface FileEntry {

@@ -6,7 +6,7 @@ import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
 import { existsSync } from 'fs'
 import { initDatabase, closeDatabase, getAllProjects, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
-import { getAmplifierHome, scanProjects, scanSessionsAsync } from './scanner'
+import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
@@ -203,42 +203,50 @@ app.whenReady().then(() => {
   const amplifierHome = getAmplifierHome()
   const projectsDir = join(amplifierHome, 'projects')
 
-  // Scan existing sessions on startup and push to renderer once ready
+  // Load only user-added projects from the DB. NO filesystem scan.
+  // Projects appear here only when the user creates them via the UI.
   mainWindow.webContents.once('did-finish-load', () => {
     try {
-      // Scan filesystem for projects/sessions (handles fresh/empty-DB environments).
-      // scanProjects upserts discovered projects to the DB as a side effect.
-      const scanResult = scanProjects(amplifierHome)
-
       if (existsSync(projectsDir)) {
         setAllowedDirs([projectsDir])
       }
 
-      // Seed liveSessions so watcher updates merge with historical sessions
-      for (const session of scanResult.sessions) {
-        liveSessions.set(session.id, session)
-      }
-
-      pushSessionsChanged(mainWindow, scanResult.sessions)
-
-      // Watch all discovered projects
       const dbProjects = getAllProjects()
+      const sessions: SessionState[] = []
+
       for (const project of dbProjects) {
+        const dbSessions = getProjectSessions(project.slug)
+        for (const row of dbSessions) {
+          sessions.push({
+            id: row.id,
+            projectSlug: row.projectSlug,
+            projectName: project.name,
+            status: (row.status as SessionState['status']) || 'active',
+            startedAt: row.startedAt,
+            startedBy: 'external',
+            byteOffset: row.byteOffset || 0,
+            recentFiles: [],
+            workDir: undefined,
+            title: row.title ?? undefined,
+            endedAt: row.endedAt ?? undefined,
+            exitCode: row.exitCode ?? undefined,
+            promptCount: row.promptCount ?? undefined,
+            toolCallCount: row.toolCallCount ?? undefined,
+            filesChangedCount: row.filesChangedCount ?? undefined,
+          })
+        }
+
         addProjectWatch(project.slug)
       }
 
-      // Async hydration: enrich stubs with events.jsonl data (workDir, recentFiles, etc.)
-      // Sessions start as 'loading' stubs; hydration replaces them with full data.
-      void scanSessionsAsync(amplifierHome, scanResult.sessions, (hydratedSessions) => {
-        for (const session of hydratedSessions) {
-          liveSessions.set(session.id, session)
-        }
-        pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
-      })
+      for (const session of sessions) {
+        liveSessions.set(session.id, session)
+      }
+      pushSessionsChanged(mainWindow, sessions)
 
-      console.log(`[startup] Scanned ${scanResult.projectCount} projects, ${scanResult.sessionCount} sessions`)
+      console.log(`[startup] Loaded ${dbProjects.length} projects, ${sessions.length} sessions from DB`)
     } catch (err) {
-      console.error('[startup] Scan failed:', err instanceof Error ? err.message : String(err))
+      console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
       if (existsSync(projectsDir)) {
         setAllowedDirs([projectsDir])
       }
