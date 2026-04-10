@@ -39,10 +39,35 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
       byteOffset INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (projectSlug) REFERENCES projects(slug)
     );
+
+    CREATE TABLE IF NOT EXISTS workspace_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `)
 
   // Additive column migrations — safe to run on existing databases.
   // Each block checks whether the column exists before attempting ADD COLUMN.
+
+  // Projects table migrations
+  const existingProjectColumns = (
+    db.pragma('table_info(projects)') as Array<{ name: string }>
+  ).map((col) => col.name)
+
+  const projectMigrations: Array<{ column: string; ddl: string }> = [
+    {
+      column: 'registered',
+      ddl: 'ALTER TABLE projects ADD COLUMN registered INTEGER NOT NULL DEFAULT 0',
+    },
+  ]
+
+  for (const { column, ddl } of projectMigrations) {
+    if (!existingProjectColumns.includes(column)) {
+      db.exec(ddl)
+    }
+  }
+
+  // Sessions table migrations
   const existingColumns = (
     db.pragma('table_info(sessions)') as Array<{ name: string }>
   ).map((col) => col.name)
@@ -75,6 +100,10 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
     {
       column: 'analysis_status',
       ddl: "ALTER TABLE sessions ADD COLUMN analysis_status TEXT DEFAULT 'none'",
+    },
+    {
+      column: 'hidden',
+      ddl: 'ALTER TABLE sessions ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0',
     },
   ]
 
