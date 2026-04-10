@@ -19,11 +19,11 @@ export function discoverProjects(amplifierHome: string): DiscoveredProject[] {
     return []
   }
 
-  const registeredSlugs = new Set(
-    getRegisteredProjects().map((p) => p.slug),
-  )
-
   try {
+    const registeredSlugs = new Set(
+      getRegisteredProjects().map((p) => p.slug),
+    )
+
     const entries = readdirSync(projectsDir, { withFileTypes: true }).filter((entry) =>
       entry.isDirectory(),
     )
