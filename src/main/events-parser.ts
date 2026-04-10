@@ -1,6 +1,7 @@
 import { readFileSync, statSync, openSync, readSync, closeSync } from 'fs'
 import path from 'path'
 import type { FileActivity, SessionStatus } from '../shared/types'
+import type { PromptEntry, TestStatus, GitOperation } from '../shared/analysisTypes'
 
 export interface ParsedEvent {
   type: string
@@ -213,4 +214,104 @@ export function extractWorkDir(events: ParsedEvent[], sessionDir?: string): stri
   }
 
   return rawDir
+}
+
+export function extractAllPrompts(events: ParsedEvent[]): PromptEntry[] {
+  const prompts: PromptEntry[] = []
+  for (const event of events) {
+    if (event.type !== 'user_message') continue
+    const text = event.data.text
+    if (typeof text !== 'string') continue
+    prompts.push({ text, timestamp: event.timestamp })
+  }
+  return prompts
+}
+
+export function extractErrors(
+  events: ParsedEvent[],
+): Array<{ message: string; timestamp: string }> {
+  const errors: Array<{ message: string; timestamp: string }> = []
+  for (const event of events) {
+    if (event.type === 'error') {
+      const message = event.data.message
+      if (typeof message === 'string') {
+        errors.push({ message, timestamp: event.timestamp })
+      }
+    } else if (event.type === 'tool_result') {
+      if (event.data.error === true) {
+        const output = event.data.output
+        if (typeof output === 'string') {
+          errors.push({ message: output, timestamp: event.timestamp })
+        }
+      }
+    }
+  }
+  return errors
+}
+
+export function extractTestResults(events: ParsedEvent[]): TestStatus | null {
+  const passedPattern = /(\d+)\s+passed/
+  const failedPattern = /(\d+)\s+failed/
+  let lastResult: TestStatus | null = null
+
+  for (const event of events) {
+    if (event.type !== 'tool_result') continue
+    const output = event.data.output
+    if (typeof output !== 'string') continue
+
+    const passedMatch = passedPattern.exec(output)
+    if (passedMatch) {
+      const passed = parseInt(passedMatch[1], 10)
+      const failedMatch = failedPattern.exec(output)
+      const failed = failedMatch ? parseInt(failedMatch[1], 10) : 0
+      lastResult = { passed, failed }
+    }
+  }
+
+  return lastResult
+}
+
+export function extractGitOperations(events: ParsedEvent[]): GitOperation[] {
+  const operations: GitOperation[] = []
+  const commitPattern = /\[[\w/.-]+\s+([a-f0-9]{7,})\]\s+(.+)/
+  const prUrlPattern = /(https:\/\/github\.com\/[^\s]+\/pull\/\d+)/
+
+  for (const event of events) {
+    if (event.type !== 'tool_result') continue
+    const output = event.data.output
+    if (typeof output !== 'string') continue
+
+    // Check for PR URL first
+    const prMatch = prUrlPattern.exec(output)
+    if (prMatch) {
+      operations.push({
+        type: 'pr-create',
+        timestamp: event.timestamp,
+        prUrl: prMatch[1],
+      })
+      continue
+    }
+
+    // Check for commit pattern
+    const commitMatch = commitPattern.exec(output)
+    if (commitMatch) {
+      operations.push({
+        type: 'commit',
+        timestamp: event.timestamp,
+        sha: commitMatch[1],
+        message: commitMatch[2].trim(),
+      })
+      continue
+    }
+
+    // Check for push indicators
+    if (output.includes('->') && (output.includes('git push') || output.includes('To github.com'))) {
+      operations.push({
+        type: 'push',
+        timestamp: event.timestamp,
+      })
+    }
+  }
+
+  return operations
 }

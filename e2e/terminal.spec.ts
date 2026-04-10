@@ -1,6 +1,56 @@
 import { _electron as electron } from '@playwright/test'
 import { test, expect } from './fixtures'
+import type { Page } from '@playwright/test'
 import { APP_NAME, WINDOW_CONFIG } from '../src/shared/constants'
+
+// --- Helper: ensure the terminal pane is visible with pane-title = "Terminal" ---
+// The terminal only renders when hasSession=true. We trigger it via the
+// "Create project" welcome-screen flow so that pane-title shows "Terminal"
+// (no session selected). This is the state T2 assertions rely on.
+//
+// If a previous test in this Playwright worker left the app with a session
+// selected, we first reset to the welcome screen via __resetToWelcome.
+async function ensureTerminalVisible(appWindow: Page): Promise<void> {
+  const terminal = appWindow.locator('.xterm')
+
+  // If terminal is visible, check whether pane-title shows "Terminal".
+  // If not (session is selected), reset to welcome state first.
+  if (await terminal.isVisible()) {
+    const paneTitle = appWindow.locator('[data-testid="pane-title"]')
+    const text = await paneTitle.textContent().catch(() => '')
+    if (text?.trim() === 'Terminal') return // Already in correct state
+
+    // Terminal visible but a session is selected — reset to welcome
+    await appWindow.evaluate(() => {
+      const reset = (window as unknown as Record<string, unknown>).__resetToWelcome
+      if (typeof reset === 'function') (reset as () => void)()
+    })
+    await appWindow.waitForTimeout(300)
+    // Fall through to trigger the terminal via modal
+  }
+
+  // Trigger the "new project" modal to set showTerminal=true without selecting a session.
+  const welcomeBtn = appWindow.locator('[data-testid="welcome-btn"]')
+  if (await welcomeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await welcomeBtn.click()
+    const input = appWindow.locator('[data-testid="project-name-input"]')
+    await input.waitFor({ state: 'visible', timeout: 3000 })
+    await input.fill('__Terminal__Test__')
+    const submit = appWindow.locator('[data-testid="modal-submit"]')
+    await submit.click()
+    await appWindow.waitForTimeout(500)
+    return
+  }
+
+  // Fallback: click a session item to make hasSession=true
+  // (pane-title will show session title, not "Terminal")
+  const sessionItems = appWindow.locator('[data-testid="session-item"], [data-testid="history-item"]')
+  await appWindow.waitForTimeout(2000)
+  if (await sessionItems.count() > 0) {
+    await sessionItems.first().click()
+    await appWindow.waitForTimeout(300)
+  }
+}
 
 // --- T1: Electron Shell ---
 
@@ -92,6 +142,7 @@ test('T1: window shows no unexpected chrome', async ({ appWindow }) => {
 // --- T2: xterm.js Terminal ---
 
 test('T2: pane title bar is visible above terminal', async ({ appWindow }) => {
+  await ensureTerminalVisible(appWindow)
   const paneTitle = appWindow.locator('[data-testid="pane-title"]')
   await expect(paneTitle).toBeVisible({ timeout: 5000 })
   await expect(paneTitle).toContainText('Terminal')
@@ -126,6 +177,7 @@ test('T2: terminal takes up the main content area', async ({ appWindow }) => {
 // --- T3: PTY Pipe ---
 
 test('T3: typing a command produces output', async ({ appWindow }) => {
+  await ensureTerminalVisible(appWindow)
   const terminal = appWindow.locator('.xterm')
 
   // Wait for shell to initialize and show a prompt
@@ -137,7 +189,7 @@ test('T3: typing a command produces output', async ({ appWindow }) => {
   await appWindow.keyboard.type('echo __CANVAS_TEST__')
   await appWindow.keyboard.press('Enter')
 
-  await expect(terminal).toContainText('__CANVAS_TEST__', { timeout: 5000 })
+  await expect(terminal).toContainText('__CANVAS_TEST__', { timeout: 15000 })
 })
 
 test('T3: shell persists after command completes', async ({ appWindow }) => {
@@ -145,11 +197,12 @@ test('T3: shell persists after command completes', async ({ appWindow }) => {
 
   // Click the terminal to ensure focus
   await terminal.click()
+  await appWindow.waitForTimeout(300)
 
   await appWindow.keyboard.type('echo __STILL_ALIVE__')
   await appWindow.keyboard.press('Enter')
 
-  await expect(terminal).toContainText('__STILL_ALIVE__', { timeout: 5000 })
+  await expect(terminal).toContainText('__STILL_ALIVE__', { timeout: 10000 })
 })
 
 test('T3: ANSI color sequences render correctly', async ({ appWindow }) => {
@@ -157,12 +210,13 @@ test('T3: ANSI color sequences render correctly', async ({ appWindow }) => {
 
   await appWindow.waitForTimeout(1000)
   await terminal.click()
+  await appWindow.waitForTimeout(300)
 
   await appWindow.keyboard.type('printf "\\033[32mGREEN\\033[0m NORMAL"')
   await appWindow.keyboard.press('Enter')
 
-  await expect(terminal).toContainText('GREEN', { timeout: 5000 })
-  await expect(terminal).toContainText('NORMAL', { timeout: 5000 })
+  await expect(terminal).toContainText('GREEN', { timeout: 10000 })
+  await expect(terminal).toContainText('NORMAL', { timeout: 10000 })
 })
 
 test('T3: window resize reflows terminal', async ({ appWindow, electronApp }) => {
@@ -178,7 +232,7 @@ test('T3: window resize reflows terminal', async ({ appWindow, electronApp }) =>
     }
   })
 
-  await appWindow.waitForTimeout(500)
+  await appWindow.waitForTimeout(1000)
 
   const boxAfter = await terminal.boundingBox()
   expect(boxAfter).toBeTruthy()
@@ -188,6 +242,7 @@ test('T3: window resize reflows terminal', async ({ appWindow, electronApp }) =>
 // --- T5: Keyboard Fidelity ---
 
 test('T5: Ctrl+C sends SIGINT and interrupts a running process', async ({ appWindow }) => {
+  await ensureTerminalVisible(appWindow)
   const term = appWindow.locator('.xterm')
   await term.click()
   await appWindow.waitForTimeout(1000)

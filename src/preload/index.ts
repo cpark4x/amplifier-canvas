@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
+import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
 const api = {
@@ -71,6 +72,27 @@ const api = {
   // Sessions: resume a completed session
   resumeSession: (sessionId: string): Promise<{ success: boolean; error?: string }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.SESSION_RESUME, { sessionId })
+  },
+
+  // Analysis: get cached analysis data for a session
+  getAnalysis: (sessionId: string): Promise<SessionAnalysisData | null> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_ANALYSIS, { sessionId })
+  },
+
+  // Analysis: trigger analysis for a session
+  triggerAnalysis: (sessionId: string): Promise<SessionAnalysisData | null> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.TRIGGER_ANALYSIS, { sessionId })
+  },
+
+  // Analysis: subscribe to analysis-ready push events
+  onAnalysisReady: (callback: (data: SessionAnalysisData) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SessionAnalysisData): void => {
+      callback(data)
+    }
+    ipcRenderer.on(IPC_CHANNELS.ANALYSIS_READY, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.ANALYSIS_READY, handler)
+    }
   },
 }
 

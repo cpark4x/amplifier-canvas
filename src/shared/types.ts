@@ -13,11 +13,15 @@ export const IPC_CHANNELS = {
   // Renderer → Main (invoke/handle)
   LIST_DIR: 'files:list-dir',
   READ_TEXT: 'files:read-text',
+  GET_ANALYSIS: 'analysis:get',
+  TRIGGER_ANALYSIS: 'analysis:trigger',
+  // Main → Renderer (push)
+  ANALYSIS_READY: 'analysis:ready',
 } as const
 
 // --- Session types ---
 
-export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active'
+export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active' | 'loading'
 
 export interface FileActivity {
   path: string

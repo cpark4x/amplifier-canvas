@@ -29,6 +29,8 @@ export interface ScanResult {
   sessions: SessionState[]
 }
 
+/** Synchronous scan — only discovers project/session directory structure.
+ *  Does NOT read events.jsonl files. Returns lightweight stubs. */
 export function scanProjects(amplifierHome?: string): ScanResult {
   const home = amplifierHome || getAmplifierHome()
   const projectsDir = join(home, 'projects')
@@ -42,7 +44,6 @@ export function scanProjects(amplifierHome?: string): ScanResult {
   let projectCount = 0
   const cutoff = Date.now() - RECENCY_DAYS * 24 * 60 * 60 * 1000
 
-  // Stat the ~96 project dirs — cheap. Filter to recently modified only.
   const projectDirs = readdirSync(projectsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
@@ -69,8 +70,6 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     const sessionsDir = join(projectPath, 'sessions')
     if (!existsSync(sessionsDir)) continue
 
-    // List directory names — take the last N (roughly chronological).
-    // Do NOT stat individual sessions (13K+ stat calls kills startup).
     const allSessionNames = readdirSync(sessionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
@@ -79,79 +78,121 @@ export function scanProjects(amplifierHome?: string): ScanResult {
 
     for (const sessionId of recentNames) {
       const eventsPath = join(sessionsDir, sessionId, 'events.jsonl')
-
       if (!existsSync(eventsPath)) continue
 
-      try {
-        const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
-        const status = deriveSessionStatus(events)
-        const recentFiles = extractFileActivity(events)
-        const sessionPath = join(sessionsDir, sessionId)
-        const workDir = extractWorkDir(events, sessionPath)
-
-        let startedAt: string
-        const startEvent = events.find((e) => e.type === 'session:start')
-        if (startEvent) {
-          startedAt = startEvent.timestamp
-        } else {
-          startedAt = statSync(eventsPath).mtime.toISOString()
-        }
-
-        const firstPrompt = extractFirstPrompt(events)
-        const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
-        const stats = extractSessionStats(events)
-        const endEvent = events.find((e) => e.type === 'session:end')
-        const endedAt = endEvent?.timestamp
-        const exitCode =
-          endEvent !== undefined
-            ? ((endEvent.data as Record<string, unknown>).exitCode as number)
-            : undefined
-
-        upsertSession({
-          id: sessionId,
-          projectSlug,
-          startedBy: 'external',
-          startedAt,
-          status,
-          byteOffset: newByteOffset,
-        })
-
-        finalizeSession(sessionId, {
-          status,
-          endedAt: endedAt ?? null,
-          exitCode: exitCode ?? null,
-          title: title ?? null,
-          firstPrompt: firstPrompt ?? null,
-          promptCount: stats.promptCount,
-          toolCallCount: stats.toolCallCount,
-          filesChangedCount: stats.filesChanged.size,
-        })
-
-        allSessions.push({
-          id: sessionId,
-          projectSlug,
-          projectName,
-          status,
-          startedAt,
-          startedBy: 'external',
-          byteOffset: newByteOffset,
-          recentFiles,
-          workDir,
-          title,
-          endedAt,
-          exitCode,
-          promptCount: stats.promptCount,
-          toolCallCount: stats.toolCallCount,
-          filesChangedCount: stats.filesChanged.size,
-        })
-      } catch (err) {
-        console.warn(`[scanner] Skipping session ${sessionId}: ${err instanceof Error ? err.message : String(err)}`)
-      }
+      // Lightweight stub — no file I/O beyond existsSync
+      allSessions.push({
+        id: sessionId,
+        projectSlug,
+        projectName,
+        status: 'loading',
+        startedAt: new Date().toISOString(),
+        startedBy: 'external',
+        byteOffset: 0,
+        recentFiles: [],
+        workDir: undefined,
+      })
     }
   }
 
   console.log(`[scanner] Found ${projectCount} projects, ${allSessions.length} sessions`)
   return { projectCount, sessionCount: allSessions.length, sessions: allSessions }
+}
+
+/** Async incremental scan — reads one session at a time, yielding to the
+ *  event loop between each so the UI stays responsive. Calls `onProgress`
+ *  after every session with the full updated list. */
+export async function scanSessionsAsync(
+  amplifierHome: string,
+  stubs: SessionState[],
+  onProgress: (sessions: SessionState[]) => void,
+): Promise<SessionState[]> {
+  const projectsDir = join(amplifierHome, 'projects')
+  const results: SessionState[] = []
+
+  for (const stub of stubs) {
+    // Yield to event loop so the renderer can paint + handle input
+    await new Promise<void>((resolve) => setImmediate(resolve))
+
+    const sessionsDir = join(projectsDir, stub.projectSlug, 'sessions')
+    const eventsPath = join(sessionsDir, stub.id, 'events.jsonl')
+
+    try {
+      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
+      const status = deriveSessionStatus(events)
+      const recentFiles = extractFileActivity(events)
+      const sessionPath = join(sessionsDir, stub.id)
+      const workDir = extractWorkDir(events, sessionPath)
+
+      let startedAt: string
+      const startEvent = events.find((e) => e.type === 'session:start')
+      if (startEvent) {
+        startedAt = startEvent.timestamp
+      } else {
+        startedAt = statSync(eventsPath).mtime.toISOString()
+      }
+
+      const firstPrompt = extractFirstPrompt(events)
+      const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
+      const stats = extractSessionStats(events)
+      const endEvent = events.find((e) => e.type === 'session:end')
+      const endedAt = endEvent?.timestamp
+      const exitCode =
+        endEvent !== undefined
+          ? ((endEvent.data as Record<string, unknown>).exitCode as number)
+          : undefined
+
+      upsertSession({
+        id: stub.id,
+        projectSlug: stub.projectSlug,
+        startedBy: 'external',
+        startedAt,
+        status,
+        byteOffset: newByteOffset,
+      })
+
+      finalizeSession(stub.id, {
+        status,
+        endedAt: endedAt ?? null,
+        exitCode: exitCode ?? null,
+        title: title ?? null,
+        firstPrompt: firstPrompt ?? null,
+        promptCount: stats.promptCount,
+        toolCallCount: stats.toolCallCount,
+        filesChangedCount: stats.filesChanged.size,
+      })
+
+      results.push({
+        id: stub.id,
+        projectSlug: stub.projectSlug,
+        projectName: stub.projectName,
+        status,
+        startedAt,
+        startedBy: 'external',
+        byteOffset: newByteOffset,
+        recentFiles,
+        workDir,
+        title,
+        endedAt,
+        exitCode,
+        promptCount: stats.promptCount,
+        toolCallCount: stats.toolCallCount,
+        filesChangedCount: stats.filesChanged.size,
+      })
+    } catch (err) {
+      console.warn(`[scanner] Skipping session ${stub.id}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+
+    // Push progress every 5 sessions so the UI updates incrementally
+    if (results.length % 5 === 0) {
+      onProgress(results)
+    }
+  }
+
+  // Final push with all results
+  onProgress(results)
+  console.log(`[scanner] Async scan complete: ${results.length} sessions hydrated`)
+  return results
 }
 
 function slugToName(slug: string): string {

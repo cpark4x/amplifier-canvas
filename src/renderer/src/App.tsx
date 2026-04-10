@@ -50,6 +50,15 @@ function App(): React.ReactElement {
   const [showTerminal, setShowTerminal] = useState(false)
   const hasSession = selectedSessionId !== null || showTerminal
 
+  // Test utility: reset app state back to the welcome screen.
+  // Called by E2E tests that need the welcome screen to be visible
+  // even when another test file in the same Playwright worker has already
+  // selected a session or created a project.
+  ;(window as unknown as Record<string, unknown>).__resetToWelcome = () => {
+    setShowTerminal(false)
+    useCanvasStore.setState({ selectedSessionId: null, viewerOpen: false })
+  }
+
   // Derive pane title from selected session
   const selectedSession = getSelectedSession()
   const paneTitle = selectedSession

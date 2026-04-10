@@ -5,9 +5,9 @@ import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
 import { existsSync } from 'fs'
-import { initDatabase, closeDatabase, upsertProject, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
-import { scanProjects, getAmplifierHome } from './scanner'
-import { startWatching, stopWatching } from './watcher'
+import { initDatabase, closeDatabase, getAllProjects, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
+import { getAmplifierHome, scanProjects, scanSessionsAsync } from './scanner'
+import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, setAllowedDirs, isPathAllowed } from './ipc'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
@@ -77,7 +77,17 @@ function createWindow(): BrowserWindow {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
+    clearTimeout(showFallback)
   })
+
+  // Safety net: if ready-to-show never fires within 4s, show anyway.
+  // Prevents "invisible frozen app" when main-process I/O blocks the event loop.
+  const showFallback = setTimeout(() => {
+    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.warn('[window] ready-to-show did not fire within 4s — forcing show')
+      mainWindow.show()
+    }
+  }, 4000)
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalUrl(url)
@@ -196,14 +206,12 @@ app.whenReady().then(() => {
   // Scan existing sessions on startup and push to renderer once ready
   mainWindow.webContents.once('did-finish-load', () => {
     try {
+      // Scan filesystem for projects/sessions (handles fresh/empty-DB environments).
+      // scanProjects upserts discovered projects to the DB as a side effect.
       const scanResult = scanProjects(amplifierHome)
 
-      // Set allowed directories: projects dir + any known workDirs
       if (existsSync(projectsDir)) {
-        const workDirs = scanResult.sessions
-          .map((s) => s.workDir)
-          .filter((dir): dir is string => !!dir && existsSync(dir))
-        setAllowedDirs([projectsDir, ...workDirs])
+        setAllowedDirs([projectsDir])
       }
 
       // Seed liveSessions so watcher updates merge with historical sessions
@@ -212,9 +220,25 @@ app.whenReady().then(() => {
       }
 
       pushSessionsChanged(mainWindow, scanResult.sessions)
+
+      // Watch all discovered projects
+      const dbProjects = getAllProjects()
+      for (const project of dbProjects) {
+        addProjectWatch(project.slug)
+      }
+
+      // Async hydration: enrich stubs with events.jsonl data (workDir, recentFiles, etc.)
+      // Sessions start as 'loading' stubs; hydration replaces them with full data.
+      void scanSessionsAsync(amplifierHome, scanResult.sessions, (hydratedSessions) => {
+        for (const session of hydratedSessions) {
+          liveSessions.set(session.id, session)
+        }
+        pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
+      })
+
+      console.log(`[startup] Scanned ${scanResult.projectCount} projects, ${scanResult.sessionCount} sessions`)
     } catch (err) {
       console.error('[startup] Scan failed:', err instanceof Error ? err.message : String(err))
-      // Fall back to allowed dirs only, push empty state so UI still works
       if (existsSync(projectsDir)) {
         setAllowedDirs([projectsDir])
       }
@@ -222,12 +246,14 @@ app.whenReady().then(() => {
     }
   })
 
-  // Watcher picks up NEW activity and pushes it to the renderer
-  startWatching(amplifierHome, (event, data) => {
+  // Initialize watcher but don't watch anything yet.
+  // Only projects the user explicitly adds get watched via addProjectWatch().
+  initWatcher(amplifierHome, (event, data) => {
     try {
       if (event === 'session-updated' && data.sessionId) {
         const eventsPath = join(amplifierHome, 'projects', data.projectSlug, 'sessions', data.sessionId, 'events.jsonl')
-        const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
+        const knownOffset = liveSessions.get(data.sessionId)?.byteOffset ?? 0
+        const { events, newByteOffset } = tailReadEvents(eventsPath, knownOffset)
         const status = deriveSessionStatus(events)
         const recentFiles = extractFileActivity(events)
 

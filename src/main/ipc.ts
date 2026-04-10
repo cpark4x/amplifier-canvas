@@ -6,6 +6,8 @@ import type { SessionState, FileActivity, FileEntry } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty } from './pty'
 import { getAmplifierHome } from './scanner'
 import { getSessionById } from './db'
+import { getAnalysis, triggerAnalysis } from './analysisService'
+import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Track allowed directories for file access security
 let allowedDirs: string[] = []
@@ -20,25 +22,34 @@ export function isPathAllowed(requestedPath: string): boolean {
 }
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
-  const ptyProcess = spawnPty(80, 24)
+  // Defer PTY spawn until actually needed (lazy init).
+  // Eager spawn blocks the main process event loop during startup.
+  let ptyProcess: ReturnType<typeof spawnPty> | null = null
 
-  ptyProcess.onData((data) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, data)
+  function ensurePty(): ReturnType<typeof spawnPty> {
+    if (!ptyProcess) {
+      ptyProcess = spawnPty(80, 24)
+      ptyProcess.onData((data) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, data)
+        }
+      })
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { exitCode, signal })
+        }
+      })
     }
-  })
-
-  ptyProcess.onExit(({ exitCode, signal }) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { exitCode, signal })
-    }
-  })
+    return ptyProcess
+  }
 
   const onInput = (_event: Electron.IpcMainEvent, data: string): void => {
+    ensurePty()
     writeToPty(data)
   }
 
   const onResize = (_event: Electron.IpcMainEvent, { cols, rows }: { cols: number; rows: number }): void => {
+    ensurePty()
     resizePty(cols, rows)
   }
 
@@ -114,12 +125,42 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     },
   )
 
+  ipcMain.handle(
+    IPC_CHANNELS.GET_ANALYSIS,
+    (_event, { sessionId }: { sessionId: string }): SessionAnalysisData | null => {
+      try {
+        return getAnalysis(sessionId)
+      } catch (err) {
+        console.error('[ipc] GET_ANALYSIS failed:', err)
+        return null
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRIGGER_ANALYSIS,
+    async (_event, { sessionId }: { sessionId: string }): Promise<SessionAnalysisData | null> => {
+      try {
+        const result = await triggerAnalysis(sessionId)
+        if (mainWindow && !mainWindow.isDestroyed() && result) {
+          mainWindow.webContents.send(IPC_CHANNELS.ANALYSIS_READY, result)
+        }
+        return result
+      } catch (err) {
+        console.error('[ipc] TRIGGER_ANALYSIS failed:', err)
+        return null
+      }
+    },
+  )
+
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
     ipcMain.removeHandler(IPC_CHANNELS.LIST_DIR)
     ipcMain.removeHandler(IPC_CHANNELS.READ_TEXT)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_RESUME)
+    ipcMain.removeHandler(IPC_CHANNELS.GET_ANALYSIS)
+    ipcMain.removeHandler(IPC_CHANNELS.TRIGGER_ANALYSIS)
     killPty()
   })
 }

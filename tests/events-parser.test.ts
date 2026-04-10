@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { extractFirstPrompt, extractSessionStats, deriveSessionTitle } from '../src/main/events-parser'
+import { extractFirstPrompt, extractSessionStats, deriveSessionTitle, extractAllPrompts, extractErrors, extractTestResults, extractGitOperations } from '../src/main/events-parser'
 import type { ParsedEvent } from '../src/main/events-parser'
 
 describe('extractFirstPrompt', () => {
@@ -149,5 +149,214 @@ describe('deriveSessionTitle', () => {
 
   test('returns empty string for empty input', () => {
     assert.equal(deriveSessionTitle(''), '')
+  })
+})
+
+describe('extractAllPrompts', () => {
+  test('returns all user_message events with text and timestamp', () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'session:start',
+        timestamp: '2024-01-01T00:00:00Z',
+        data: {},
+      },
+      {
+        type: 'user_message',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { text: 'First prompt' },
+      },
+      {
+        type: 'assistant_message',
+        timestamp: '2024-01-01T00:00:02Z',
+        data: { text: 'Response' },
+      },
+      {
+        type: 'user_message',
+        timestamp: '2024-01-01T00:00:03Z',
+        data: { text: 'Second prompt' },
+      },
+    ]
+    const result = extractAllPrompts(events)
+    assert.equal(result.length, 2)
+    assert.equal(result[0].text, 'First prompt')
+    assert.equal(result[0].timestamp, '2024-01-01T00:00:01Z')
+    assert.equal(result[1].text, 'Second prompt')
+    assert.equal(result[1].timestamp, '2024-01-01T00:00:03Z')
+  })
+
+  test('returns empty array when no user_message events', () => {
+    const events: ParsedEvent[] = [
+      { type: 'session:start', timestamp: '2024-01-01T00:00:00Z', data: {} },
+      { type: 'assistant_message', timestamp: '2024-01-01T00:00:01Z', data: { text: 'Hello' } },
+    ]
+    const result = extractAllPrompts(events)
+    assert.deepEqual(result, [])
+  })
+
+  test('skips user_message events without text field', () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'user_message',
+        timestamp: '2024-01-01T00:00:00Z',
+        data: {},
+      },
+      {
+        type: 'user_message',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { text: 'Valid prompt' },
+      },
+    ]
+    const result = extractAllPrompts(events)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].text, 'Valid prompt')
+  })
+})
+
+describe('extractErrors', () => {
+  test('extracts error events with message and timestamp', () => {
+    const events: ParsedEvent[] = [
+      { type: 'session:start', timestamp: '2024-01-01T00:00:00Z', data: {} },
+      {
+        type: 'error',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { message: 'Something went wrong' },
+      },
+    ]
+    const result = extractErrors(events)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].message, 'Something went wrong')
+    assert.equal(result[0].timestamp, '2024-01-01T00:00:01Z')
+  })
+
+  test('extracts tool_result errors (data.error === true with data.output)', () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:02Z',
+        data: { error: true, output: 'File not found: /path/to/file.ts' },
+      },
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:03Z',
+        data: { error: false, output: 'Success' },
+      },
+    ]
+    const result = extractErrors(events)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].message, 'File not found: /path/to/file.ts')
+    assert.equal(result[0].timestamp, '2024-01-01T00:00:02Z')
+  })
+
+  test('returns empty array when no errors', () => {
+    const events: ParsedEvent[] = [
+      { type: 'session:start', timestamp: '2024-01-01T00:00:00Z', data: {} },
+      { type: 'user_message', timestamp: '2024-01-01T00:00:01Z', data: { text: 'Hello' } },
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:02Z',
+        data: { error: false, output: 'ok' },
+      },
+    ]
+    const result = extractErrors(events)
+    assert.deepEqual(result, [])
+  })
+})
+
+describe('extractTestResults', () => {
+  test('extracts test pass/fail counts from tool_result events matching N passed, N failed', () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { output: 'Tests complete: 8 passed, 2 failed' },
+      },
+    ]
+    const result = extractTestResults(events)
+    assert.ok(result !== null)
+    assert.equal(result!.passed, 8)
+    assert.equal(result!.failed, 2)
+  })
+
+  test('returns null when no test results found', () => {
+    const events: ParsedEvent[] = [
+      { type: 'session:start', timestamp: '2024-01-01T00:00:00Z', data: {} },
+      { type: 'user_message', timestamp: '2024-01-01T00:00:01Z', data: { text: 'Hello' } },
+    ]
+    const result = extractTestResults(events)
+    assert.equal(result, null)
+  })
+
+  test("handles pytest-style output ('====== 5 passed, 1 failed ======')", () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { output: '====== 5 passed, 1 failed ======' },
+      },
+    ]
+    const result = extractTestResults(events)
+    assert.ok(result !== null)
+    assert.equal(result!.passed, 5)
+    assert.equal(result!.failed, 1)
+  })
+
+  test("handles all-passing results ('10 passed' -> passed=10, failed=0)", () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { output: '10 passed' },
+      },
+    ]
+    const result = extractTestResults(events)
+    assert.ok(result !== null)
+    assert.equal(result!.passed, 10)
+    assert.equal(result!.failed, 0)
+  })
+})
+
+describe('extractGitOperations', () => {
+  test('extracts git commit from bash tool_result matching [branch sha] message pattern', () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { output: '[main abc1234] feat: add new feature\n 3 files changed' },
+      },
+    ]
+    const result = extractGitOperations(events)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].type, 'commit')
+    assert.equal(result[0].sha, 'abc1234')
+    assert.equal(result[0].message, 'feat: add new feature')
+    assert.equal(result[0].timestamp, '2024-01-01T00:00:01Z')
+  })
+
+  test('extracts PR creation from GitHub PR URLs', () => {
+    const events: ParsedEvent[] = [
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:02Z',
+        data: { output: 'Pull request created: https://github.com/owner/repo/pull/42' },
+      },
+    ]
+    const result = extractGitOperations(events)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].type, 'pr-create')
+    assert.equal(result[0].prUrl, 'https://github.com/owner/repo/pull/42')
+    assert.equal(result[0].timestamp, '2024-01-01T00:00:02Z')
+  })
+
+  test('returns empty array when no git operations', () => {
+    const events: ParsedEvent[] = [
+      { type: 'session:start', timestamp: '2024-01-01T00:00:00Z', data: {} },
+      {
+        type: 'tool_result',
+        timestamp: '2024-01-01T00:00:01Z',
+        data: { output: 'regular output with no git info' },
+      },
+    ]
+    const result = extractGitOperations(events)
+    assert.deepEqual(result, [])
   })
 })

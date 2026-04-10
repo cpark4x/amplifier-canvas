@@ -25,6 +25,7 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   needs_input: '#F59E0B',
   done: '#3ECF8E', // Emerald
   failed: '#EF4444',
+  loading: '#6B7280', // Gray — analysis loading
 }
 
 /**

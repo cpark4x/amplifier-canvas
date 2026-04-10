@@ -63,6 +63,19 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
       column: 'filesChangedCount',
       ddl: 'ALTER TABLE sessions ADD COLUMN filesChangedCount INTEGER DEFAULT 0',
     },
+    { column: 'test_status', ddl: 'ALTER TABLE sessions ADD COLUMN test_status TEXT' },
+    { column: 'prompt_history', ddl: 'ALTER TABLE sessions ADD COLUMN prompt_history TEXT' },
+    { column: 'files_changed', ddl: 'ALTER TABLE sessions ADD COLUMN files_changed TEXT' },
+    { column: 'git_operations', ddl: 'ALTER TABLE sessions ADD COLUMN git_operations TEXT' },
+    { column: 'analysis_json', ddl: 'ALTER TABLE sessions ADD COLUMN analysis_json TEXT' },
+    {
+      column: 'analysis_generated_at',
+      ddl: 'ALTER TABLE sessions ADD COLUMN analysis_generated_at TEXT',
+    },
+    {
+      column: 'analysis_status',
+      ddl: "ALTER TABLE sessions ADD COLUMN analysis_status TEXT DEFAULT 'none'",
+    },
   ]
 
   for (const { column, ddl } of migrations) {
@@ -183,6 +196,13 @@ export interface SessionRow {
   promptCount: number
   toolCallCount: number
   filesChangedCount: number
+  test_status: string | null
+  prompt_history: string | null
+  files_changed: string | null
+  git_operations: string | null
+  analysis_json: string | null
+  analysis_generated_at: string | null
+  analysis_status: string | null
 }
 
 export function getAllProjects(): ProjectRow[] {
@@ -203,4 +223,47 @@ export function getAllSessions(): SessionRow[] {
 export function getSessionById(id: string): SessionRow | null {
   const d = getDatabase()
   return (d.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as SessionRow | undefined) ?? null
+}
+
+export function saveMechanicalData(
+  id: string,
+  data: {
+    test_status: string | null
+    prompt_history: string | null
+    files_changed: string | null
+    git_operations: string | null
+  },
+): void {
+  const d = getDatabase()
+  d.prepare(`
+    UPDATE sessions SET
+      test_status = ?,
+      prompt_history = ?,
+      files_changed = ?,
+      git_operations = ?
+    WHERE id = ?
+  `).run(data.test_status, data.prompt_history, data.files_changed, data.git_operations, id)
+}
+
+export function saveAnalysisResult(
+  id: string,
+  data: {
+    analysis_json: string | null
+    analysis_generated_at: string | null
+    analysis_status: string
+  },
+): void {
+  const d = getDatabase()
+  d.prepare(`
+    UPDATE sessions SET
+      analysis_json = ?,
+      analysis_generated_at = ?,
+      analysis_status = ?
+    WHERE id = ?
+  `).run(data.analysis_json, data.analysis_generated_at, data.analysis_status, id)
+}
+
+export function updateAnalysisStatus(id: string, status: string): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET analysis_status = ? WHERE id = ?').run(status, id)
 }

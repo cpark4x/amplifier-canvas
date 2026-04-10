@@ -53,7 +53,7 @@ test('V1: Viewer panel shows primary tabs when session selected', async ({ appWi
   expect(filesColor).not.toBe(await appWindow.locator('[data-testid="tab-app"]').evaluate((el) => getComputedStyle(el).color))
 })
 
-test('V1: Viewer panel has four primary tabs', async ({ appWindow }) => {
+test('V1: Viewer panel has three primary tabs (FILES, APP, ANALYSIS)', async ({ appWindow }) => {
   await appWindow.waitForTimeout(2000)
   const projectItems = appWindow.locator('[data-testid="project-item"]')
   const count = await projectItems.count()
@@ -71,7 +71,7 @@ test('V1: Viewer panel has four primary tabs', async ({ appWindow }) => {
   await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
   await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
   await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
-  await expect(appWindow.locator('[data-testid="tab-changes"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-changes"]')).not.toBeVisible({ timeout: 3000 })
 })
 
 test('V1: terminal remains visible when Viewer opens', async ({ appWindow }) => {
@@ -827,6 +827,7 @@ test('V4: viewer panel width is 340px', async ({ appWindow }) => {
   await session.click()
 
   await expect(viewer).toBeVisible({ timeout: 3000 })
+  await appWindow.waitForTimeout(300) // Allow CSS width transition (0.2s) to complete
 
   const box = await viewer.boundingBox()
   expect(box).toBeTruthy()
@@ -1180,4 +1181,63 @@ test('V6b: image renderer img uses 60vh max height', async ({ appWindow }) => {
   await expect(img).toBeVisible({ timeout: 5000 })
   const maxHeight = await img.evaluate((el) => (el as HTMLImageElement).style.maxHeight)
   expect(maxHeight).toBe('60vh')
+})
+
+// --- T10: Integrate SessionAnalysis into Viewer, remove CHANGES tab ---
+
+test('T10: Viewer has exactly three primary tabs (FILES, APP, ANALYSIS)', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
+      break
+    }
+  }
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
+
+  // CHANGES tab must not be present
+  await expect(appWindow.locator('[data-testid="tab-changes"]')).not.toBeVisible({ timeout: 3000 })
+
+  // Exactly 3 tabs in the primary-tabs row
+  const tabCount = await appWindow.locator('[data-testid^="tab-"]').count()
+  expect(tabCount).toBe(3)
+})
+
+test('T10: ANALYSIS tab renders SessionAnalysis component (not placeholder)', async ({ appWindow }) => {
+  await appWindow.waitForTimeout(2000)
+  const projectItems = appWindow.locator('[data-testid="project-item"]')
+  const count = await projectItems.count()
+  for (let i = 0; i < count; i++) {
+    const name = await projectItems.nth(i).locator('[data-testid="project-name"]').textContent()
+    if (name === 'Team Pulse') {
+      const selected = await projectItems.nth(i).getAttribute('data-selected')
+      if (selected !== 'true') { await projectItems.nth(i).click(); await appWindow.waitForTimeout(300) }
+      break
+    }
+  }
+  const session = appWindow.locator('[data-testid="session-item"]').first()
+  await expect(session).toBeVisible({ timeout: 3000 })
+  await session.click()
+
+  // Click the ANALYSIS tab
+  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  await expect(analysisTab).toBeVisible({ timeout: 3000 })
+  await analysisTab.click()
+
+  // SessionAnalysis component must be rendered (not the old placeholder)
+  const sessionAnalysis = appWindow.locator('[data-testid="session-analysis"]')
+  await expect(sessionAnalysis).toBeVisible({ timeout: 5000 })
+
+  // Old placeholder text must not be present
+  await expect(appWindow.locator('text=Analysis view coming soon')).not.toBeVisible()
 })

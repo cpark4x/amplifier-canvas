@@ -7,6 +7,14 @@ test('Screen 1: welcome screen renders correctly', async ({ appWindow }) => {
   await appWindow.waitForLoadState('domcontentloaded')
   await appWindow.waitForTimeout(2000)
 
+  // If a previous test in this Playwright worker left the app in a non-welcome state
+  // (e.g. a session was selected), reset back to the welcome screen.
+  await appWindow.evaluate(() => {
+    const reset = (window as unknown as Record<string, unknown>).__resetToWelcome
+    if (typeof reset === 'function') reset()
+  })
+  await appWindow.waitForTimeout(300) // Allow React to re-render
+
   // Welcome visible, terminal hidden
   const welcome = appWindow.locator('[data-testid="welcome-main"]')
   await expect(welcome).toBeVisible({ timeout: 5000 })

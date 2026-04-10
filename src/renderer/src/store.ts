@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { SessionState, FileActivity, Toast } from '../../shared/types'
+import type { AnalysisStatus } from '../../shared/analysisTypes'
 
 interface Project {
   slug: string
@@ -20,6 +21,7 @@ interface CanvasStore {
   createdProjects: Project[] // Projects created via modal (before any session exists)
   viewerOpen: boolean
   toasts: Toast[]
+  analysisStatusMap: Record<string, AnalysisStatus>
 
   // Actions
   setSessions: (sessions: SessionState[]) => void
@@ -31,6 +33,8 @@ interface CanvasStore {
   closeViewer: () => void
   addToast: (toast: Omit<Toast, 'id'>) => void
   dismissToast: (id: string) => void
+  setAnalysisStatus: (sessionId: string, status: AnalysisStatus) => void
+  getAnalysisStatus: (sessionId: string) => AnalysisStatus
 
   // Derived
   getProjects: () => Project[]
@@ -46,6 +50,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   createdProjects: [],
   viewerOpen: false,
   toasts: [],
+  analysisStatusMap: {},
 
   // Actions
   setSessions: (incoming) => {
@@ -111,6 +116,13 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
+
+  setAnalysisStatus: (sessionId, status) =>
+    set((state) => ({
+      analysisStatusMap: { ...state.analysisStatusMap, [sessionId]: status },
+    })),
+
+  getAnalysisStatus: (sessionId) => get().analysisStatusMap[sessionId] ?? 'none',
 
   // Derived
   getProjects: () => {
