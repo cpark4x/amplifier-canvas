@@ -458,6 +458,18 @@ describe('registerIpcHandlers — workspace model channels', () => {
     assert.equal(result.isFirstTime, false)
   })
 
+  test('WORKSPACE_GET returns structured error when getWorkspaceState fails', async () => {
+    const win = makeMockWindow()
+    registerIpcHandlers(win)
+    mockGetWorkspaceStateShouldThrow = true
+
+    const handler = registeredHandlers.get(CH.WORKSPACE_GET)!
+    const result = await handler({}, {}) as { state: unknown; isFirstTime: boolean; error?: string }
+
+    assert.ok(typeof result.error === 'string', 'must return error field when getWorkspaceState throws')
+    assert.equal(result.isFirstTime, true, 'must default isFirstTime to true on error')
+  })
+
   // ---- AC: All 7 removeHandler calls on window close ----
 
   test('removes all 7 workspace handlers on window closed', () => {

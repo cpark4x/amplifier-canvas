@@ -266,7 +266,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] WORKSPACE_GET failed:', message)
-        throw err
+        return { state: {} as WorkspaceState, isFirstTime: true, error: message }
       }
     },
   )
