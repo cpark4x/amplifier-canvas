@@ -35,12 +35,11 @@ No scanning at startup. Canvas only loads projects the user has explicitly regis
 
 The current DB has two tables (`projects` and `sessions`) populated by auto-scanning. This shifts to a user-curated model.
 
-**`projects` table — add two columns:**
+**`projects` table — add one column:**
 
 | Column | Type | Default | Purpose |
 |--------|------|---------|---------|
-| `registered` | `BOOLEAN` | `0` | `1` = user explicitly added this project to Canvas. Only registered projects appear in the sidebar. |
-| `hidden` | `BOOLEAN` | `0` | `1` = user removed the project from their workspace. Still in DB (for potential re-add), but invisible. |
+| `registered` | `BOOLEAN` | `0` | `1` = user explicitly added this project to Canvas. Only registered projects appear in the sidebar. Setting back to `0` removes the project from the workspace without deleting it. |
 
 **`sessions` table — add one column:**
 
@@ -78,14 +77,15 @@ Enough to restore exactly where you left off.
 
 **New startup:**
 
+0. **Detect first-time vs returning user** — `SELECT COUNT(*) FROM projects WHERE registered = 1`. If zero, show the welcome screen (Act 1, Scene 1). If non-zero, proceed to load workspace.
 1. **Read workspace state** from `workspace_state` table — get `selectedProjectSlug`, `expandedProjectSlugs`, `selectedSessionId`, `sidebarCollapsed`.
-2. **Load only registered projects** — `SELECT * FROM projects WHERE registered = 1 AND hidden = 0`.
+2. **Load only registered projects** — `SELECT * FROM projects WHERE registered = 1`.
 3. **Load non-hidden sessions for those projects** — `SELECT * FROM sessions WHERE projectSlug IN (...) AND hidden = 0`.
 4. **Start watchers only for registered projects** — no watcher on unregistered project directories.
 5. **Push to renderer** — sessions arrive with the workspace state, so the sidebar renders exactly as it was: same project expanded, same session selected.
 6. **No scanning at all** — `~/.amplifier/projects/` is not touched until the user opens the "Existing" tab.
 
-First-time users see the welcome screen (Act 1, Scene 1 — already built). Returning users skip it entirely — they go straight to their workspace.
+First-time users (zero registered projects) see the welcome screen (Act 1, Scene 1 — already built). Returning users skip it entirely — they go straight to their workspace.
 
 The scanner function still exists but its role changes: it's no longer called at startup. It's called on-demand when the user opens the "Existing" tab in the add-project modal.
 
@@ -93,20 +93,20 @@ The scanner function still exists but its role changes: it's no longer called at
 
 Two-tab layout.
 
-**"New" tab (active by default for first-time users):**
+**"New" tab (active by default when opening the modal):**
 
 - Single text input: "Project name"
 - Helper text: "Creates a new Amplifier project"
 - Button: "Create Project"
-- On create: registers the project in DB with `registered = 1`, creates the directory in `~/.amplifier/projects/<slug>/`, opens a new session immediately
+- On create: registers the project in DB with `registered = 1`, creates the directory in `~/.amplifier/projects/<slug>/`, adds it to the sidebar, selects it, and opens a new session with the terminal active.
 
 **"Existing" tab:**
 
 - Search bar at the top: "Search projects..."
-- Below: a list of discovered Amplifier projects (scanned on-demand from `~/.amplifier/projects/`), filtered to exclude projects already registered in Canvas
+- Below: a list of discovered Amplifier projects (scanned on-demand from `~/.amplifier/projects/`), filtered to exclude projects where `registered = 1`
 - Each row: project name + path in muted text
 - Click a row to select it, then "Add to Canvas" button
-- On add: registers the project in DB with `registered = 1`, loads its non-hidden sessions, starts a watcher for it, asks "Start new session or resume an existing one?"
+- On add: sets `registered = 1` on the project, loads its non-hidden sessions from disk, starts a watcher, adds it to the sidebar expanded, and selects the project. The user can then start a new session or click an existing session from the list. No additional prompt or dialog is needed — the session list in the sidebar IS the interface for choosing.
 
 The scan only happens when you open the "Existing" tab. It's a one-time directory read, not a background process. Fast even with hundreds of projects because it's just listing directories — no parsing of `events.jsonl`.
 
@@ -125,21 +125,23 @@ When Canvas is used, the following state persists in the `workspace_state` table
 
 On next launch, Canvas reads these values and restores the sidebar exactly. If the previously selected session still exists and isn't hidden, the viewer opens to it. If it's been hidden or removed, Canvas falls back to showing the project with no session selected.
 
+If `selectedProjectSlug` refers to a project that is no longer registered, Canvas falls back to the first registered project alphabetically. If no registered projects exist, Canvas shows the welcome screen.
+
 **State is written on every user interaction that changes it — not on close.** This means if Canvas crashes or is force-quit, the state is still current.
 
 ### Project & Session Management Actions
 
 **Project actions** (right-click context menu on a project in the sidebar):
 
-- **Remove from Canvas** — sets `hidden = 1` on the project. It disappears from the sidebar. Stops watcher. Sessions on disk are untouched. Can be re-added later via the "Existing" tab (it reappears in the discovery list).
+- **Remove from Canvas** — sets `registered = 0` on the project. It disappears from the sidebar. Stops watcher. Sessions on disk are untouched. Can be re-added later via the "Existing" tab (it reappears in the discovery list).
 
 **Session actions** (right-click context menu on a session):
 
-- **Remove** — sets `hidden = 1` on the session. Disappears from the session list. Data on disk untouched.
-- **Stop** — only visible on running sessions. Sends termination signal to the Amplifier CLI process. Session status changes to `done` or `failed`.
+- **Remove from view** — sets `hidden = 1` on the session. Disappears from the session list. Data on disk untouched.
+- **Stop** — only visible on running sessions. Sends SIGTERM to the Amplifier CLI process, allowing graceful cleanup. Session status changes to `stopped` (a new terminal status distinct from `done` and `failed`). The sidebar shows a neutral indicator for stopped sessions rather than green (done) or red (failed).
 - **Resume** — already built in the sidebar. Reconnects to a running or paused session.
 
-When a project is removed, its watcher is also stopped. When a project is re-added, Canvas reloads its sessions from disk (minus any previously hidden ones) and restarts the watcher.
+When a project is removed (`registered = 0`), its watcher is also stopped. When a project is re-added (`registered = 1`), Canvas reloads its sessions from disk (minus any previously hidden ones) and restarts the watcher.
 
 ### Process Lifecycle
 
@@ -162,7 +164,7 @@ Canvas itself is fully local — no internet needed to view projects, browse ses
 ```
 Startup:
   workspace_state table → read state
-  projects table (registered=1, hidden=0) → load projects
+  projects table (registered=1) → load projects
   sessions table (hidden=0) → load sessions
   → start watchers for registered projects only
   → push to renderer with saved state
@@ -171,7 +173,7 @@ Startup:
 Add Existing Project:
   User opens "Existing" tab
   → on-demand scan of ~/.amplifier/projects/
-  → filter out already-registered projects
+  → filter out projects where registered=1
   → user selects project
   → set registered=1 in DB
   → load sessions, start watcher
@@ -179,10 +181,11 @@ Add Existing Project:
 
 Remove Project:
   User right-clicks → "Remove from Canvas"
-  → set hidden=1 in DB
+  → set registered=0 in DB
   → stop watcher
   → project disappears from sidebar
   → data on disk untouched
+  → project reappears in "Existing" tab discovery list
 
 Session Lifecycle:
   Canvas (or user) starts session → Amplifier CLI process runs independently
@@ -214,11 +217,11 @@ Later, he decides he's done with budget-tracker for now. Right-click, "Remove fr
 
 | Area | What to verify |
 |------|----------------|
-| **DB migration** | New columns exist, defaults are correct, `registered`/`hidden` flags work as expected |
-| **Startup** | Canvas only loads registered, non-hidden projects. No scanning occurs. |
+| **DB migration** | New columns exist, defaults are correct, `registered` flag on projects and `hidden` flag on sessions work as expected |
+| **Startup** | Canvas only loads registered projects. First-time detection works (zero registered → welcome screen). No scanning occurs. |
 | **Add Project modal** | "New" tab creates + registers. "Existing" tab discovers and registers. Search filtering works. |
 | **Workspace state** | State persists on interaction. Restored correctly on launch. Handles missing/stale references gracefully. |
-| **Management actions** | Remove project hides it. Remove session hides it. Stop session sends signal. Removed projects reappear in discovery list. |
+| **Management actions** | Remove project sets `registered=0`. Remove session from view hides it. Stop session sends SIGTERM and sets `stopped` status. Removed projects reappear in discovery list. |
 | **Watchers** | Only registered projects are watched. Removing a project stops its watcher. |
 
 ## Open Questions
