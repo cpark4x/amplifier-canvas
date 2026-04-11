@@ -8,12 +8,14 @@ type SidebarProps = {
   collapsed: boolean
   onToggle: () => void
   onNewProject?: () => void
+  onNewSession?: (projectSlug: string, projectPath: string) => void
   onSessionSelect?: (sessionId: string, workDir: string) => void
 }
 
 interface Project {
   slug: string
   name: string
+  path: string
   sessions: SessionState[]
 }
 
@@ -86,7 +88,7 @@ function formatStats(session: SessionState): string {
 
 // ---- Component --------------------------------------------------------------
 
-function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: SidebarProps): React.ReactElement {
+function Sidebar({ collapsed, onToggle, onNewProject, onNewSession, onSessionSelect }: SidebarProps): React.ReactElement {
   // Subscribe to both sessions and registeredProjects so sidebar re-renders when either changes
   const sessions = useCanvasStore((s) => s.sessions)
   const registeredProjects = useCanvasStore((s) => s.registeredProjects)
@@ -156,7 +158,7 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
 
     // Start with registered projects (ensures empty projects appear in sidebar)
     for (const rp of registeredProjects) {
-      projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, sessions: [] })
+      projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, path: rp.path, sessions: [] })
     }
 
     // Merge in sessions
@@ -168,6 +170,7 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
         projectMap.set(session.projectSlug, {
           slug: session.projectSlug,
           name: session.projectName,
+          path: '',
           sessions: [session],
         })
       }
@@ -365,10 +368,10 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
                         ))}
                       </div>
 
-                      {/* + New session — always visible when project is expanded */}
+                      {/* + New session — spawns a new session in this project */}
                       <div
                         data-testid="new-session-slot"
-                        onClick={onNewProject}
+                        onClick={() => onNewSession?.(project.slug, project.path)}
                         style={{
                           padding: '8px 14px',
                           fontSize: '11px',

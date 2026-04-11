@@ -230,6 +230,16 @@ function App(): React.ReactElement {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onNewProject={() => setShowModal(true)}
+          onNewSession={(projectSlug, projectPath) => {
+            const ptyId = `terminal-${projectSlug}-${Date.now()}`
+            setTerminalSessionId(ptyId)
+            setShowTerminal(true)
+            window.electronAPI.spawnPty(ptyId, 80, 24, projectPath).then(() => {
+              setTimeout(() => {
+                window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+              }, 200)
+            })
+          }}
           onSessionSelect={(sessionId, workDir) => {
             // Switch terminal to this session's PTY (spawn if needed, replay buffer)
             setTerminalSessionId(sessionId)
@@ -380,7 +390,7 @@ function App(): React.ReactElement {
             const ptyId = `terminal-${slug}`
 
             window.electronAPI.registerProject(slug, path, projectName).then(() => {
-              useCanvasStore.getState().registerProject(slug, projectName)
+              useCanvasStore.getState().registerProject(slug, projectName, path)
               useCanvasStore.getState().selectProject(slug)
               useCanvasStore.getState().toggleProjectExpanded(slug)
               setShowModal(false)
@@ -395,14 +405,14 @@ function App(): React.ReactElement {
             })
           }}
           onAddExisting={(project) => {
-            useCanvasStore.getState().registerProject(project.slug, project.name)
+            useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().toggleProjectExpanded(project.slug)
             setShowModal(false)
           }}
           onNewSessionInProject={(project) => {
             const ptyId = `terminal-${project.slug}`
-            useCanvasStore.getState().registerProject(project.slug, project.name)
+            useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().toggleProjectExpanded(project.slug)
             setShowModal(false)
@@ -416,7 +426,7 @@ function App(): React.ReactElement {
             })
           }}
           onResumeSession={(project, sessionId) => {
-            useCanvasStore.getState().registerProject(project.slug, project.name)
+            useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().selectSession(sessionId)
             useCanvasStore.getState().toggleProjectExpanded(project.slug)

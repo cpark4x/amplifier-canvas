@@ -16,6 +16,7 @@ let toastCounter = 0
 interface RegisteredProject {
   slug: string
   name: string
+  path: string
 }
 
 interface CanvasStore {
@@ -32,7 +33,7 @@ interface CanvasStore {
   // Actions
   setSessions: (sessions: SessionState[]) => void
   addSessions: (sessions: SessionState[]) => void
-  registerProject: (slug: string, name: string) => void
+  registerProject: (slug: string, name: string, path?: string) => void
   unregisterProject: (slug: string) => void
   selectSession: (id: string | null) => void
   selectProject: (slug: string | null) => void
@@ -100,10 +101,10 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     }
   },
 
-  registerProject: (slug, name) => {
+  registerProject: (slug, name, path?) => {
     const current = get().registeredProjects
     if (!current.some((p) => p.slug === slug)) {
-      set({ registeredProjects: [...current, { slug, name }] })
+      set({ registeredProjects: [...current, { slug, name, path: path ?? '' }] })
     }
   },
 
