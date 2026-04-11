@@ -69,10 +69,8 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
       .then((result) => {
         const sessions = result.sessions ?? []
         setProjectSessions(sessions)
-        // Merge scanned sessions into the global store so the sidebar shows them
-        if (sessions.length > 0) {
-          useCanvasStore.getState().addSessions(sessions)
-        }
+        // Sessions stay local to the modal for the choose-action screen.
+        // Only the session the user actually launches gets added to the sidebar.
         useCanvasStore.getState().registerProject(selectedExisting.slug, selectedExisting.name, selectedExisting.path)
         setLoadingSessions(false)
         setStep('choose-action')
