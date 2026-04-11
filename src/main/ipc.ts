@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync, mkdirSync, existsSync } from 'fs'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
-import { spawnPty, writeToPty, resizePty, killPty, setCwd } from './pty'
+import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer } from './pty'
 import { getAmplifierHome } from './scanner'
 import {
   getSessionById,
@@ -35,35 +35,76 @@ export function isPathAllowed(requestedPath: string): boolean {
 }
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
-  // Defer PTY spawn until actually needed (lazy init).
-  // Eager spawn blocks the main process event loop during startup.
-  let ptyProcess: ReturnType<typeof spawnPty> | null = null
-
-  function ensurePty(): ReturnType<typeof spawnPty> {
-    if (!ptyProcess) {
-      ptyProcess = spawnPty(80, 24)
-      ptyProcess.onData((data) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, data)
-        }
-      })
-      ptyProcess.onExit(({ exitCode, signal }) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { exitCode, signal })
-        }
-      })
-    }
-    return ptyProcess
+  // --- Per-session PTY management ---
+  // Helper to attach PTY output/exit listeners that tag data with sessionId
+  function attachPtyListeners(sessionId: string, pty: ReturnType<typeof spawnPty>): void {
+    pty.onData((data) => {
+      // Buffer output for replay when switching terminals
+      appendToBuffer(sessionId, data)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, { sessionId, data })
+      }
+    })
+    pty.onExit(({ exitCode, signal }) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { sessionId, exitCode, signal })
+      }
+    })
   }
 
-  const onInput = (_event: Electron.IpcMainEvent, data: string): void => {
-    ensurePty()
-    writeToPty(data)
+  // PTY_SPAWN: Create a new PTY for a session (or reuse if already exists)
+  ipcMain.handle(
+    IPC_CHANNELS.PTY_SPAWN,
+    (
+      _event,
+      { sessionId, cwd, cols, rows }: { sessionId: string; cwd?: string; cols: number; rows: number },
+    ): { success: boolean; alreadyExists?: boolean; error?: string } => {
+      try {
+        if (hasPty(sessionId)) {
+          return { success: true, alreadyExists: true }
+        }
+        const pty = spawnPty(sessionId, cols, rows, cwd)
+        attachPtyListeners(sessionId, pty)
+        return { success: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] PTY_SPAWN failed:', message)
+        return { success: false, error: message }
+      }
+    },
+  )
+
+  // PTY_KILL: Kill a specific session's PTY
+  ipcMain.handle(
+    IPC_CHANNELS.PTY_KILL,
+    (_event, { sessionId }: { sessionId: string }): { success: boolean } => {
+      killPty(sessionId)
+      return { success: true }
+    },
+  )
+
+  // PTY_GET_BUFFER: Get buffered output for terminal replay on session switch
+  ipcMain.handle(
+    IPC_CHANNELS.PTY_GET_BUFFER,
+    (_event, { sessionId }: { sessionId: string }): string => {
+      return getBuffer(sessionId)
+    },
+  )
+
+  // TERMINAL_INPUT: Route keystrokes to the correct session's PTY
+  const onInput = (
+    _event: Electron.IpcMainEvent,
+    { sessionId, data }: { sessionId: string; data: string },
+  ): void => {
+    writeToPty(sessionId, data)
   }
 
-  const onResize = (_event: Electron.IpcMainEvent, { cols, rows }: { cols: number; rows: number }): void => {
-    ensurePty()
-    resizePty(cols, rows)
+  // TERMINAL_RESIZE: Resize the correct session's PTY
+  const onResize = (
+    _event: Electron.IpcMainEvent,
+    { sessionId, cols, rows }: { sessionId: string; cols: number; rows: number },
+  ): void => {
+    resizePty(sessionId, cols, rows)
   }
 
   ipcMain.on(IPC_CHANNELS.TERMINAL_INPUT, onInput)
@@ -128,7 +169,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         if (!session) {
           return { success: false, error: `Session not found: ${sessionId}` }
         }
-        writeToPty(`amplifier session resume ${sessionId}\n`)
+        // Write the resume command to the session's own PTY
+        writeToPty(sessionId, `amplifier session resume ${sessionId}\n`)
         return { success: true }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -247,14 +289,18 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(
     IPC_CHANNELS.SESSION_STOP,
-    async (): Promise<{ success: boolean; error?: string }> => {
+    async (
+      _event,
+      { sessionId }: { sessionId: string },
+    ): Promise<{ success: boolean; error?: string }> => {
       try {
-        // Send Ctrl+C (SIGINT) to the running PTY to interrupt the current session
-        if (ptyProcess) {
-          ptyProcess.write('\x03')  // ETX = Ctrl+C
+        // Send Ctrl+C (SIGINT) to the session's PTY
+        const pty = getPty(sessionId)
+        if (pty) {
+          pty.write('\x03')  // ETX = Ctrl+C
           return { success: true }
         }
-        return { success: false, error: 'No active terminal process' }
+        return { success: false, error: `No active PTY for session ${sessionId}` }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] SESSION_STOP failed:', message)
@@ -302,6 +348,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
+    ipcMain.removeHandler(IPC_CHANNELS.PTY_SPAWN)
+    ipcMain.removeHandler(IPC_CHANNELS.PTY_KILL)
+    ipcMain.removeHandler(IPC_CHANNELS.PTY_GET_BUFFER)
     ipcMain.removeHandler(IPC_CHANNELS.LIST_DIR)
     ipcMain.removeHandler(IPC_CHANNELS.READ_TEXT)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_RESUME)
@@ -314,7 +363,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)
-    killPty()
+    killAllPtys()
   })
 }
 

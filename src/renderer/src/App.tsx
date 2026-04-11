@@ -64,6 +64,9 @@ function App(): React.ReactElement {
 
   const [showModal, setShowModal] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
+  // The terminal PTY session ID — either an Amplifier session ID (resume) or a
+  // synthetic ID like 'terminal-<slug>' (new session, before Amplifier assigns one)
+  const [terminalSessionId, setTerminalSessionId] = useState<string | null>(null)
   const hasSession = selectedSessionId !== null || showTerminal
 
   // Restore workspace state on mount
@@ -227,6 +230,15 @@ function App(): React.ReactElement {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onNewProject={() => setShowModal(true)}
+          onSessionSelect={(sessionId, workDir) => {
+            // Switch terminal to this session's PTY (spawn if needed, replay buffer)
+            setTerminalSessionId(sessionId)
+            setShowTerminal(true)
+            // Ensure a PTY exists for this session (no-op if already spawned)
+            window.electronAPI.spawnPty(sessionId, 80, 24, workDir).catch(() => {
+              // PTY spawn can fail in test environments — don't crash
+            })
+          }}
         />
 
         {/* Center zone: welcome screen OR terminal depending on state */}
@@ -297,21 +309,22 @@ function App(): React.ReactElement {
                   const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
                   const amplifierHome = process.env['AMPLIFIER_HOME'] || `${process.env['HOME'] || '~'}/.amplifier`
                   const path = `${amplifierHome}/projects/${slug}`
+                  const ptyId = `terminal-${slug}`
 
                   window.electronAPI.registerProject(slug, path, projectName).then(() => {
-                    // Register in the store so project appears in sidebar even with 0 sessions
                     useCanvasStore.getState().registerProject(slug, projectName)
                     useCanvasStore.getState().selectProject(slug)
                     useCanvasStore.getState().toggleProjectExpanded(slug)
                     setShowModal(false)
+                    setTerminalSessionId(ptyId)
                     setShowTerminal(true)
 
-                    setTimeout(() => {
-                      if (window.electronAPI) {
-                        // cd into the project directory before launching amplifier
-                        window.electronAPI.sendTerminalInput(`cd ${path} && amplifier\r`)
-                      }
-                    }, 300)
+                    // Spawn PTY in the project directory, then launch amplifier
+                    window.electronAPI.spawnPty(ptyId, 80, 24, path).then(() => {
+                      setTimeout(() => {
+                        window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                      }, 200)
+                    })
                   })
                 }}
                 onAddExisting={(project) => {
@@ -323,17 +336,19 @@ function App(): React.ReactElement {
                 }}
                 onNewSessionInProject={(project) => {
                   // User chose "New session" from the choose-action step
+                  const ptyId = `terminal-${project.slug}`
                   useCanvasStore.getState().registerProject(project.slug, project.name)
                   useCanvasStore.getState().selectProject(project.slug)
                   useCanvasStore.getState().toggleProjectExpanded(project.slug)
                   setShowModal(false)
+                  setTerminalSessionId(ptyId)
                   setShowTerminal(true)
 
-                  setTimeout(() => {
-                    if (window.electronAPI) {
-                      window.electronAPI.sendTerminalInput(`cd ${project.path} && amplifier\r`)
-                    }
-                  }, 300)
+                  window.electronAPI.spawnPty(ptyId, 80, 24, project.path).then(() => {
+                    setTimeout(() => {
+                      window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                    }, 200)
+                  })
                 }}
                 onResumeSession={(project, sessionId) => {
                   // User chose to resume an existing session from choose-action step
@@ -342,13 +357,15 @@ function App(): React.ReactElement {
                   useCanvasStore.getState().selectSession(sessionId)
                   useCanvasStore.getState().toggleProjectExpanded(project.slug)
                   setShowModal(false)
+                  setTerminalSessionId(sessionId)
                   setShowTerminal(true)
 
-                  setTimeout(() => {
-                    if (window.electronAPI) {
-                      window.electronAPI.sendTerminalInput(`cd ${project.path} && amplifier session resume ${sessionId}\r`)
-                    }
-                  }, 300)
+                  // Spawn PTY in project dir, then resume the session
+                  window.electronAPI.spawnPty(sessionId, 80, 24, project.path).then(() => {
+                    setTimeout(() => {
+                      window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
+                    }, 200)
+                  })
                 }}
               />
             )}
@@ -392,7 +409,9 @@ function App(): React.ReactElement {
                   </span>
                 )}
               </div>
-              <TerminalComponent />
+              {terminalSessionId && (
+                <TerminalComponent key={terminalSessionId} sessionId={terminalSessionId} />
+              )}
             </div>
             <Viewer />
           </>

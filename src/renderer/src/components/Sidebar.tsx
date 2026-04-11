@@ -8,6 +8,7 @@ type SidebarProps = {
   collapsed: boolean
   onToggle: () => void
   onNewProject?: () => void
+  onSessionSelect?: (sessionId: string, workDir: string) => void
 }
 
 interface Project {
@@ -85,7 +86,7 @@ function formatStats(session: SessionState): string {
 
 // ---- Component --------------------------------------------------------------
 
-function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.ReactElement {
+function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: SidebarProps): React.ReactElement {
   // Subscribe to both sessions and registeredProjects so sidebar re-renders when either changes
   const sessions = useCanvasStore((s) => s.sessions)
   const registeredProjects = useCanvasStore((s) => s.registeredProjects)
@@ -316,6 +317,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                   <div
                     data-testid="project-item"
                     data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
+                    data-expanded={expandedProjectSlugs.includes(project.slug) ? 'true' : 'false'}
                     onClick={() => {
                       selectProject(project.slug)
                       toggleProjectExpanded(project.slug)
@@ -348,6 +350,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                               onSelect={() => {
                                 selectSession(session.id)
                                 openViewer()
+                                onSessionSelect?.(session.id, session.workDir ?? '')
                               }}
                             />
                           </div>
@@ -402,6 +405,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
                                 onSelect={() => {
                                   selectSession(session.id)
                                   openViewer()
+                                  onSessionSelect?.(session.id, session.workDir ?? '')
                                 }}
                               />
                             </div>

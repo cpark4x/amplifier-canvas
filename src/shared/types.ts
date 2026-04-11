@@ -2,15 +2,18 @@
 
 export const IPC_CHANNELS = {
   // Main → Renderer (push)
-  TERMINAL_DATA: 'terminal:data',
-  TERMINAL_EXIT: 'terminal:exit',
+  TERMINAL_DATA: 'terminal:data',        // payload: { sessionId: string, data: string }
+  TERMINAL_EXIT: 'terminal:exit',        // payload: { sessionId: string, exitCode: number, signal: number }
   SESSIONS_CHANGED: 'state:sessions-changed',
   FILES_CHANGED: 'session:files-changed',
-  // Renderer → Main (request)
-  TERMINAL_INPUT: 'terminal:input',
-  TERMINAL_RESIZE: 'terminal:resize',
-  SESSION_RESUME: 'session:resume',
+  // Renderer → Main (request — fire-and-forget via .on/.send)
+  TERMINAL_INPUT: 'terminal:input',      // payload: { sessionId: string, data: string }
+  TERMINAL_RESIZE: 'terminal:resize',    // payload: { sessionId: string, cols: number, rows: number }
   // Renderer → Main (invoke/handle)
+  PTY_SPAWN: 'pty:spawn',               // payload: { sessionId: string, cwd?: string, cols: number, rows: number }
+  PTY_KILL: 'pty:kill',                  // payload: { sessionId: string }
+  PTY_GET_BUFFER: 'pty:get-buffer',      // payload: { sessionId: string } → returns string
+  SESSION_RESUME: 'session:resume',
   LIST_DIR: 'files:list-dir',
   READ_TEXT: 'files:read-text',
   GET_ANALYSIS: 'analysis:get',

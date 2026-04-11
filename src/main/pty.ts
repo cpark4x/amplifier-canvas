@@ -4,34 +4,22 @@ import os from 'os'
 
 const ptyProcesses = new Map<string, IPty>()
 
-const DEFAULT_SESSION_ID = 'default'
+// Per-session output buffers for replay on terminal switch
+// Stores the last MAX_BUFFER_SIZE bytes of output per session
+const MAX_BUFFER_SIZE = 100_000  // ~100KB per session
+const outputBuffers = new Map<string, string>()
 
-// Current working directory for the PTY — set via setCwd() before spawning
-let currentCwd: string | null = null
-
-export function setCwd(cwd: string | null): void {
-  currentCwd = cwd
-}
-
-export function spawnPty(sessionId: string, cols: number, rows: number): IPty
-export function spawnPty(cols: number, rows: number): IPty
 export function spawnPty(
-  sessionIdOrCols: string | number,
-  colsOrRows: number,
-  maybeRows?: number
+  sessionId: string,
+  cols: number,
+  rows: number,
+  cwd?: string,
 ): IPty {
-  let sessionId: string
-  let cols: number
-  let rows: number
-
-  if (typeof sessionIdOrCols === 'string') {
-    sessionId = sessionIdOrCols
-    cols = colsOrRows
-    rows = maybeRows!
-  } else {
-    sessionId = DEFAULT_SESSION_ID
-    cols = sessionIdOrCols
-    rows = colsOrRows
+  // Kill existing PTY for this session if any
+  const existing = ptyProcesses.get(sessionId)
+  if (existing) {
+    existing.kill()
+    ptyProcesses.delete(sessionId)
   }
 
   const shell =
@@ -41,7 +29,7 @@ export function spawnPty(
     name: 'xterm-256color',
     cols,
     rows,
-    cwd: currentCwd || process.env.HOME || os.homedir(),
+    cwd: cwd || process.env.HOME || os.homedir(),
     env: {
       ...process.env,
       TERM: 'xterm-256color',
@@ -50,27 +38,37 @@ export function spawnPty(
   })
 
   ptyProcesses.set(sessionId, ptyProcess)
+
+  // Initialize output buffer for this session
+  outputBuffers.set(sessionId, '')
+
   return ptyProcess
 }
 
-export function getPty(sessionId: string = DEFAULT_SESSION_ID): IPty | null {
+export function getPty(sessionId: string): IPty | null {
   return ptyProcesses.get(sessionId) || null
 }
 
-export function writeToPty(data: string): void
-export function writeToPty(sessionId: string, data: string): void
-export function writeToPty(sessionIdOrData: string, maybeData?: string): void {
-  let sessionId: string
-  let data: string
+export function hasPty(sessionId: string): boolean {
+  return ptyProcesses.has(sessionId)
+}
 
-  if (maybeData !== undefined) {
-    sessionId = sessionIdOrData
-    data = maybeData
+export function appendToBuffer(sessionId: string, data: string): void {
+  const existing = outputBuffers.get(sessionId) ?? ''
+  const combined = existing + data
+  // Keep only the tail if buffer exceeds max size
+  if (combined.length > MAX_BUFFER_SIZE) {
+    outputBuffers.set(sessionId, combined.slice(-MAX_BUFFER_SIZE))
   } else {
-    sessionId = DEFAULT_SESSION_ID
-    data = sessionIdOrData
+    outputBuffers.set(sessionId, combined)
   }
+}
 
+export function getBuffer(sessionId: string): string {
+  return outputBuffers.get(sessionId) ?? ''
+}
+
+export function writeToPty(sessionId: string, data: string): void {
   const ptyProcess = ptyProcesses.get(sessionId)
   if (ptyProcess) {
     try {
@@ -82,39 +80,20 @@ export function writeToPty(sessionIdOrData: string, maybeData?: string): void {
   }
 }
 
-export function resizePty(cols: number, rows: number): void
-export function resizePty(sessionId: string, cols: number, rows: number): void
-export function resizePty(
-  sessionIdOrCols: string | number,
-  colsOrRows: number,
-  maybeRows?: number
-): void {
-  let sessionId: string
-  let cols: number
-  let rows: number
-
-  if (typeof sessionIdOrCols === 'string') {
-    sessionId = sessionIdOrCols
-    cols = colsOrRows
-    rows = maybeRows!
-  } else {
-    sessionId = DEFAULT_SESSION_ID
-    cols = sessionIdOrCols
-    rows = colsOrRows
-  }
-
+export function resizePty(sessionId: string, cols: number, rows: number): void {
   const ptyProcess = ptyProcesses.get(sessionId)
   if (ptyProcess) {
     ptyProcess.resize(cols, rows)
   }
 }
 
-export function killPty(sessionId: string = DEFAULT_SESSION_ID): void {
+export function killPty(sessionId: string): void {
   const ptyProcess = ptyProcesses.get(sessionId)
   if (ptyProcess) {
     ptyProcess.kill()
     ptyProcesses.delete(sessionId)
   }
+  outputBuffers.delete(sessionId)
 }
 
 export function killAllPtys(): void {
@@ -122,4 +101,5 @@ export function killAllPtys(): void {
     ptyProcess.kill()
     ptyProcesses.delete(sessionId)
   }
+  outputBuffers.clear()
 }

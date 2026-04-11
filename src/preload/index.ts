@@ -5,20 +5,39 @@ import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
 const api = {
-  // Terminal: send input to PTY
-  sendTerminalInput: (data: string): void => {
-    ipcRenderer.send(IPC_CHANNELS.TERMINAL_INPUT, data)
+  // --- PTY lifecycle ---
+
+  // Spawn a new PTY for a specific session
+  spawnPty: (sessionId: string, cols: number, rows: number, cwd?: string): Promise<{ success: boolean; alreadyExists?: boolean; error?: string }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PTY_SPAWN, { sessionId, cwd, cols, rows })
   },
 
-  // Terminal: resize PTY
-  sendTerminalResize: (cols: number, rows: number): void => {
-    ipcRenderer.send(IPC_CHANNELS.TERMINAL_RESIZE, { cols, rows })
+  // Kill a specific session's PTY
+  killPty: (sessionId: string): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PTY_KILL, { sessionId })
   },
 
-  // Terminal: receive data from PTY
-  onTerminalData: (callback: (data: string) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: string): void => {
-      callback(data)
+  // Get buffered output for a session (for replay on terminal switch)
+  getPtyBuffer: (sessionId: string): Promise<string> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PTY_GET_BUFFER, { sessionId })
+  },
+
+  // --- Terminal I/O (session-routed) ---
+
+  // Terminal: send input to a specific session's PTY
+  sendTerminalInput: (sessionId: string, data: string): void => {
+    ipcRenderer.send(IPC_CHANNELS.TERMINAL_INPUT, { sessionId, data })
+  },
+
+  // Terminal: resize a specific session's PTY
+  sendTerminalResize: (sessionId: string, cols: number, rows: number): void => {
+    ipcRenderer.send(IPC_CHANNELS.TERMINAL_RESIZE, { sessionId, cols, rows })
+  },
+
+  // Terminal: receive data from PTY (tagged with sessionId)
+  onTerminalData: (callback: (payload: { sessionId: string; data: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: { sessionId: string; data: string }): void => {
+      callback(payload)
     }
     ipcRenderer.on(IPC_CHANNELS.TERMINAL_DATA, handler)
     return () => {
@@ -26,9 +45,9 @@ const api = {
     }
   },
 
-  // Terminal: PTY process exited
-  onTerminalExit: (callback: (info: { exitCode: number; signal?: number }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, info: { exitCode: number; signal?: number }): void => {
+  // Terminal: PTY process exited (tagged with sessionId)
+  onTerminalExit: (callback: (info: { sessionId: string; exitCode: number; signal?: number }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, info: { sessionId: string; exitCode: number; signal?: number }): void => {
       callback(info)
     }
     ipcRenderer.on(IPC_CHANNELS.TERMINAL_EXIT, handler)
