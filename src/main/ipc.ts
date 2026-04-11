@@ -1,10 +1,11 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { readdirSync, readFileSync, statSync, mkdirSync, existsSync } from 'fs'
+import { mkdirSync, existsSync } from 'fs'
+import { readdir, stat, readFile } from 'fs/promises'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer } from './pty'
-import { getAmplifierHome } from './scanner'
+import { getAmplifierHome, scanSingleProject } from './scanner'
 import {
   getSessionById,
   getRegisteredProjects,
@@ -19,7 +20,6 @@ import { discoverProjects } from './discovery'
 import type { DiscoveredProject } from './discovery'
 import { getAnalysis, triggerAnalysis } from './analysisService'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
-import { getAmplifierHome, scanSingleProject } from './scanner'
 import { addProjectWatch } from './watcher'
 
 // Track allowed directories for file access security
@@ -112,51 +112,53 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   // --- New IPC handlers for Phase 1C ---
 
-  ipcMain.handle(IPC_CHANNELS.LIST_DIR, (_event, { path }: { path: string }): FileEntry[] => {
-    if (!isPathAllowed(path)) {
-      console.error('[ipc] Blocked file access to disallowed path:', path)
+  ipcMain.handle(IPC_CHANNELS.LIST_DIR, async (_event, { path: dirPath }: { path: string }): Promise<FileEntry[]> => {
+    if (!isPathAllowed(dirPath)) {
+      console.error('[ipc] Blocked file access to disallowed path:', dirPath)
       return []
     }
 
     try {
-      const entries = readdirSync(path, { withFileTypes: true })
-      return entries.map((entry): FileEntry => {
-        const fullPath = join(path, entry.name)
+      const entries = await readdir(dirPath, { withFileTypes: true })
+      const results: FileEntry[] = []
+      for (const entry of entries) {
+        const fullPath = join(dirPath, entry.name)
         let size = 0
         let modifiedAt = new Date().toISOString()
 
         try {
-          const stat = statSync(fullPath)
-          size = stat.size
-          modifiedAt = stat.mtime.toISOString()
+          const s = await stat(fullPath)
+          size = s.size
+          modifiedAt = s.mtime.toISOString()
         } catch {
           // stat failed — return defaults
         }
 
-        return {
+        results.push({
           name: entry.name,
           path: fullPath,
           isDirectory: entry.isDirectory(),
           size,
           modifiedAt,
-        }
-      })
+        })
+      }
+      return results
     } catch {
-      console.error('[ipc] Failed to list directory:', path)
+      console.error('[ipc] Failed to list directory:', dirPath)
       return []
     }
   })
 
-  ipcMain.handle(IPC_CHANNELS.READ_TEXT, (_event, { path }: { path: string }): string => {
-    if (!isPathAllowed(path)) {
-      console.error('[ipc] Blocked file access to disallowed path:', path)
+  ipcMain.handle(IPC_CHANNELS.READ_TEXT, async (_event, { path: filePath }: { path: string }): Promise<string> => {
+    if (!isPathAllowed(filePath)) {
+      console.error('[ipc] Blocked file access to disallowed path:', filePath)
       return ''
     }
 
     try {
-      return readFileSync(path, 'utf-8')
+      return await readFile(filePath, 'utf-8')
     } catch {
-      console.error('[ipc] Failed to read file:', path)
+      console.error('[ipc] Failed to read file:', filePath)
       return ''
     }
   })

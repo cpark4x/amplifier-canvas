@@ -64,7 +64,7 @@ function createWindow(): BrowserWindow {
     height: WINDOW_CONFIG.height,
     minWidth: WINDOW_CONFIG.minWidth,
     minHeight: WINDOW_CONFIG.minHeight,
-    show: false,
+    show: true,   // Show immediately — no waiting for ready-to-show
     backgroundColor: '#F0EBE3',
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 12 } }
@@ -75,26 +75,15 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
-    clearTimeout(showFallback)
-  })
-
-  // Safety net: if ready-to-show never fires within 4s, show anyway.
-  // Prevents "invisible frozen app" when main-process I/O blocks the event loop.
-  const showFallback = setTimeout(() => {
-    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
-      console.warn('[window] ready-to-show did not fire within 4s — forcing show')
-      mainWindow.show()
-    }
-  }, 4000)
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalUrl(url)
     return { action: 'deny' }
   })
 
   loadRenderer(mainWindow)
+
+  // Open DevTools to diagnose renderer issues
+  
 
   return mainWindow
 }
@@ -180,11 +169,11 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(() => {
   buildAppMenu()
 
-  // Initialize database
-  initDatabase()
-
-  // Create window FIRST so it appears immediately
+  // Create and SHOW window immediately — before any sync I/O
   const mainWindow = createWindow()
+
+  // DB + IPC init — window is already visible so user sees something
+  initDatabase()
   registerIpcHandlers(mainWindow)
 
   // Register canvas:// protocol handler for secure image serving
@@ -244,8 +233,6 @@ app.whenReady().then(() => {
           })
         }
 
-        // (5) Start watchers only for registered projects
-        addProjectWatch(project.slug)
       }
 
       // Seed liveSessions map and push stubs to renderer
@@ -255,6 +242,16 @@ app.whenReady().then(() => {
       pushSessionsChanged(mainWindow, sessions)
 
       console.log(`[startup] Loaded ${registeredProjects.length} projects, ${sessions.length} sessions from DB`)
+
+      // DEFERRED: Start watchers AFTER the UI has data and can paint.
+      // chokidar's initial scan of 1000+ session dirs blocks the main thread.
+      // setTimeout(0) yields to the event loop so the renderer can render first.
+      setTimeout(() => {
+        for (const project of registeredProjects) {
+          addProjectWatch(project.slug)
+        }
+        console.log(`[startup] Watchers started for ${registeredProjects.length} projects`)
+      }, 0)
     } catch (err) {
       console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
       setAllowedDirs([projectsDir])

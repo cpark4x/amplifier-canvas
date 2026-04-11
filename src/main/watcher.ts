@@ -51,19 +51,25 @@ export function addProjectWatch(slug: string): void {
     return
   }
 
+  // Only watch events.jsonl files inside session directories — NOT the
+  // entire sessions tree. A project can have thousands of session dirs.
+  // Watching the full tree makes chokidar stat every entry at startup,
+  // blocking the main thread for seconds.
+  const globPattern = join(sessionsDir, '*', 'events.jsonl')
+
   if (!watcher) {
-    // Create the watcher on first project add
-    watcher = chokidar.watch(sessionsDir, {
+    watcher = chokidar.watch(globPattern, {
       ignoreInitial: true,
       awaitWriteFinish: {
         stabilityThreshold: 200,
       },
+      // Disable recursive directory walking — glob handles the depth
+      depth: 0,
     })
     attachListeners(watcher)
     console.log(`[watcher] Watching project: ${slug}`)
   } else {
-    // Add to existing watcher
-    watcher.add(sessionsDir)
+    watcher.add(globPattern)
     console.log(`[watcher] Added project to watch: ${slug}`)
   }
 }
