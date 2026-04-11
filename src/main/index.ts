@@ -9,6 +9,7 @@ import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
 import { isSubSession } from './scanner'
+import { unhideSession } from './db'
 import { getWorkspaceState } from './workspace'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
@@ -271,6 +272,10 @@ app.whenReady().then(() => {
         const status = deriveSessionStatus(events)
         const recentFiles = extractFileActivity(events)
 
+        // Session is actively writing events — make it visible in the sidebar.
+        // Sessions start hidden (from scanSingleProject); the watcher unhides
+        // them when it sees real activity, meaning the user launched this session.
+        unhideSession(data.sessionId)
         updateSessionStatus(data.sessionId, status)
         updateByteOffset(data.sessionId, newByteOffset)
 

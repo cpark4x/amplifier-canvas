@@ -83,7 +83,9 @@ export function scanSingleProject(
         ? ((endEvent as { data: Record<string, unknown> }).data.exitCode as number)
         : undefined
 
-      // Persist to DB
+      // Persist to DB as hidden — sessions only become visible when the user
+      // explicitly launches or resumes them. This prevents the sidebar from
+      // filling with historical sessions the user never asked for.
       upsertSession({
         id: sessionId,
         projectSlug: slug,
@@ -91,6 +93,7 @@ export function scanSingleProject(
         startedAt,
         status,
         byteOffset: newByteOffset,
+        hidden: true,
       })
       finalizeSession(sessionId, {
         status,
@@ -254,6 +257,7 @@ export async function scanSessionsAsync(
         startedAt,
         status,
         byteOffset: newByteOffset,
+        hidden: true,
       })
 
       finalizeSession(stub.id, {
