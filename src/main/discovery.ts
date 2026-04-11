@@ -1,6 +1,7 @@
-import { readdirSync, existsSync } from 'fs'
+import { readdirSync, existsSync, statSync } from 'fs'
 import { join, basename } from 'path'
 import { getRegisteredProjects } from './db'
+import { isSubSession } from './scanner'
 
 export interface DiscoveredProject {
   slug: string
@@ -120,11 +121,12 @@ export function discoverProjects(amplifierHome: string): DiscoveredProject[] {
 
     return entries
       .filter((entry) => {
-        // Only include projects with at least one session
+        // Only include projects with at least one real (non-sub-agent) session
         const sessionsDir = join(projectsDir, entry.name, 'sessions')
         if (!existsSync(sessionsDir)) return false
         try {
-          const sessions = readdirSync(sessionsDir, { withFileTypes: true }).filter((s) => s.isDirectory())
+          const sessions = readdirSync(sessionsDir, { withFileTypes: true })
+            .filter((s) => s.isDirectory() && !isSubSession(s.name))
           return sessions.length > 0
         } catch {
           return false
@@ -132,14 +134,30 @@ export function discoverProjects(amplifierHome: string): DiscoveredProject[] {
       })
       .map((entry) => {
         const resolvedPath = resolveSlugPath(entry.name)
+        // Get the most recent session mtime for recency sorting
+        let lastActivity = 0
+        try {
+          const sessionsDir = join(projectsDir, entry.name, 'sessions')
+          const sessions = readdirSync(sessionsDir, { withFileTypes: true })
+            .filter((s) => s.isDirectory() && !isSubSession(s.name))
+          for (const s of sessions) {
+            const eventsPath = join(sessionsDir, s.name, 'events.jsonl')
+            try {
+              const mtime = statSync(eventsPath).mtimeMs
+              if (mtime > lastActivity) lastActivity = mtime
+            } catch { /* skip */ }
+          }
+        } catch { /* skip */ }
         return {
           slug: entry.name,
           name: slugToName(entry.name),
           path: resolvedPath || join(projectsDir, entry.name),
+          lastActivity,
         }
       })
       .filter((project) => !registeredSlugs.has(project.slug))
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => b.lastActivity - a.lastActivity)
+      .map(({ lastActivity: _, ...rest }) => rest)
   } catch (err) {
     console.error(
       '[discovery] Failed to scan projects directory:',

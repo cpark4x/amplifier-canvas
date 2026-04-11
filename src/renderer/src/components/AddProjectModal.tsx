@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { SessionState } from '../../../shared/types'
+import { useCanvasStore } from '../store'
 
 interface DiscoveredProject {
   slug: string
@@ -66,7 +67,13 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
     window.electronAPI
       .registerProject(selectedExisting.slug, selectedExisting.path, selectedExisting.name)
       .then((result) => {
-        setProjectSessions(result.sessions ?? [])
+        const sessions = result.sessions ?? []
+        setProjectSessions(sessions)
+        // Merge scanned sessions into the global store so the sidebar shows them
+        if (sessions.length > 0) {
+          useCanvasStore.getState().addSessions(sessions)
+        }
+        useCanvasStore.getState().registerProject(selectedExisting.slug, selectedExisting.name, selectedExisting.path)
         setLoadingSessions(false)
         setStep('choose-action')
       })
