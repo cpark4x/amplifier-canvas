@@ -98,6 +98,14 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
   const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
   const toggleProjectExpanded = useCanvasStore((s) => s.toggleProjectExpanded)
 
+  // Track which projects have their full history expanded (default: collapsed to 3)
+  const [expandedHistorySlugs, setExpandedHistorySlugs] = useState<string[]>([])
+  const toggleExpandedHistory = (slug: string) => {
+    setExpandedHistorySlugs((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    )
+  }
+
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -377,41 +385,73 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
                         + New session
                       </div>
 
-                      {/* History section */}
-                      {historySessions.length > 0 && (
-                        <>
-                          {/* HISTORY label */}
-                          <div
-                            data-testid="history-label"
-                            style={{
-                              padding: '6px 12px 2px 14px',
-                              fontSize: '10px',
-                              textTransform: 'uppercase',
-                              color: '#A0977D',
-                              letterSpacing: '0.08em',
-                              fontWeight: 600,
-                              userSelect: 'none',
-                            }}
-                          >
-                            HISTORY
-                          </div>
+                      {/* History section — show 3, "see more" to expand */}
+                      {historySessions.length > 0 && (() => {
+                        const MAX_VISIBLE = 3
+                        const isShowingAll = expandedHistorySlugs.includes(project.slug)
+                        const visible = isShowingAll ? historySessions : historySessions.slice(0, MAX_VISIBLE)
+                        const hasMore = historySessions.length > MAX_VISIBLE
 
-                          {/* History session rows */}
-                          {historySessions.map((session) => (
-                            <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
-                              <HistorySessionRow
-                                session={session}
-                                isSelected={selectedSessionId === session.id}
-                                onSelect={() => {
-                                  selectSession(session.id)
-                                  openViewer()
-                                  onSessionSelect?.(session.id, session.workDir ?? '')
-                                }}
-                              />
+                        return (
+                          <>
+                            {/* HISTORY label */}
+                            <div
+                              data-testid="history-label"
+                              style={{
+                                padding: '6px 12px 2px 14px',
+                                fontSize: '10px',
+                                textTransform: 'uppercase',
+                                color: '#A0977D',
+                                letterSpacing: '0.08em',
+                                fontWeight: 600,
+                                userSelect: 'none',
+                              }}
+                            >
+                              HISTORY
                             </div>
-                          ))}
-                        </>
-                      )}
+
+                            {/* History session rows (capped) */}
+                            {visible.map((session) => (
+                              <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
+                                <HistorySessionRow
+                                  session={session}
+                                  isSelected={selectedSessionId === session.id}
+                                  onSelect={() => {
+                                    selectSession(session.id)
+                                    openViewer()
+                                    onSessionSelect?.(session.id, session.workDir ?? '')
+                                  }}
+                                />
+                              </div>
+                            ))}
+
+                            {/* "See more" / "Show less" toggle */}
+                            {hasMore && (
+                              <div
+                                data-testid="history-toggle"
+                                onClick={() => toggleExpandedHistory(project.slug)}
+                                style={{
+                                  padding: '4px 14px 8px',
+                                  fontSize: '10px',
+                                  color: 'var(--text-very-muted)',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                }}
+                                onMouseEnter={(e) => {
+                                  ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
+                                }}
+                                onMouseLeave={(e) => {
+                                  ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
+                                }}
+                              >
+                                {isShowingAll
+                                  ? 'Show less'
+                                  : `See ${historySessions.length - MAX_VISIBLE} more...`}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                     </>
                   )}
                 </div>
