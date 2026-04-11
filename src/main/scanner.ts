@@ -13,6 +13,15 @@ import {
 } from './events-parser'
 import type { SessionState } from '../shared/types'
 
+/**
+ * Sub-agent sessions have IDs like `{parentId}_{agent-name}` (e.g.
+ * `ffc75aa008924448-0e164ec774014da7_foundation-git-ops`).
+ * Real user sessions are plain UUIDs with only hyphens.
+ */
+export function isSubSession(sessionId: string): boolean {
+  return sessionId.includes('_')
+}
+
 // Only show projects with activity in the last N days
 const RECENCY_DAYS = 14
 
@@ -39,7 +48,7 @@ export function scanSingleProject(
   if (!existsSync(sessionsDir)) return []
 
   const sessionDirs = readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
     .map((entry) => entry.name)
     .slice(-MAX_SESSIONS_PER_PROJECT)
     .reverse()
@@ -167,7 +176,7 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     if (!existsSync(sessionsDir)) continue
 
     const allSessionNames = readdirSync(sessionsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
+      .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
       .map((entry) => entry.name)
 
     const recentNames = allSessionNames.slice(-MAX_SESSIONS_PER_PROJECT).reverse()

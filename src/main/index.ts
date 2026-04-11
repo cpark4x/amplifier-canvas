@@ -8,6 +8,7 @@ import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjec
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
+import { isSubSession } from './scanner'
 import { getWorkspaceState } from './workspace'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
@@ -263,7 +264,7 @@ app.whenReady().then(() => {
   // Only projects the user explicitly adds get watched via addProjectWatch().
   initWatcher(amplifierHome, (event, data) => {
     try {
-      if (event === 'session-updated' && data.sessionId) {
+      if (event === 'session-updated' && data.sessionId && !isSubSession(data.sessionId)) {
         const eventsPath = join(amplifierHome, 'projects', data.projectSlug, 'sessions', data.sessionId, 'events.jsonl')
         const knownOffset = liveSessions.get(data.sessionId)?.byteOffset ?? 0
         const { events, newByteOffset } = tailReadEvents(eventsPath, knownOffset)
