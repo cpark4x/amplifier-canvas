@@ -411,7 +411,7 @@ function App(): React.ReactElement {
             setShowModal(false)
           }}
           onNewSessionInProject={(project) => {
-            const ptyId = `terminal-${project.slug}`
+            const ptyId = `terminal-${project.slug}-${Date.now()}`
             useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().toggleProjectExpanded(project.slug)
