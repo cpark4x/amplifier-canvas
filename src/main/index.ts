@@ -7,7 +7,7 @@ import { registerIpcHandlers } from './ipc'
 import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
-import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, isPathAllowed } from './ipc'
+import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
 import { getWorkspaceState } from './workspace'
 import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
@@ -274,7 +274,13 @@ app.whenReady().then(() => {
         updateByteOffset(data.sessionId, newByteOffset)
 
         const sessionPath = join(projectsDir, data.projectSlug, 'sessions', data.sessionId)
-        const workDir = extractWorkDir(events, sessionPath)
+        const existingWorkDir = liveSessions.get(data.sessionId)?.workDir
+        const workDir = extractWorkDir(events, sessionPath) ?? existingWorkDir
+
+        // Widen file-access allowlist so the Viewer's file browser works
+        if (workDir) {
+          addAllowedDir(workDir)
+        }
 
         let startedAt: string
         const startEvent = events.find((e: { type: string; timestamp: string }) => e.type === 'session:start')
@@ -284,8 +290,9 @@ app.whenReady().then(() => {
           startedAt = new Date().toISOString()
         }
 
+        const existingTitle = liveSessions.get(data.sessionId)?.title
         const firstPrompt = extractFirstPrompt(events)
-        const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
+        const title = (firstPrompt ? deriveSessionTitle(firstPrompt) : undefined) ?? existingTitle
         const stats = extractSessionStats(events)
         const endEvent = events.find((e: { type: string; timestamp: string; data: Record<string, unknown> }) => e.type === 'session:end')
         const endedAt = endEvent?.timestamp

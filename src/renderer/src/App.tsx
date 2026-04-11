@@ -301,74 +301,6 @@ function App(): React.ReactElement {
               </button>
             </div>
 
-            {/* Screen 2: Add Project modal */}
-            {showModal && (
-              <AddProjectModal
-                onClose={() => setShowModal(false)}
-                onCreateNew={(projectName) => {
-                  const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-                  const amplifierHome = process.env['AMPLIFIER_HOME'] || `${process.env['HOME'] || '~'}/.amplifier`
-                  const path = `${amplifierHome}/projects/${slug}`
-                  const ptyId = `terminal-${slug}`
-
-                  window.electronAPI.registerProject(slug, path, projectName).then(() => {
-                    useCanvasStore.getState().registerProject(slug, projectName)
-                    useCanvasStore.getState().selectProject(slug)
-                    useCanvasStore.getState().toggleProjectExpanded(slug)
-                    setShowModal(false)
-                    setTerminalSessionId(ptyId)
-                    setShowTerminal(true)
-
-                    // Spawn PTY in the project directory, then launch amplifier
-                    window.electronAPI.spawnPty(ptyId, 80, 24, path).then(() => {
-                      setTimeout(() => {
-                        window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
-                      }, 200)
-                    })
-                  })
-                }}
-                onAddExisting={(project) => {
-                  // Fallback — should rarely be called now that choose-action step exists
-                  useCanvasStore.getState().registerProject(project.slug, project.name)
-                  useCanvasStore.getState().selectProject(project.slug)
-                  useCanvasStore.getState().toggleProjectExpanded(project.slug)
-                  setShowModal(false)
-                }}
-                onNewSessionInProject={(project) => {
-                  // User chose "New session" from the choose-action step
-                  const ptyId = `terminal-${project.slug}`
-                  useCanvasStore.getState().registerProject(project.slug, project.name)
-                  useCanvasStore.getState().selectProject(project.slug)
-                  useCanvasStore.getState().toggleProjectExpanded(project.slug)
-                  setShowModal(false)
-                  setTerminalSessionId(ptyId)
-                  setShowTerminal(true)
-
-                  window.electronAPI.spawnPty(ptyId, 80, 24, project.path).then(() => {
-                    setTimeout(() => {
-                      window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
-                    }, 200)
-                  })
-                }}
-                onResumeSession={(project, sessionId) => {
-                  // User chose to resume an existing session from choose-action step
-                  useCanvasStore.getState().registerProject(project.slug, project.name)
-                  useCanvasStore.getState().selectProject(project.slug)
-                  useCanvasStore.getState().selectSession(sessionId)
-                  useCanvasStore.getState().toggleProjectExpanded(project.slug)
-                  setShowModal(false)
-                  setTerminalSessionId(sessionId)
-                  setShowTerminal(true)
-
-                  // Spawn PTY in project dir, then resume the session
-                  window.electronAPI.spawnPty(sessionId, 80, 24, project.path).then(() => {
-                    setTimeout(() => {
-                      window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
-                    }, 200)
-                  })
-                }}
-              />
-            )}
           </div>
         ) : (
           /* Screens 3+: Terminal zone with optional viewer */
@@ -436,6 +368,70 @@ function App(): React.ReactElement {
           })),
         )}
       </div>
+      {/* Add Project modal — rendered outside the hasSession gate so it
+          works from both the welcome screen and the terminal view */}
+      {showModal && (
+        <AddProjectModal
+          onClose={() => setShowModal(false)}
+          onCreateNew={(projectName) => {
+            const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+            const amplifierHome = process.env['AMPLIFIER_HOME'] || `${process.env['HOME'] || '~'}/.amplifier`
+            const path = `${amplifierHome}/projects/${slug}`
+            const ptyId = `terminal-${slug}`
+
+            window.electronAPI.registerProject(slug, path, projectName).then(() => {
+              useCanvasStore.getState().registerProject(slug, projectName)
+              useCanvasStore.getState().selectProject(slug)
+              useCanvasStore.getState().toggleProjectExpanded(slug)
+              setShowModal(false)
+              setTerminalSessionId(ptyId)
+              setShowTerminal(true)
+
+              window.electronAPI.spawnPty(ptyId, 80, 24, path).then(() => {
+                setTimeout(() => {
+                  window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                }, 200)
+              })
+            })
+          }}
+          onAddExisting={(project) => {
+            useCanvasStore.getState().registerProject(project.slug, project.name)
+            useCanvasStore.getState().selectProject(project.slug)
+            useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            setShowModal(false)
+          }}
+          onNewSessionInProject={(project) => {
+            const ptyId = `terminal-${project.slug}`
+            useCanvasStore.getState().registerProject(project.slug, project.name)
+            useCanvasStore.getState().selectProject(project.slug)
+            useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            setShowModal(false)
+            setTerminalSessionId(ptyId)
+            setShowTerminal(true)
+
+            window.electronAPI.spawnPty(ptyId, 80, 24, project.path).then(() => {
+              setTimeout(() => {
+                window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+              }, 200)
+            })
+          }}
+          onResumeSession={(project, sessionId) => {
+            useCanvasStore.getState().registerProject(project.slug, project.name)
+            useCanvasStore.getState().selectProject(project.slug)
+            useCanvasStore.getState().selectSession(sessionId)
+            useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            setShowModal(false)
+            setTerminalSessionId(sessionId)
+            setShowTerminal(true)
+
+            window.electronAPI.spawnPty(sessionId, 80, 24, project.path).then(() => {
+              setTimeout(() => {
+                window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
+              }, 200)
+            })
+          }}
+        />
+      )}
       <ToastContainer />
     </div>
   )

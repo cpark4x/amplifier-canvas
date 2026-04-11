@@ -29,6 +29,13 @@ export function setAllowedDirs(dirs: string[]): void {
   allowedDirs = dirs.map((d) => resolve(normalize(d)))
 }
 
+export function addAllowedDir(dir: string): void {
+  const resolved = resolve(normalize(dir))
+  if (!allowedDirs.includes(resolved)) {
+    allowedDirs.push(resolved)
+  }
+}
+
 export function isPathAllowed(requestedPath: string): boolean {
   const resolved = resolve(normalize(requestedPath))
   return allowedDirs.some((dir) => resolved.startsWith(dir))
