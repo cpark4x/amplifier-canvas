@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync, mkdirSync, existsSync } from 'fs'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
-import { spawnPty, writeToPty, resizePty, killPty } from './pty'
+import { spawnPty, writeToPty, resizePty, killPty, setCwd } from './pty'
 import { getAmplifierHome } from './scanner'
 import {
   getSessionById,
@@ -247,8 +247,19 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(
     IPC_CHANNELS.SESSION_STOP,
-    async (): Promise<{ success: boolean; error: string }> => {
-      return { success: false, error: 'Not yet wired' }
+    async (): Promise<{ success: boolean; error?: string }> => {
+      try {
+        // Send Ctrl+C (SIGINT) to the running PTY to interrupt the current session
+        if (ptyProcess) {
+          ptyProcess.write('\x03')  // ETX = Ctrl+C
+          return { success: true }
+        }
+        return { success: false, error: 'No active terminal process' }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] SESSION_STOP failed:', message)
+        return { success: false, error: message }
+      }
     },
   )
 
@@ -333,6 +344,6 @@ export function pushWorkspaceState(mainWindow: BrowserWindow, state: WorkspaceSt
 
 export function pushRunningSessionsToast(mainWindow: BrowserWindow, count: number): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, count)
+    mainWindow.webContents.send(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, { count })
   }
 }

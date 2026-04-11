@@ -32,7 +32,7 @@ async function clickCompletedSession(appWindow: Page): Promise<void> {
 test('A1: ANALYSIS tab exists and is clickable', async ({ appWindow }) => {
   await clickCompletedSession(appWindow)
 
-  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  const analysisTab = appWindow.locator('[data-testid="tab-summary"]')
   await expect(analysisTab).toBeVisible({ timeout: 3000 })
   await analysisTab.click()
 })
@@ -48,7 +48,7 @@ test('A2: CHANGES tab is removed', async ({ appWindow }) => {
   // These three tabs must all be visible
   await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
   await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
-  await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-summary"]')).toBeVisible({ timeout: 3000 })
 })
 
 // --- A3: clicking ANALYSIS tab shows the analysis component ---
@@ -56,7 +56,7 @@ test('A2: CHANGES tab is removed', async ({ appWindow }) => {
 test('A3: clicking ANALYSIS tab shows the analysis component', async ({ appWindow }) => {
   await clickCompletedSession(appWindow)
 
-  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  const analysisTab = appWindow.locator('[data-testid="tab-summary"]')
   await expect(analysisTab).toBeVisible({ timeout: 3000 })
   await analysisTab.click()
 
@@ -69,7 +69,7 @@ test('A3: clicking ANALYSIS tab shows the analysis component', async ({ appWindo
 test('A4: analysis header shows stats', async ({ appWindow }) => {
   await clickCompletedSession(appWindow)
 
-  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  const analysisTab = appWindow.locator('[data-testid="tab-summary"]')
   await expect(analysisTab).toBeVisible({ timeout: 3000 })
   await analysisTab.click()
 
@@ -82,7 +82,7 @@ test('A4: analysis header shows stats', async ({ appWindow }) => {
 test('A5: prompt history section is present and toggleable', async ({ appWindow }) => {
   await clickCompletedSession(appWindow)
 
-  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  const analysisTab = appWindow.locator('[data-testid="tab-summary"]')
   await expect(analysisTab).toBeVisible({ timeout: 3000 })
   await analysisTab.click()
 
@@ -105,7 +105,7 @@ test('A5: prompt history section is present and toggleable', async ({ appWindow 
 test('A6: AI sections area is present (loading or content)', async ({ appWindow }) => {
   await clickCompletedSession(appWindow)
 
-  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  const analysisTab = appWindow.locator('[data-testid="tab-summary"]')
   await expect(analysisTab).toBeVisible({ timeout: 3000 })
   await analysisTab.click()
 

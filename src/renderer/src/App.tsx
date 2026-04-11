@@ -308,22 +308,47 @@ function App(): React.ReactElement {
 
                     setTimeout(() => {
                       if (window.electronAPI) {
-                        window.electronAPI.sendTerminalInput('amplifier\r')
+                        // cd into the project directory before launching amplifier
+                        window.electronAPI.sendTerminalInput(`cd ${path} && amplifier\r`)
                       }
                     }, 300)
                   })
                 }}
                 onAddExisting={(project) => {
-                  window.electronAPI.registerProject(project.slug, project.path, project.name).then((result) => {
-                    // Register in store and merge sessions
-                    useCanvasStore.getState().registerProject(project.slug, project.name)
-                    if (result.sessions && result.sessions.length > 0) {
-                      useCanvasStore.getState().addSessions(result.sessions)
+                  // Fallback — should rarely be called now that choose-action step exists
+                  useCanvasStore.getState().registerProject(project.slug, project.name)
+                  useCanvasStore.getState().selectProject(project.slug)
+                  useCanvasStore.getState().toggleProjectExpanded(project.slug)
+                  setShowModal(false)
+                }}
+                onNewSessionInProject={(project) => {
+                  // User chose "New session" from the choose-action step
+                  useCanvasStore.getState().registerProject(project.slug, project.name)
+                  useCanvasStore.getState().selectProject(project.slug)
+                  useCanvasStore.getState().toggleProjectExpanded(project.slug)
+                  setShowModal(false)
+                  setShowTerminal(true)
+
+                  setTimeout(() => {
+                    if (window.electronAPI) {
+                      window.electronAPI.sendTerminalInput(`cd ${project.path} && amplifier\r`)
                     }
-                    useCanvasStore.getState().selectProject(project.slug)
-                    useCanvasStore.getState().toggleProjectExpanded(project.slug)
-                    setShowModal(false)
-                  })
+                  }, 300)
+                }}
+                onResumeSession={(project, sessionId) => {
+                  // User chose to resume an existing session from choose-action step
+                  useCanvasStore.getState().registerProject(project.slug, project.name)
+                  useCanvasStore.getState().selectProject(project.slug)
+                  useCanvasStore.getState().selectSession(sessionId)
+                  useCanvasStore.getState().toggleProjectExpanded(project.slug)
+                  setShowModal(false)
+                  setShowTerminal(true)
+
+                  setTimeout(() => {
+                    if (window.electronAPI) {
+                      window.electronAPI.sendTerminalInput(`cd ${project.path} && amplifier session resume ${sessionId}\r`)
+                    }
+                  }, 300)
                 }}
               />
             )}

@@ -70,7 +70,7 @@ test('V1: Viewer panel has three primary tabs (FILES, APP, ANALYSIS)', async ({ 
   await session.click()
   await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
   await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
-  await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-summary"]')).toBeVisible({ timeout: 3000 })
   await expect(appWindow.locator('[data-testid="tab-changes"]')).not.toBeVisible({ timeout: 3000 })
 })
 
@@ -1203,7 +1203,7 @@ test('T10: Viewer has exactly three primary tabs (FILES, APP, ANALYSIS)', async 
 
   await expect(appWindow.locator('[data-testid="tab-files"]')).toBeVisible({ timeout: 3000 })
   await expect(appWindow.locator('[data-testid="tab-app"]')).toBeVisible({ timeout: 3000 })
-  await expect(appWindow.locator('[data-testid="tab-analysis"]')).toBeVisible({ timeout: 3000 })
+  await expect(appWindow.locator('[data-testid="tab-summary"]')).toBeVisible({ timeout: 3000 })
 
   // CHANGES tab must not be present
   await expect(appWindow.locator('[data-testid="tab-changes"]')).not.toBeVisible({ timeout: 3000 })
@@ -1230,7 +1230,7 @@ test('T10: ANALYSIS tab renders SessionAnalysis component (not placeholder)', as
   await session.click()
 
   // Click the ANALYSIS tab
-  const analysisTab = appWindow.locator('[data-testid="tab-analysis"]')
+  const analysisTab = appWindow.locator('[data-testid="tab-summary"]')
   await expect(analysisTab).toBeVisible({ timeout: 3000 })
   await analysisTab.click()
 

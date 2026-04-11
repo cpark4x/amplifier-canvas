@@ -327,6 +327,19 @@ body {
   cursor: pointer;
 }
 .new-session-link:hover { color: var(--text-muted); }
+.session-resume-arrow {
+  color: var(--amber);
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.see-more-link {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--text-very-muted);
+  cursor: pointer;
+}
+.see-more-link:hover { color: var(--text-muted); }
 
 /* ============================================================
    SHARED: TERMINAL ZONE
@@ -809,6 +822,75 @@ body {
   gap: 5px;
 }
 
+/* ---- Modal tab row (New / Existing) ---- */
+.modal-tab-row {
+  display: flex;
+  gap: 0;
+  margin: 14px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-tab {
+  padding: 6px 14px 8px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.modal-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+  font-weight: 600;
+}
+.modal-tab-content {
+  /* no special styling needed — just a wrapper */
+}
+
+/* ---- Discovered-project list (Existing tab) ---- */
+.discovered-project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+.discovered-project-row.selected {
+  border-color: var(--amber);
+  background: rgba(196,120,74,0.06);
+}
+.discovered-project-info { flex: 1; min-width: 0; }
+.discovered-project-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.discovered-project-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: flex;
+  gap: 4px;
+}
+.discovered-project-path {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+.discovered-project-check {
+  font-size: 14px;
+  color: var(--amber);
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 /* ============================================================
    SCREEN 8 — APP PREVIEW
    ============================================================ */
@@ -1226,19 +1308,19 @@ body {
      ACT 1 HEADER
      ==================================================================== -->
 <div class="act-header">
-  <div class="act-header-label">Act 1 — Getting Started</div>
-  <div class="act-header-subtitle">Four screens: first launch through session start</div>
+  <div class="act-header-label">Act 1 &mdash; Getting Started</div>
+  <div class="act-header-subtitle">Seven screens: first launch through returning user.</div>
 </div>
 
 
 <!-- ====================================================================
-     SCREEN 1 — WELCOME
+     SCREEN 1 — WELCOME: FIRST LAUNCH
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 · STEP 1</span>
-    <span class="screen-label-title">Welcome</span>
-    <span class="screen-label-desc">First launch — no projects, empty workspace</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 1</span>
+    <span class="screen-label-title">Welcome: First Launch</span>
+    <span class="screen-label-desc">You just installed Canvas. The app opens with an empty sidebar and a welcome message.</span>
   </div>
   <div class="screen">
 
@@ -1258,22 +1340,23 @@ body {
     <!-- Body -->
     <div class="body-row">
 
-      <!-- Sidebar -->
+      <!-- Sidebar — empty -->
       <div class="sidebar">
         <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
+          <span class="sidebar-section-label">PROJECTS</span>
           <button class="sidebar-add-btn">+</button>
         </div>
         <div class="sidebar-empty">No projects yet</div>
       </div>
 
-      <!-- Main content -->
+      <!-- Welcome main -->
       <div class="welcome-main">
         <div class="welcome-content">
-          <div class="welcome-title">Welcome to Canvas</div>
-          <div class="welcome-subtitle">Your workspace for Amplifier sessions, files, and previews.</div>
+          <svg width="80" height="80" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <div class="welcome-title">Amplifier Canvas</div>
+          <div class="welcome-subtitle">Your projects, your sessions, your code &mdash; all in one place.</div>
           <button class="welcome-btn">
-            Create your first project <span class="btn-arrow">→</span>
+            Create your first project <span class="btn-arrow">&rarr;</span>
           </button>
         </div>
       </div>
@@ -1284,13 +1367,13 @@ body {
 
 
 <!-- ====================================================================
-     SCREEN 2 — RETURNING TO CANVAS
+     SCREEN 2a — NEW PROJECT: MODAL
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 2</span>
-    <span class="screen-label-title">Returning to Canvas</span>
-    <span class="screen-label-desc">Thursday morning. Canvas opens exactly where you left it.</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 2a</span>
+    <span class="screen-label-title">New Project: Modal</span>
+    <span class="screen-label-desc">Add Project modal &mdash; New tab. Name your project and pick a folder.</span>
   </div>
   <div class="screen">
 
@@ -1310,68 +1393,503 @@ body {
     <!-- Body -->
     <div class="body-row">
 
-      <!-- Sidebar — amplifier-canvas expanded, team-pulse & budget-tracker collapsed -->
+      <!-- Sidebar — empty -->
       <div class="sidebar">
         <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
+          <span class="sidebar-section-label">PROJECTS</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="sidebar-empty">No projects yet</div>
+      </div>
+
+      <!-- Main with modal overlay -->
+      <div class="modal-host">
+        <div class="modal-overlay"></div>
+        <div class="modal" style="width:460px;">
+          <div class="modal-header">
+            <span class="modal-title">Add Project</span>
+            <button class="modal-close">&times;</button>
+          </div>
+
+          <!-- Tab row — New active -->
+          <div class="modal-tab-row">
+            <button class="modal-tab active">New</button>
+            <button class="modal-tab">Existing</button>
+          </div>
+
+          <!-- New tab content -->
+          <div class="modal-tab-content">
+
+            <div class="form-group">
+              <label class="form-label">Project Name</label>
+              <input class="form-input" type="text" value="canvas-app">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input class="form-input" type="text" value="~/Projects/canvas-app" disabled>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Bundle</label>
+              <div class="radio-group">
+                <label class="radio-option">
+                  <div class="radio-filled"></div>
+                  <span class="radio-label">foundation</span>
+                </label>
+                <label class="radio-option">
+                  <div class="radio-empty"></div>
+                  <span class="radio-label muted">custom</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="modal-cancel">Cancel</button>
+              <button class="modal-submit">Create Project <span class="btn-arrow">&rarr;</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /body-row -->
+  </div><!-- /screen -->
+</div><!-- /screen-wrapper -->
+
+
+<!-- ====================================================================
+     SCREEN 2b — NEW PROJECT: SESSION LAUNCHED
+     ==================================================================== -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 1 &middot; STEP 2b</span>
+    <span class="screen-label-title">New Project: Session Launched</span>
+    <span class="screen-label-desc">Project created. Terminal is running your first Amplifier session.</span>
+  </div>
+  <div class="screen">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body-row">
+
+      <!-- Sidebar — project listed, session running -->
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">PROJECTS</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="project-label">CANVAS-APP</div>
+        <div class="new-session-link">+ New session</div>
+        <div class="session-row-new active">
+          <div class="session-dot amber"></div>
+          <span class="session-name bold">Initial setup</span>
+          <span class="session-age amber">running</span>
+        </div>
+      </div>
+
+      <!-- Terminal zone -->
+      <div class="terminal-zone">
+        <div class="pane-title">amplifier &middot; canvas-app</div>
+        <div class="terminal-area">
+          <span class="t-prompt"><span class="t-path">~/Projects/canvas-app</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
+          <span class="t"> amplifier run</span>
+          <br>
+          <span class="t" style="color:var(--green);">Bundle &lsquo;foundation&rsquo; prepared successfully</span>
+          <br><br>
+          <span class="t" style="color:var(--amber);">&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;</span>
+          <br>
+          <span class="t" style="color:var(--amber);">  AMPLIFIER</span><span class="t" style="color:var(--text-very-muted);">  &middot;  canvas-app  &middot;  session e7a1b2c3</span>
+          <br>
+          <span class="t" style="color:var(--amber);">&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;</span>
+          <br><br>
+          <span class="t" style="color:var(--amber);">&gt;</span>
+          <span class="t">  <span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+
+    </div><!-- /body-row -->
+  </div><!-- /screen -->
+</div><!-- /screen-wrapper -->
+
+
+<!-- ====================================================================
+     SCREEN 3a — EXISTING PROJECT: BROWSE
+     ==================================================================== -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 1 &middot; STEP 3a</span>
+    <span class="screen-label-title">Existing Project: Browse</span>
+    <span class="screen-label-desc">Add Project modal &mdash; Existing tab. Browse discovered projects on your machine.</span>
+  </div>
+  <div class="screen">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body-row">
+
+      <!-- Sidebar — empty -->
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">PROJECTS</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="sidebar-empty">No projects yet</div>
+      </div>
+
+      <!-- Main with modal overlay -->
+      <div class="modal-host">
+        <div class="modal-overlay"></div>
+        <div class="modal" style="width:460px;">
+          <div class="modal-header">
+            <span class="modal-title">Add Project</span>
+            <button class="modal-close">&times;</button>
+          </div>
+
+          <!-- Tab row — Existing active -->
+          <div class="modal-tab-row">
+            <button class="modal-tab">New</button>
+            <button class="modal-tab active">Existing</button>
+          </div>
+
+          <!-- Existing tab content -->
+          <div class="modal-tab-content">
+            <input class="form-input" type="text" placeholder="Search projects&hellip;" style="margin-bottom:12px;">
+
+            <!-- Scrollable project list -->
+            <div style="max-height:240px;overflow-y:auto;margin-bottom:4px;">
+
+              <div class="discovered-project-row selected">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name">amplifier-canvas</div>
+                  <div class="discovered-project-meta">
+                    <span>3 sessions</span>
+                    <span style="color:var(--text-very-muted);">&middot;</span>
+                    <span>last active today</span>
+                  </div>
+                  <div class="discovered-project-path">~/Projects/amplifier-canvas</div>
+                </div>
+                <div class="discovered-project-check">&#x2713;</div>
+              </div>
+
+              <div class="discovered-project-row">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name">team-pulse</div>
+                  <div class="discovered-project-meta">
+                    <span>7 sessions</span>
+                    <span style="color:var(--text-very-muted);">&middot;</span>
+                    <span>last active 2d ago</span>
+                  </div>
+                  <div class="discovered-project-path">~/Projects/team-pulse</div>
+                </div>
+                <div class="discovered-project-check"></div>
+              </div>
+
+              <div class="discovered-project-row">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name">budget-tracker</div>
+                  <div class="discovered-project-meta">
+                    <span>1 session</span>
+                    <span style="color:var(--text-very-muted);">&middot;</span>
+                    <span>last active 5d ago</span>
+                  </div>
+                  <div class="discovered-project-path">~/Projects/budget-tracker</div>
+                </div>
+                <div class="discovered-project-check"></div>
+              </div>
+
+              <div class="discovered-project-row">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name">dotfiles</div>
+                  <div class="discovered-project-meta">
+                    <span>2 sessions</span>
+                    <span style="color:var(--text-very-muted);">&middot;</span>
+                    <span>last active 1w ago</span>
+                  </div>
+                  <div class="discovered-project-path">~/dotfiles</div>
+                </div>
+                <div class="discovered-project-check"></div>
+              </div>
+
+            </div>
+
+            <div class="modal-footer">
+              <button class="modal-cancel">Cancel</button>
+              <button class="modal-submit">Add Project <span class="btn-arrow">&rarr;</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /body-row -->
+  </div><!-- /screen -->
+</div><!-- /screen-wrapper -->
+
+
+<!-- ====================================================================
+     SCREEN 3b — EXISTING PROJECT: CHOOSE ACTION
+     ==================================================================== -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 1 &middot; STEP 3b</span>
+    <span class="screen-label-title">Existing Project: Choose Action</span>
+    <span class="screen-label-desc">User selected Amplifier Canvas &mdash; now choose: start fresh or resume a past session.</span>
+  </div>
+  <div class="screen">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body-row">
+
+      <!-- Sidebar — still empty, modal open -->
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">PROJECTS</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="sidebar-empty">No projects yet</div>
+      </div>
+
+      <!-- Main with modal overlay — same shell as 3a, different content -->
+      <div class="modal-host">
+        <div class="modal-overlay"></div>
+        <div class="modal" style="width:460px;">
+          <div class="modal-header">
+            <span class="modal-title">Add Project</span>
+            <button class="modal-close">&times;</button>
+          </div>
+
+          <!-- Same tab row — Existing still active -->
+          <div class="modal-tab-row">
+            <button class="modal-tab">New</button>
+            <button class="modal-tab active">Existing</button>
+          </div>
+
+          <!-- Content — project selected, choose action -->
+          <div class="modal-tab-content">
+
+            <!-- Selected project banner -->
+            <div class="discovered-project-row selected" style="margin-bottom:16px;">
+              <div class="discovered-project-info">
+                <div class="discovered-project-name">amplifier-canvas</div>
+                <div class="discovered-project-path">~/Projects/amplifier-canvas</div>
+              </div>
+              <div class="discovered-project-check">&#x2713;</div>
+            </div>
+
+            <!-- New session action -->
+            <div class="discovered-project-row" style="cursor:pointer;">
+              <div class="discovered-project-info">
+                <div class="discovered-project-name">New session</div>
+                <div class="discovered-project-meta">Start a fresh Amplifier session</div>
+              </div>
+              <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+            </div>
+
+            <!-- Resume section -->
+            <div style="padding:14px 0 6px;font-size:10px;text-transform:uppercase;color:var(--text-very-muted);letter-spacing:0.08em;font-weight:600;">Resume</div>
+
+            <div class="discovered-project-row" style="cursor:pointer;">
+              <div class="discovered-project-info">
+                <div class="discovered-project-name">Improve error handling</div>
+                <div class="discovered-project-meta">2h ago</div>
+              </div>
+              <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+            </div>
+
+            <div class="discovered-project-row" style="cursor:pointer;">
+              <div class="discovered-project-info">
+                <div class="discovered-project-name" style="color:var(--text-muted);">Scaffold CLI parser</div>
+                <div class="discovered-project-meta">yesterday</div>
+              </div>
+              <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+            </div>
+
+            <div class="discovered-project-row" style="cursor:pointer;">
+              <div class="discovered-project-info">
+                <div class="discovered-project-name" style="color:var(--text-muted);">Initial setup</div>
+                <div class="discovered-project-meta">3d ago</div>
+              </div>
+              <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+            </div>
+
+            <div class="see-more-link" style="padding:6px 0;">See more&hellip;</div>
+
+            <div class="modal-footer">
+              <button class="modal-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /body-row -->
+  </div><!-- /screen -->
+</div><!-- /screen-wrapper -->
+
+
+<!-- ====================================================================
+     SCREEN 3c — EXISTING PROJECT: SESSION LAUNCHED
+     ==================================================================== -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 1 &middot; STEP 3c</span>
+    <span class="screen-label-title">Existing Project: Session Launched</span>
+    <span class="screen-label-desc">User chose to resume &ldquo;Improve error handling&rdquo; &mdash; session is running in the terminal.</span>
+  </div>
+  <div class="screen">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body-row">
+
+      <!-- Sidebar — project active, session running -->
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">PROJECTS</span>
+          <button class="sidebar-add-btn">+</button>
+        </div>
+        <div class="project-label">AMPLIFIER-CANVAS</div>
+        <div class="new-session-link">+ New session</div>
+        <div class="session-row-new active">
+          <div class="session-dot amber"></div>
+          <span class="session-name bold">Improve error handling</span>
+          <span class="session-age amber">running</span>
+        </div>
+      </div>
+
+      <!-- Terminal zone — resumed session -->
+      <div class="terminal-zone">
+        <div class="pane-title">amplifier &middot; amplifier-canvas</div>
+        <div class="terminal-area">
+          <span class="t-prompt"><span class="t-path">~/Projects/amplifier-canvas</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
+          <span class="t"> amplifier --resume a3f2b1c4</span>
+          <br>
+          <span class="t" style="color:var(--green);">Bundle &lsquo;foundation&rsquo; prepared successfully</span>
+          <br><br>
+          <span class="t" style="color:var(--amber);">&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;</span>
+          <br>
+          <span class="t" style="color:var(--amber);">  AMPLIFIER</span><span class="t" style="color:var(--text-very-muted);">  &middot;  amplifier-canvas  &middot;  session a3f2b1c4</span>
+          <br>
+          <span class="t" style="color:var(--amber);">&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;</span>
+          <br><br>
+          <span class="t" style="color:var(--text-muted);">Resuming session a3f2b1c4&hellip;</span>
+          <br><br>
+          <span class="t" style="color:var(--amber);">&gt;</span>
+          <span class="t">  <span class="terminal-cursor"></span></span>
+        </div>
+      </div>
+
+    </div><!-- /body-row -->
+  </div><!-- /screen -->
+</div><!-- /screen-wrapper -->
+
+
+<!-- ====================================================================
+     SCREEN 4 — RETURNING TO CANVAS
+     ==================================================================== -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">ACT 1 &middot; STEP 4</span>
+    <span class="screen-label-title">Returning to Canvas</span>
+    <span class="screen-label-desc">You closed Canvas yesterday. It opens exactly where you left off &mdash; same project, same session, same view.</span>
+  </div>
+  <div class="screen">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-header-left">
+        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body-row">
+
+      <!-- Sidebar — three projects, amplifier-canvas selected -->
+      <div class="sidebar">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-label">PROJECTS</span>
           <button class="sidebar-add-btn">+</button>
         </div>
 
-        <!-- amplifier-canvas — expanded, active project -->
-        <div class="project-label">amplifier-canvas</div>
-
-        <!-- Completed session — selected/active -->
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold">Improve error handling</span>
-              <span class="session-age" style="color:var(--green);">done</span>
-            </div>
+        <div class="discovered-project-row selected" style="cursor:pointer;">
+          <div class="discovered-project-info">
+            <div class="discovered-project-name">Amplifier Canvas</div>
+            <div class="discovered-project-meta">Improve error handling &middot; done</div>
           </div>
         </div>
 
-        <!-- Running session -->
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Scaffold CLI parser</span>
-              <span class="session-age amber">running</span>
-            </div>
+        <div class="discovered-project-row" style="cursor:pointer;">
+          <div class="discovered-project-info">
+            <div class="discovered-project-name" style="color:var(--text-muted);">Team Pulse</div>
+            <div class="discovered-project-meta">Last session 3d ago</div>
           </div>
-        </div>
-
-        <!-- Older completed session -->
-        <div class="session-row-new">
-          <div class="session-dot gray"></div>
-          <span class="session-name" style="color:var(--text-muted);">Initial setup</span>
-          <span class="session-age">2d</span>
-        </div>
-
-        <div class="new-session-link">+ New session</div>
-
-        <!-- Divider -->
-        <div class="session-sep" style="margin-top:4px;"></div>
-
-        <!-- team-pulse — collapsed -->
-        <div class="sidebar-project-row">
-          <span class="status-dot idle"></span>
-          <span class="project-name" style="color:var(--text-muted);">team-pulse</span>
           <span style="font-size:9px;color:var(--text-very-muted);">&#x25B8;</span>
         </div>
 
-        <div class="session-sep"></div>
-
-        <!-- budget-tracker — collapsed -->
-        <div class="sidebar-project-row">
-          <span class="status-dot idle"></span>
-          <span class="project-name" style="color:var(--text-muted);">budget-tracker</span>
+        <div class="discovered-project-row" style="cursor:pointer;">
+          <div class="discovered-project-info">
+            <div class="discovered-project-name" style="color:var(--text-muted);">Budget Tracker</div>
+            <div class="discovered-project-meta">Last session 1w ago</div>
+          </div>
           <span style="font-size:9px;color:var(--text-very-muted);">&#x25B8;</span>
         </div>
       </div>
 
-      <!-- Terminal zone — completed session history -->
+      <!-- Terminal zone — completed session restored -->
       <div class="terminal-zone">
         <div class="pane-title-complete">&#x2713; Improve error handling &nbsp;&middot;&nbsp; amplifier-canvas
           <span>done &middot; 2h 14m &middot; Tuesday 11:42 PM</span>
@@ -1411,7 +1929,7 @@ body {
         </div>
         <div class="panel-content" style="padding:14px;overflow-y:auto;">
 
-          <!-- Hero block: TLDR + status + stats -->
+          <!-- Hero block -->
           <div class="summary-hero">
             <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
             <div class="summary-tldr">Added structured error codes and improved stack traces across the CLI error handling layer.</div>
@@ -1428,15 +1946,6 @@ body {
             </div>
           </div>
 
-          <!-- Collapsed session details with preview -->
-          <div class="summary-details-row">
-            <div class="summary-details-toggle">
-              <span class="summary-details-chevron">&#x25B8;</span>
-              <span class="summary-details-label">Session details</span>
-            </div>
-            <span class="summary-details-preview">main &middot; claude-sonnet-4 &middot; 2 agents</span>
-          </div>
-
           <!-- Where you left off -->
           <div class="analysis-section">
             <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
@@ -1445,7 +1954,7 @@ body {
             <div class="summary-trail-row"><span class="summary-trail-turn">T:3</span><span class="summary-trail-text">Added structured error-codes.ts with typed exit codes</span></div>
           </div>
 
-          <!-- Collapsed expandable sections -->
+          <!-- Collapsed sections -->
           <div style="margin-top:10px;">
             <div class="summary-collapsed-row">
               <span class="summary-collapsed-chevron">&#x25B8;</span>
@@ -1470,156 +1979,6 @@ body {
     </div><!-- /body-row -->
   </div><!-- /screen -->
 </div><!-- /screen-wrapper -->
-
-
-<!-- ====================================================================
-     SCREEN 3 — NEW PROJECT MODAL
-     ==================================================================== -->
-<div class="screen-wrapper">
-  <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 3</span>
-    <span class="screen-label-title">New Project</span>
-    <span class="screen-label-desc">Modal to name and configure the new project</span>
-  </div>
-  <div class="screen">
-
-    <!-- Header -->
-    <div class="app-header">
-      <div class="app-header-left">
-        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
-        <span class="app-name">Amplifier Canvas</span>
-      </div>
-      <div class="app-header-right">
-        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
-        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
-        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-      </div>
-    </div>
-
-    <!-- Body -->
-    <div class="body-row">
-
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="sidebar-empty">No projects yet</div>
-      </div>
-
-      <!-- Main with modal overlay -->
-      <div class="modal-host">
-        <div class="modal-overlay"></div>
-        <div class="modal">
-          <div class="modal-header">
-            <span class="modal-title">New Project</span>
-            <button class="modal-close">×</button>
-          </div>
-          <div class="modal-divider"></div>
-
-          <span class="form-label">PROJECT NAME</span>
-          <input class="form-input" type="text" placeholder="e.g. Canvas-App">
-
-          <div class="form-group">
-            <span class="form-label">SOURCE</span>
-            <div class="radio-group">
-              <label class="radio-option">
-                <span class="radio-filled"></span>
-                <span class="radio-label">Blank project</span>
-              </label>
-              <label class="radio-option">
-                <span class="radio-empty"></span>
-                <span class="radio-label muted">Existing folder</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <span class="form-label" style="opacity:0.45;">FOLDER</span>
-            <input class="form-input" type="text" placeholder="~/Projects/my-project" disabled>
-          </div>
-
-          <div class="modal-footer">
-            <button class="modal-cancel">Cancel</button>
-            <button class="modal-submit">
-              Create project <span class="btn-arrow">→</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /body-row -->
-  </div><!-- /screen -->
-</div><!-- /screen-wrapper -->
-
-
-<!-- ====================================================================
-     SCREEN 4 — SESSION STARTED
-     ==================================================================== -->
-<div class="screen-wrapper">
-  <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 4</span>
-    <span class="screen-label-title">Session Started</span>
-    <span class="screen-label-desc">Project created — Amplifier session running in terminal</span>
-  </div>
-  <div class="screen">
-
-    <!-- Header -->
-    <div class="app-header">
-      <div class="app-header-left">
-        <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
-        <span class="app-name">Amplifier Canvas</span>
-      </div>
-      <div class="app-header-right">
-        <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
-        <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
-        <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-      </div>
-    </div>
-
-    <!-- Body -->
-    <div class="body-row">
-
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active">
-          <div class="session-dot amber"></div>
-          <span class="session-name bold">main</span>
-          <span class="session-age amber">just started</span>
-        </div>
-        <div class="new-session-link">+ New session</div>
-      </div>
-
-      <!-- Terminal zone -->
-      <div class="terminal-zone">
-        <div class="pane-title">main · Canvas-App</div>
-        <div class="terminal-area">
-          <span class="t-prompt"><span class="t-path">~/Projects/canvas-app2</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
-          <span class="t-user-prompt"> amplifier</span>
-          <span class="t dim">Bundle 'foundation' prepared successfully</span>
-          <span class="t dim">&#x256D;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;</span>
-          <span class="t dim">&#x2502; Amplifier Interactive Session &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Session ID: a3f2b1c4-d5e6-7890-ab12-ef3456789012 &nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; amplifier 2026.03.30 &nbsp;| core 1.3.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Bundle: foundation &nbsp;| Provider: Anthropic &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Commands: /help &nbsp;| Multi-line: Ctrl-J | Exit: Ctrl-D &#x2502;</span>
-          <span class="t dim">&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;</span>
-          <span class="t blank"></span>
-          <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
-        </div>
-      </div>
-
-    </div><!-- /body-row -->
-  </div><!-- /screen -->
-</div><!-- /screen-wrapper -->
-
-
 
 <!-- ====================================================================
      ACT 2 HEADER

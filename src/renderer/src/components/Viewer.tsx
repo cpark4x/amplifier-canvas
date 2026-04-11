@@ -4,7 +4,7 @@ import FileBrowser from './FileBrowser'
 import FileRenderer from './FileRenderer'
 import { SessionAnalysis } from './SessionAnalysis'
 
-type PrimaryTab = 'FILES' | 'APP' | 'ANALYSIS'
+type PrimaryTab = 'FILES' | 'APP' | 'SUMMARY'
 
 interface OpenFile {
   path: string
@@ -53,7 +53,7 @@ function Viewer(): React.ReactElement {
     setShowBrowser(false)
   }, [selectedSessionId])
 
-  const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'ANALYSIS']
+  const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'SUMMARY']
   const activeFile = openFiles[activeFileIdx] || null
 
   function openFile(path: string, openedBy: 'amplifier' | 'user'): void {
@@ -351,8 +351,8 @@ function Viewer(): React.ReactElement {
         </>
       )}
 
-      {/* ANALYSIS tab content */}
-      {primaryTab === 'ANALYSIS' && (
+      {/* SUMMARY tab content */}
+      {primaryTab === 'SUMMARY' && (
         <SessionAnalysis
           sessionId={session?.id ?? ''}
           title={session?.title ?? undefined}

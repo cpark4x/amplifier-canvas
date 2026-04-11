@@ -6,6 +6,13 @@ const ptyProcesses = new Map<string, IPty>()
 
 const DEFAULT_SESSION_ID = 'default'
 
+// Current working directory for the PTY — set via setCwd() before spawning
+let currentCwd: string | null = null
+
+export function setCwd(cwd: string | null): void {
+  currentCwd = cwd
+}
+
 export function spawnPty(sessionId: string, cols: number, rows: number): IPty
 export function spawnPty(cols: number, rows: number): IPty
 export function spawnPty(
@@ -34,7 +41,7 @@ export function spawnPty(
     name: 'xterm-256color',
     cols,
     rows,
-    cwd: process.env.HOME || os.homedir(),
+    cwd: currentCwd || process.env.HOME || os.homedir(),
     env: {
       ...process.env,
       TERM: 'xterm-256color',
