@@ -5,7 +5,7 @@ import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
 import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
-import { getAmplifierHome, scanSessionsAsync } from './scanner'
+import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, isPathAllowed } from './ipc'
 import { getWorkspaceState } from './workspace'
@@ -254,17 +254,7 @@ app.whenReady().then(() => {
       }
       pushSessionsChanged(mainWindow, sessions)
 
-      // (7) Log project and session counts
       console.log(`[startup] Loaded ${registeredProjects.length} projects, ${sessions.length} sessions from DB`)
-
-      // (6) Async hydration via scanSessionsAsync
-      void scanSessionsAsync(amplifierHome, sessions, (hydrated) => {
-        for (const session of hydrated) {
-          liveSessions.set(session.id, session)
-        }
-        pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
-      })
-
     } catch (err) {
       console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
       setAllowedDirs([projectsDir])

@@ -23,6 +23,102 @@ export function getAmplifierHome(): string {
   return process.env['AMPLIFIER_HOME'] || join(os.homedir(), '.amplifier')
 }
 
+/**
+ * Scan sessions for a single project. Returns lightweight SessionState stubs
+ * with data loaded from events.jsonl (title, status, timestamps, stats).
+ * Used when a user adds an existing project to Canvas.
+ */
+export function scanSingleProject(
+  amplifierHome: string,
+  slug: string,
+  projectName: string,
+): SessionState[] {
+  const projectsDir = join(amplifierHome, 'projects')
+  const sessionsDir = join(projectsDir, slug, 'sessions')
+
+  if (!existsSync(sessionsDir)) return []
+
+  const sessionDirs = readdirSync(sessionsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .slice(-MAX_SESSIONS_PER_PROJECT)
+    .reverse()
+
+  const sessions: SessionState[] = []
+
+  for (const sessionId of sessionDirs) {
+    const eventsPath = join(sessionsDir, sessionId, 'events.jsonl')
+    if (!existsSync(eventsPath)) continue
+
+    try {
+      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
+      const status = deriveSessionStatus(events)
+      const recentFiles = extractFileActivity(events)
+      const sessionPath = join(sessionsDir, sessionId)
+      const workDir = extractWorkDir(events, sessionPath)
+
+      let startedAt: string
+      const startEvent = events.find((e: { type: string }) => e.type === 'session:start')
+      if (startEvent) {
+        startedAt = (startEvent as { timestamp: string }).timestamp
+      } else {
+        startedAt = statSync(eventsPath).mtime.toISOString()
+      }
+
+      const firstPrompt = extractFirstPrompt(events)
+      const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
+      const stats = extractSessionStats(events)
+      const endEvent = events.find((e: { type: string }) => e.type === 'session:end')
+      const endedAt = endEvent ? (endEvent as { timestamp: string }).timestamp : undefined
+      const exitCode = endEvent
+        ? ((endEvent as { data: Record<string, unknown> }).data.exitCode as number)
+        : undefined
+
+      // Persist to DB
+      upsertSession({
+        id: sessionId,
+        projectSlug: slug,
+        startedBy: 'external',
+        startedAt,
+        status,
+        byteOffset: newByteOffset,
+      })
+      finalizeSession(sessionId, {
+        status,
+        endedAt: endedAt ?? null,
+        exitCode: exitCode ?? null,
+        title: title ?? null,
+        firstPrompt: firstPrompt ?? null,
+        promptCount: stats.promptCount,
+        toolCallCount: stats.toolCallCount,
+        filesChangedCount: stats.filesChanged.size,
+      })
+
+      sessions.push({
+        id: sessionId,
+        projectSlug: slug,
+        projectName,
+        status,
+        startedAt,
+        startedBy: 'external',
+        byteOffset: newByteOffset,
+        recentFiles,
+        workDir,
+        title,
+        endedAt,
+        exitCode,
+        promptCount: stats.promptCount,
+        toolCallCount: stats.toolCallCount,
+        filesChangedCount: stats.filesChanged.size,
+      })
+    } catch {
+      // Skip sessions with unreadable events.jsonl
+    }
+  }
+
+  return sessions
+}
+
 export interface ScanResult {
   projectCount: number
   sessionCount: number

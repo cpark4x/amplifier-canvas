@@ -86,7 +86,9 @@ function formatStats(session: SessionState): string {
 // ---- Component --------------------------------------------------------------
 
 function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.ReactElement {
+  // Subscribe to both sessions and registeredProjects so sidebar re-renders when either changes
   const sessions = useCanvasStore((s) => s.sessions)
+  const registeredProjects = useCanvasStore((s) => s.registeredProjects)
   const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
@@ -139,10 +141,16 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
     setContextMenu({ x: e.clientX, y: e.clientY, items })
   }
 
-  // Derive projects from sessions
+  // Derive projects from registered projects + sessions
   const projects: Project[] = useMemo(() => {
     const projectMap = new Map<string, Project>()
 
+    // Start with registered projects (ensures empty projects appear in sidebar)
+    for (const rp of registeredProjects) {
+      projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, sessions: [] })
+    }
+
+    // Merge in sessions
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {
@@ -156,7 +164,7 @@ function Sidebar({ collapsed, onToggle, onNewProject }: SidebarProps): React.Rea
       }
     }
     return Array.from(projectMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [sessions])
+  }, [sessions, registeredProjects])
 
   return (
     <div

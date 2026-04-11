@@ -25,7 +25,7 @@ test('Screen 1: welcome screen renders correctly', async ({ appWindow }) => {
   console.log('✓ Terminal hidden')
 })
 
-test('Screen 2: clicking button opens New Project modal', async ({ appWindow }) => {
+test('Screen 2: clicking button opens Add Project modal with tabs', async ({ appWindow }) => {
   // Click welcome button
   const btn = appWindow.locator('[data-testid="welcome-btn"]')
   await btn.click()
@@ -36,28 +36,18 @@ test('Screen 2: clicking button opens New Project modal', async ({ appWindow }) 
   await expect(modal).toBeVisible({ timeout: 3000 })
   console.log('✓ Modal visible')
 
-  // Modal has correct title
-  const title = modal.locator('text=New Project')
-  await expect(title).toBeVisible()
-  console.log('✓ Modal title: "New Project"')
+  // Two tabs: "New" and "Existing"
+  const tabNew = appWindow.locator('[data-testid="tab-new"]')
+  const tabExisting = appWindow.locator('[data-testid="tab-existing"]')
+  await expect(tabNew).toBeVisible()
+  await expect(tabExisting).toBeVisible()
+  console.log('✓ Both tabs visible')
 
-  // Has project name input with placeholder
+  // "New" tab is active by default
   const nameInput = appWindow.locator('[data-testid="project-name-input"]')
   await expect(nameInput).toBeVisible()
-  await expect(nameInput).toHaveAttribute('placeholder', 'e.g. Canvas-App')
+  await expect(nameInput).toHaveAttribute('placeholder', 'Project name')
   console.log('✓ Project name input with placeholder')
-
-  // Has radio buttons
-  await expect(appWindow.locator('[data-testid="radio-blank"]')).toBeVisible()
-  console.log('✓ "Blank project" radio visible')
-
-  await expect(appWindow.locator('[data-testid="radio-existing"]')).toBeVisible()
-  console.log('✓ "Existing folder" radio visible')
-
-  // Folder input is disabled by default (blank project selected)
-  const folderInput = appWindow.locator('[data-testid="folder-input"]')
-  await expect(folderInput).toBeDisabled()
-  console.log('✓ Folder input disabled (blank project mode)')
 
   // Submit and cancel buttons exist
   await expect(appWindow.locator('[data-testid="modal-submit"]')).toBeVisible()
@@ -66,29 +56,28 @@ test('Screen 2: clicking button opens New Project modal', async ({ appWindow }) 
   await expect(appWindow.locator('[data-testid="modal-cancel"]')).toBeVisible()
   console.log('✓ Cancel button visible')
 
-  await appWindow.screenshot({ path: '/tmp/canvas-screen2.png' })
-  console.log('✓ Screenshot: /tmp/canvas-screen2.png')
+  await appWindow.screenshot({ path: '/tmp/canvas-screen2-new-tab.png' })
+  console.log('✓ Screenshot: /tmp/canvas-screen2-new-tab.png')
 })
 
-test('Screen 2: selecting "Existing folder" enables folder input', async ({ appWindow }) => {
-  // Modal is still open from previous test
-  const folderInput = appWindow.locator('[data-testid="folder-input"]')
-  await expect(folderInput).toBeDisabled()
-  console.log('✓ Folder input starts disabled')
+test('Screen 2: switching to Existing tab shows search + project list', async ({ appWindow }) => {
+  // Modal is still open from previous test — click "Existing" tab
+  await appWindow.locator('[data-testid="tab-existing"]').click()
+  await appWindow.waitForTimeout(500)
 
-  // Click "Existing folder"
-  await appWindow.locator('[data-testid="radio-existing"]').click()
+  // Search input should be visible
+  const searchInput = appWindow.locator('[data-testid="search-input"]')
+  await expect(searchInput).toBeVisible()
+  console.log('✓ Search input visible on Existing tab')
+
+  // Switch back to New tab
+  await appWindow.locator('[data-testid="tab-new"]').click()
   await appWindow.waitForTimeout(300)
 
-  await expect(folderInput).toBeEnabled()
-  console.log('✓ Folder input enabled after selecting "Existing folder"')
-
-  // Switch back to blank
-  await appWindow.locator('[data-testid="radio-blank"]').click()
-  await appWindow.waitForTimeout(300)
-
-  await expect(folderInput).toBeDisabled()
-  console.log('✓ Folder input disabled again after switching back to blank')
+  // Name input visible again
+  const nameInput = appWindow.locator('[data-testid="project-name-input"]')
+  await expect(nameInput).toBeVisible()
+  console.log('✓ Name input visible again after switching back to New tab')
 })
 
 test('Screen 2: cancel closes modal, returns to welcome', async ({ appWindow }) => {
@@ -142,7 +131,7 @@ test('Screen 2→3: creating project transitions to terminal + sidebar shows pro
   await expect(emptyState).not.toBeVisible()
   console.log('✓ Sidebar empty state gone')
 
-  const projectName = appWindow.locator('[data-testid="project-name"]', { hasText: 'Canvas-App' })
+  const projectName = appWindow.locator('[data-testid="project-name"]', { hasText: 'Canvas' })
   await expect(projectName).toBeVisible({ timeout: 3000 })
   console.log('✓ Sidebar shows project: Canvas-App')
 

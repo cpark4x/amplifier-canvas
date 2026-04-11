@@ -13,9 +13,15 @@ const COMPLETED_STATUSES = new Set(['done', 'failed', 'stopped'])
 
 let toastCounter = 0
 
+interface RegisteredProject {
+  slug: string
+  name: string
+}
+
 interface CanvasStore {
   // State
   sessions: SessionState[]
+  registeredProjects: RegisteredProject[]
   selectedSessionId: string | null
   selectedProjectSlug: string | null
   expandedProjectSlugs: string[]
@@ -25,6 +31,9 @@ interface CanvasStore {
 
   // Actions
   setSessions: (sessions: SessionState[]) => void
+  addSessions: (sessions: SessionState[]) => void
+  registerProject: (slug: string, name: string) => void
+  unregisterProject: (slug: string) => void
   selectSession: (id: string | null) => void
   selectProject: (slug: string | null) => void
   toggleProjectExpanded: (slug: string) => void
@@ -46,6 +55,7 @@ interface CanvasStore {
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
   // State
   sessions: [],
+  registeredProjects: [],
   selectedSessionId: null,
   selectedProjectSlug: null,
   expandedProjectSlugs: [],
@@ -79,6 +89,26 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       }
     }
     set({ sessions: incoming })
+  },
+
+  addSessions: (incoming) => {
+    const current = get().sessions
+    const existingIds = new Set(current.map((s) => s.id))
+    const newSessions = incoming.filter((s) => !existingIds.has(s.id))
+    if (newSessions.length > 0) {
+      set({ sessions: [...current, ...newSessions] })
+    }
+  },
+
+  registerProject: (slug, name) => {
+    const current = get().registeredProjects
+    if (!current.some((p) => p.slug === slug)) {
+      set({ registeredProjects: [...current, { slug, name }] })
+    }
+  },
+
+  unregisterProject: (slug) => {
+    set({ registeredProjects: get().registeredProjects.filter((p) => p.slug !== slug) })
   },
 
   selectSession: (id) => set({ selectedSessionId: id }),
@@ -125,9 +155,15 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   // Derived
   getProjects: () => {
-    const { sessions } = get()
+    const { sessions, registeredProjects } = get()
     const projectMap = new Map<string, Project>()
 
+    // Start with registered projects (ensures empty projects still appear)
+    for (const rp of registeredProjects) {
+      projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, sessions: [] })
+    }
+
+    // Merge in sessions
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {

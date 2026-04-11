@@ -12,6 +12,14 @@ import { useCanvasStore } from './store'
 if (typeof window !== 'undefined' && window.electronAPI) {
   window.electronAPI.onSessionsChanged((sessions) => {
     useCanvasStore.getState().setSessions(sessions)
+    // Derive registered projects from the sessions we received
+    const seen = new Set<string>()
+    for (const s of sessions) {
+      if (!seen.has(s.projectSlug)) {
+        seen.add(s.projectSlug)
+        useCanvasStore.getState().registerProject(s.projectSlug, s.projectName)
+      }
+    }
   })
   window.electronAPI.onFilesChanged(({ sessionId, files }) => {
     useCanvasStore.getState().updateFileActivity(sessionId, files)
@@ -291,6 +299,8 @@ function App(): React.ReactElement {
                   const path = `${amplifierHome}/projects/${slug}`
 
                   window.electronAPI.registerProject(slug, path, projectName).then(() => {
+                    // Register in the store so project appears in sidebar even with 0 sessions
+                    useCanvasStore.getState().registerProject(slug, projectName)
                     useCanvasStore.getState().selectProject(slug)
                     useCanvasStore.getState().toggleProjectExpanded(slug)
                     setShowModal(false)
@@ -304,11 +314,15 @@ function App(): React.ReactElement {
                   })
                 }}
                 onAddExisting={(project) => {
-                  window.electronAPI.registerProject(project.slug, project.path, project.name).then(() => {
+                  window.electronAPI.registerProject(project.slug, project.path, project.name).then((result) => {
+                    // Register in store and merge sessions
+                    useCanvasStore.getState().registerProject(project.slug, project.name)
+                    if (result.sessions && result.sessions.length > 0) {
+                      useCanvasStore.getState().addSessions(result.sessions)
+                    }
                     useCanvasStore.getState().selectProject(project.slug)
                     useCanvasStore.getState().toggleProjectExpanded(project.slug)
                     setShowModal(false)
-                    setShowTerminal(true)
                   })
                 }}
               />

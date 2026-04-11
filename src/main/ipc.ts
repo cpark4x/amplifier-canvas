@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { readdirSync, readFileSync, statSync } from 'fs'
+import { readdirSync, readFileSync, statSync, mkdirSync, existsSync } from 'fs'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
@@ -19,6 +19,8 @@ import { discoverProjects } from './discovery'
 import type { DiscoveredProject } from './discovery'
 import { getAnalysis, triggerAnalysis } from './analysisService'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
+import { getAmplifierHome, scanSingleProject } from './scanner'
+import { addProjectWatch } from './watcher'
 
 // Track allowed directories for file access security
 let allowedDirs: string[] = []
@@ -181,11 +183,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     async (
       _event,
       { slug, path: projPath, name }: { slug: string; path: string; name: string },
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; sessions?: SessionState[]; error?: string }> => {
       try {
+        // (1) Create project directory if it doesn't exist (new projects)
+        if (!existsSync(projPath)) {
+          mkdirSync(projPath, { recursive: true })
+        }
+
+        // (2) Register in DB
         upsertProject(slug, projPath, name)
         setProjectRegistered(slug, 1)
-        return { success: true }
+
+        // (3) Scan sessions from disk and persist to DB
+        const amplifierHome = getAmplifierHome()
+        const sessions = scanSingleProject(amplifierHome, slug, name)
+
+        // (3) Start watching this project for live updates
+        addProjectWatch(slug)
+
+        // (4) Return sessions to the renderer — it will merge into its store
+        return { success: true, sessions }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] PROJECT_REGISTER failed:', message)
@@ -239,7 +256,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     IPC_CHANNELS.WORKSPACE_SAVE,
     async (
       _event,
-      { state }: { state: WorkspaceState },
+      state: WorkspaceState,
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         saveWorkspaceState(state)
