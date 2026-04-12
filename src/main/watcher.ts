@@ -1,7 +1,7 @@
 import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
-import { join, relative, sep } from 'path'
-import { existsSync } from 'fs'
+import { join, relative, sep, basename, dirname } from 'path'
+import { existsSync, readdirSync } from 'fs'
 
 export type WatchEventType = 'session-updated' | 'project-added'
 
@@ -12,9 +12,16 @@ export interface WatchEventData {
 
 export type WatchCallback = (event: WatchEventType, data: WatchEventData) => void
 
-let watcher: FSWatcher | null = null
+// Two watchers:
+// 1. dirWatcher: watches sessions/ directories at depth 0 to detect NEW session dirs
+// 2. fileWatcher: watches specific events.jsonl files for content changes
+let dirWatcher: FSWatcher | null = null
+let fileWatcher: FSWatcher | null = null
 let watchCallback: WatchCallback | null = null
 let amplifierProjectsDir: string | null = null
+
+// Track which session files we're already watching (prevent duplicates)
+const watchedFiles = new Set<string>()
 
 // Per-session debounce timers (max 2Hz = 500ms)
 const debounceTimers = new Map<string, NodeJS.Timeout>()
@@ -36,8 +43,9 @@ export function initWatcher(amplifierHome: string, onChange: WatchCallback): voi
 }
 
 /**
- * Start watching a specific project's sessions directory.
- * Only watches {projectsDir}/{slug}/sessions/ — not the entire tree.
+ * Start watching a specific project.
+ * - Watches sessions/ dir (depth 0) for new session directories
+ * - Does NOT watch individual events.jsonl files yet (call watchSessionFile for those)
  */
 export function addProjectWatch(slug: string): void {
   if (!amplifierProjectsDir || !watchCallback) {
@@ -51,31 +59,64 @@ export function addProjectWatch(slug: string): void {
     return
   }
 
-  // Watch the sessions directory for events.jsonl files.
-  // We watch the directory (not a glob) so chokidar detects NEW session
-  // subdirectories created after the watcher starts. The parseEventPath
-  // filter ensures we only process events.jsonl files.
-  if (!watcher) {
-    watcher = chokidar.watch(sessionsDir, {
+  // Dir watcher: only watches the sessions/ directory itself (depth 0)
+  // to detect when Amplifier creates a new session subdirectory.
+  // This uses minimal file handles — just 1 per project.
+  if (!dirWatcher) {
+    dirWatcher = chokidar.watch(sessionsDir, {
       ignoreInitial: true,
-      // Only interested in events.jsonl files — ignore everything else
-      ignored: (filePath: string) => {
-        // Allow directories (chokidar needs to traverse them)
-        if (!filePath.includes('.')) return false
-        // Only allow events.jsonl
-        return !filePath.endsWith('events.jsonl')
-      },
+      depth: 0,        // Only the sessions/ dir — not subdirs
+      ignorePermissionErrors: true,
+    })
+    dirWatcher.on('addDir', (dirPath: string) => {
+      // A new session directory was created. Watch its events.jsonl.
+      const sessionId = basename(dirPath)
+      const eventsFile = join(dirPath, 'events.jsonl')
+      // Poll briefly for events.jsonl to appear (Amplifier creates dir first, file second)
+      const pollInterval = setInterval(() => {
+        if (existsSync(eventsFile)) {
+          clearInterval(pollInterval)
+          watchSessionFile(slug, sessionId)
+        }
+      }, 200)
+      // Give up after 10s
+      setTimeout(() => clearInterval(pollInterval), 10000)
+    })
+    console.log(`[watcher] Watching project dir: ${slug}`)
+  } else {
+    dirWatcher.add(sessionsDir)
+    console.log(`[watcher] Added project dir to watch: ${slug}`)
+  }
+}
+
+/**
+ * Watch a specific session's events.jsonl file.
+ * Called when:
+ * - dirWatcher detects a new session directory
+ * - On startup, for sessions already visible in the sidebar
+ */
+export function watchSessionFile(projectSlug: string, sessionId: string): void {
+  if (!amplifierProjectsDir) return
+
+  const eventsFile = join(amplifierProjectsDir, projectSlug, 'sessions', sessionId, 'events.jsonl')
+  if (watchedFiles.has(eventsFile)) return // Already watching
+  if (!existsSync(eventsFile)) return
+
+  watchedFiles.add(eventsFile)
+
+  if (!fileWatcher) {
+    fileWatcher = chokidar.watch(eventsFile, {
+      ignoreInitial: false, // Fire immediately for existing files to get initial state
       awaitWriteFinish: {
         stabilityThreshold: 200,
       },
-      depth: 2, // sessions/{sessionId}/events.jsonl
     })
-    attachListeners(watcher)
-    console.log(`[watcher] Watching project: ${slug}`)
+    attachFileListeners(fileWatcher)
   } else {
-    watcher.add(sessionsDir)
-    console.log(`[watcher] Added project to watch: ${slug}`)
+    fileWatcher.add(eventsFile)
   }
+
+  console.log(`[watcher] Watching session file: ${projectSlug}/${sessionId}`)
 }
 
 /**
@@ -83,16 +124,23 @@ export function addProjectWatch(slug: string): void {
  * Called when a project is unregistered (removed from Canvas).
  */
 export function removeProjectWatch(slug: string): void {
-  if (!amplifierProjectsDir || !watcher) {
-    return
-  }
+  if (!amplifierProjectsDir) return
 
   const sessionsDir = join(amplifierProjectsDir, slug, 'sessions')
-  watcher.unwatch(sessionsDir)
+  dirWatcher?.unwatch(sessionsDir)
+
+  // Unwatch all session files for this project
+  for (const file of watchedFiles) {
+    if (file.includes(join(slug, 'sessions'))) {
+      fileWatcher?.unwatch(file)
+      watchedFiles.delete(file)
+    }
+  }
+
   console.log(`[watcher] Removed project from watch: ${slug}`)
 }
 
-function attachListeners(w: FSWatcher): void {
+function attachFileListeners(w: FSWatcher): void {
   const handler = (filePath: string): void => {
     if (!amplifierProjectsDir || !watchCallback) return
     const parsed = parseEventPath(amplifierProjectsDir, filePath)
@@ -121,10 +169,15 @@ export function startWatching(amplifierHome: string, onChange: WatchCallback): v
 }
 
 export function stopWatching(): void {
-  if (watcher) {
-    void watcher.close()
-    watcher = null
+  if (dirWatcher) {
+    void dirWatcher.close()
+    dirWatcher = null
   }
+  if (fileWatcher) {
+    void fileWatcher.close()
+    fileWatcher = null
+  }
+  watchedFiles.clear()
   for (const timer of debounceTimers.values()) {
     clearTimeout(timer)
   }
