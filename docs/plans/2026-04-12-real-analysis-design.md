@@ -105,7 +105,7 @@ buildAnalysisPrompt(digest: SessionDigest): string
 
 #### Digest Size Limits
 
-The prompt must stay under ~8K tokens to hit Haiku's sweet spot. Truncation happens in `buildAnalysisPrompt`, not in the digest builder:
+The prompt must stay under ~8K tokens to stay well within the model's context sweet spot. Truncation happens in `buildAnalysisPrompt`, not in the digest builder:
 
 | Digest field | Cap | Truncation behavior |
 |---|---|---|
@@ -121,12 +121,12 @@ The prompt must stay under ~8K tokens to hit Haiku's sweet spot. Truncation happ
 
 ```json
 {
-  "analysisModel": "claude-haiku-4-5",
+  "analysisModel": "claude-sonnet-4-5",
   "analysisProvider": null
 }
 ```
 
-- `analysisModel` — string, defaults to `"claude-haiku-4-5"`. Passed as `--model` to the CLI.
+- `analysisModel` — string, defaults to `"claude-sonnet-4-5"`. Passed as `--model` to the CLI.
 - `analysisProvider` — string or null, defaults to `null` (use Amplifier's default routing). If set, passed as `--provider`.
 
 **Type:** `CanvasSettings` interface lives in `src/shared/types.ts` because both main process (`settings.ts`) and renderer (`SettingsModal.tsx`) need it:
@@ -228,7 +228,7 @@ The existing `triggerAnalysis` has a try/catch that sets `analysis_status = 'fai
 | Non-zero exit code | `llm.ts` throws | Same path |
 | Malformed JSON from LLM | `parseAnalysisResponse` throws | Same path |
 | Missing required sections | `parseAnalysisResponse` throws | Same path |
-| Settings file corrupt | `getSettings()` returns defaults | Graceful — uses `claude-haiku-4-5` |
+| Settings file corrupt | `getSettings()` returns defaults | Graceful — uses `claude-sonnet-4-5` |
 
 **Concurrency:** The existing `updateAnalysisStatus(sessionId, 'loading')` at the top of `triggerAnalysis` acts as a guard. The UI checks this status and disables the Regenerate button while loading. Multiple rapid clicks or auto-trigger races are handled by this existing mechanism — no additional deduplication needed.
 
