@@ -7,7 +7,7 @@ import { registerIpcHandlers } from './ipc'
 import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
-import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
+import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
 import { isSubSession } from './scanner'
 import { unhideSession } from './db'
 import { getWorkspaceState } from './workspace'
@@ -203,6 +203,10 @@ app.whenReady().then(() => {
 
       // (2) Load only registered projects via getRegisteredProjects()
       const registeredProjects = getRegisteredProjects()
+
+      // (2b) Always push registered projects to renderer so they appear in the
+      // sidebar even when they have no visible sessions yet.
+      pushProjectsChanged(mainWindow, registeredProjects)
 
       // (3) If no registered projects, push empty sessions and return (first-time user)
       if (registeredProjects.length === 0) {

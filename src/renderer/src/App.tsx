@@ -10,6 +10,12 @@ import { useCanvasStore } from './store'
 // so we catch the initial session push from main process on did-finish-load.
 // The useEffect approach loses the first push because it fires after paint.
 if (typeof window !== 'undefined' && window.electronAPI) {
+  // Register projects from main process (includes projects with zero visible sessions)
+  window.electronAPI.onProjectsChanged((projects) => {
+    for (const p of projects) {
+      useCanvasStore.getState().registerProject(p.slug, p.name, p.path)
+    }
+  })
   window.electronAPI.onSessionsChanged((sessions) => {
     useCanvasStore.getState().setSessions(sessions)
     // Derive registered projects from the sessions we received

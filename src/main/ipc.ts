@@ -384,6 +384,15 @@ export function pushSessionsChanged(mainWindow: BrowserWindow, sessions: Session
   }
 }
 
+export function pushProjectsChanged(
+  mainWindow: BrowserWindow,
+  projects: Array<{ slug: string; name: string; path: string }>
+): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC_CHANNELS.PROJECTS_CHANGED, projects)
+  }
+}
+
 export function pushFilesChanged(
   mainWindow: BrowserWindow,
   sessionId: string,

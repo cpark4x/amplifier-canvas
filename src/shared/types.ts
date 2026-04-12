@@ -5,6 +5,7 @@ export const IPC_CHANNELS = {
   TERMINAL_DATA: 'terminal:data',        // payload: { sessionId: string, data: string }
   TERMINAL_EXIT: 'terminal:exit',        // payload: { sessionId: string, exitCode: number, signal: number }
   SESSIONS_CHANGED: 'state:sessions-changed',
+  PROJECTS_CHANGED: 'state:projects-changed',
   FILES_CHANGED: 'session:files-changed',
   // Renderer → Main (request — fire-and-forget via .on/.send)
   TERMINAL_INPUT: 'terminal:input',      // payload: { sessionId: string, data: string }

@@ -67,6 +67,17 @@ const api = {
     }
   },
 
+  // Projects: receive registered projects list from main
+  onProjectsChanged: (callback: (projects: Array<{ slug: string; name: string; path: string }>) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, projects: Array<{ slug: string; name: string; path: string }>): void => {
+      callback(projects)
+    }
+    ipcRenderer.on(IPC_CHANNELS.PROJECTS_CHANGED, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PROJECTS_CHANGED, handler)
+    }
+  },
+
   // Files: receive updated file activity for a session
   onFilesChanged: (callback: (data: { sessionId: string; files: FileActivity[] }) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: { sessionId: string; files: FileActivity[] }): void => {
