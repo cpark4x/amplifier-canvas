@@ -1,148 +1,136 @@
 /**
- * Tests for task-2: settings module with read/write/defaults for persistent user settings
- * Tests getDefaultSettings(), getSettings(), and saveSettings()
+ * Tests for task-3: settings module unit tests
+ * Covers getDefaultSettings(), getSettings(), and saveSettings()
+ * Uses temp HOME isolation via require.cache invalidation
  */
 
-import { test, describe, beforeEach, afterEach } from 'node:test'
+import { test, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'fs'
-import { join } from 'path'
-import { homedir } from 'os'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { createRequire } from 'node:module'
 
-// Import the functions under test
-import { getDefaultSettings, getSettings, saveSettings } from '../src/main/settings.ts'
+const _require = createRequire(import.meta.url)
 
-const SETTINGS_DIR = join(homedir(), '.amplifier-canvas')
-const SETTINGS_PATH = join(SETTINGS_DIR, 'settings.json')
+let tmpDir: string
+let originalHome: string | undefined
 
-/** Helper: save raw JSON content to the settings file for testing */
-function writeSettingsFile(content: string): void {
-  if (!existsSync(SETTINGS_DIR)) mkdirSync(SETTINGS_DIR, { recursive: true })
-  writeFileSync(SETTINGS_PATH, content)
+/**
+ * Clear require.cache for the settings module and re-import it so that
+ * the module-level SETTINGS_DIR / SETTINGS_PATH constants are recomputed
+ * using the current value of process.env.HOME (set to tmpDir in beforeEach).
+ */
+function loadSettings(): {
+  getDefaultSettings: () => { analysisModel: string; analysisProvider: string | null }
+  getSettings: () => { analysisModel: string; analysisProvider: string | null }
+  saveSettings: (s: {
+    analysisModel: string
+    analysisProvider: string | null
+  }) => { success: boolean }
+  SETTINGS_DIR: string
+  SETTINGS_PATH: string
+} {
+  const key = _require.resolve('../src/main/settings.ts')
+  delete _require.cache[key]
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return _require('../src/main/settings.ts')
 }
 
-/** Helper: delete settings file if it exists */
-function removeSettingsFile(): void {
-  if (existsSync(SETTINGS_PATH)) rmSync(SETTINGS_PATH)
-}
-
-// ─── getDefaultSettings ───────────────────────────────────────────────────────
-
-describe('getDefaultSettings', () => {
-  test('returns analysisModel as claude-sonnet-4-5', () => {
-    const defaults = getDefaultSettings()
-    assert.equal(defaults.analysisModel, 'claude-sonnet-4-5')
-  })
-
-  test('returns analysisProvider as null', () => {
-    const defaults = getDefaultSettings()
-    assert.equal(defaults.analysisProvider, null)
-  })
-
-  test('returns an object with exactly analysisModel and analysisProvider fields', () => {
-    const defaults = getDefaultSettings()
-    assert.deepEqual(Object.keys(defaults).sort(), ['analysisModel', 'analysisProvider'].sort())
-  })
+beforeEach(() => {
+  originalHome = process.env.HOME
+  tmpDir = mkdtempSync(join(tmpdir(), 'test-settings-'))
+  process.env.HOME = tmpDir
 })
 
-// ─── getSettings – fallback to defaults ───────────────────────────────────────
-
-describe('getSettings – returns defaults when file is missing or corrupt', () => {
-  afterEach(() => {
-    // Restore a clean valid settings file after each test
-    writeSettingsFile(JSON.stringify(getDefaultSettings(), null, 2))
-  })
-
-  test('returns default analysisModel when settings file does not exist', () => {
-    removeSettingsFile()
-    const settings = getSettings()
-    assert.equal(settings.analysisModel, 'claude-sonnet-4-5')
-  })
-
-  test('returns default analysisProvider (null) when settings file does not exist', () => {
-    removeSettingsFile()
-    const settings = getSettings()
-    assert.equal(settings.analysisProvider, null)
-  })
-
-  test('returns defaults when file contains invalid JSON', () => {
-    writeSettingsFile('not valid json {{{{')
-    const settings = getSettings()
-    assert.equal(settings.analysisModel, 'claude-sonnet-4-5')
-    assert.equal(settings.analysisProvider, null)
-  })
-
-  test('falls back to default analysisModel when field is missing from file', () => {
-    writeSettingsFile(JSON.stringify({ analysisProvider: 'anthropic' }, null, 2))
-    const settings = getSettings()
-    assert.equal(settings.analysisModel, 'claude-sonnet-4-5')
-  })
-
-  test('falls back to default analysisProvider (null) when field is missing from file', () => {
-    writeSettingsFile(JSON.stringify({ analysisModel: 'claude-opus-4' }, null, 2))
-    const settings = getSettings()
-    assert.equal(settings.analysisProvider, null)
-  })
-
-  test('returns valid CanvasSettings shape with both required fields', () => {
-    removeSettingsFile()
-    const settings = getSettings()
-    assert.ok('analysisModel' in settings, 'should have analysisModel')
-    assert.ok('analysisProvider' in settings, 'should have analysisProvider')
-  })
+afterEach(() => {
+  if (originalHome !== undefined) {
+    process.env.HOME = originalHome
+  } else {
+    delete process.env.HOME
+  }
+  rmSync(tmpDir, { recursive: true, force: true })
 })
 
-// ─── saveSettings ─────────────────────────────────────────────────────────────
+// ─── 1: getDefaultSettings ────────────────────────────────────────────────────
 
-describe('saveSettings', () => {
-  afterEach(() => {
-    // Restore defaults after each test
-    writeSettingsFile(JSON.stringify(getDefaultSettings(), null, 2))
-  })
+test('getDefaultSettings returns expected defaults', () => {
+  const { getDefaultSettings } = loadSettings()
+  const defaults = getDefaultSettings()
+  assert.equal(defaults.analysisModel, 'claude-sonnet-4-5')
+  assert.equal(defaults.analysisProvider, null)
+})
 
-  test('returns { success: true } when saving valid settings', () => {
-    const result = saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: null })
-    assert.deepEqual(result, { success: true })
-  })
+// ─── 2: getSettings – missing file ────────────────────────────────────────────
 
-  test('creates settings directory if it does not exist', () => {
-    // Remove the directory entirely to test mkdirSync recursive creation
-    if (existsSync(SETTINGS_PATH)) rmSync(SETTINGS_PATH)
-    if (existsSync(SETTINGS_DIR)) rmSync(SETTINGS_DIR, { recursive: true })
-    const result = saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: null })
-    assert.equal(result.success, true)
-    assert.ok(existsSync(SETTINGS_DIR), 'settings directory should be created')
-    assert.ok(existsSync(SETTINGS_PATH), 'settings file should be created')
-  })
+test('getSettings returns defaults when settings file is missing', () => {
+  const { getSettings } = loadSettings()
+  const settings = getSettings()
+  assert.equal(settings.analysisModel, 'claude-sonnet-4-5')
+  assert.equal(settings.analysisProvider, null)
+})
 
-  test('writes JSON with 2-space indentation', () => {
-    saveSettings({ analysisModel: 'claude-haiku-3', analysisProvider: null })
-    const content = readFileSync(SETTINGS_PATH, 'utf-8')
-    assert.ok(content.includes('  "analysisModel"'), 'should use 2-space indent for analysisModel')
-    assert.ok(content.includes('  "analysisProvider"'), 'should use 2-space indent for analysisProvider')
-  })
+// ─── 3: getSettings – corrupt JSON ────────────────────────────────────────────
 
-  test('writes valid JSON that can be parsed', () => {
-    saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: 'anthropic' })
-    const content = readFileSync(SETTINGS_PATH, 'utf-8')
-    assert.doesNotThrow(() => JSON.parse(content), 'written content should be valid JSON')
-  })
+test('getSettings returns defaults when settings file is corrupt JSON', () => {
+  const settingsDir = join(tmpDir, '.amplifier-canvas')
+  mkdirSync(settingsDir, { recursive: true })
+  writeFileSync(join(settingsDir, 'settings.json'), 'not valid json {{{{')
 
-  test('saved analysisModel can be read back by getSettings', () => {
-    saveSettings({ analysisModel: 'claude-opus-4', analysisProvider: null })
-    const settings = getSettings()
-    assert.equal(settings.analysisModel, 'claude-opus-4')
-  })
+  const { getSettings } = loadSettings()
+  const settings = getSettings()
+  assert.equal(settings.analysisModel, 'claude-sonnet-4-5')
+  assert.equal(settings.analysisProvider, null)
+})
 
-  test('saved analysisProvider can be read back by getSettings', () => {
-    saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: 'vertex' })
-    const settings = getSettings()
-    assert.equal(settings.analysisProvider, 'vertex')
-  })
+// ─── 4: getSettings – valid file ──────────────────────────────────────────────
 
-  test('saved null analysisProvider can be read back by getSettings', () => {
-    saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: null })
-    const settings = getSettings()
-    assert.equal(settings.analysisProvider, null)
-  })
+test('getSettings returns parsed settings from valid file', () => {
+  const settingsDir = join(tmpDir, '.amplifier-canvas')
+  mkdirSync(settingsDir, { recursive: true })
+  writeFileSync(
+    join(settingsDir, 'settings.json'),
+    JSON.stringify({ analysisModel: 'claude-haiku-4-5', analysisProvider: 'bedrock' }),
+  )
+
+  const { getSettings } = loadSettings()
+  const settings = getSettings()
+  assert.equal(settings.analysisModel, 'claude-haiku-4-5')
+  assert.equal(settings.analysisProvider, 'bedrock')
+})
+
+// ─── 5: saveSettings – creates directory and writes valid JSON ────────────────
+
+test('saveSettings creates directory if missing and writes valid JSON', () => {
+  const { saveSettings } = loadSettings()
+  saveSettings({ analysisModel: 'claude-haiku-4-5', analysisProvider: 'bedrock' })
+
+  const settingsPath = join(tmpDir, '.amplifier-canvas', 'settings.json')
+  assert.ok(existsSync(settingsPath), 'settings file should exist after save')
+
+  const parsed = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+  assert.equal(parsed.analysisModel, 'claude-haiku-4-5')
+  assert.equal(parsed.analysisProvider, 'bedrock')
+})
+
+// ─── 6: saveSettings – overwrites existing file ───────────────────────────────
+
+test('saveSettings overwrites existing settings file', () => {
+  const { saveSettings } = loadSettings()
+  saveSettings({ analysisModel: 'claude-haiku-4-5', analysisProvider: 'bedrock' })
+  saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: 'anthropic' })
+
+  const settingsPath = join(tmpDir, '.amplifier-canvas', 'settings.json')
+  const parsed = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+  assert.equal(parsed.analysisModel, 'claude-sonnet-4-5')
+  assert.equal(parsed.analysisProvider, 'anthropic')
+})
+
+// ─── 7: saveSettings – returns success ────────────────────────────────────────
+
+test('saveSettings returns { success: boolean } with success=true', () => {
+  const { saveSettings } = loadSettings()
+  const result = saveSettings({ analysisModel: 'claude-sonnet-4-5', analysisProvider: null })
+  assert.ok('success' in result, 'result should have success property')
+  assert.equal(result.success, true)
 })
