@@ -372,8 +372,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     IPC_CHANNELS.SETTINGS_SAVE,
     async (_event, settings: CanvasSettings): Promise<{ success: boolean }> => {
       try {
-        saveSettings(settings)
-        return { success: true }
+        return saveSettings(settings)
       } catch (err) {
         console.error('[ipc] SETTINGS_SAVE failed:', err)
         return { success: false }
