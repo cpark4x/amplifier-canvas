@@ -31,6 +31,8 @@ export const IPC_CHANNELS = {
   WORKSPACE_GET: 'workspace:get-state',
   WORKSPACE_STATE: 'workspace:state',
   RUNNING_SESSIONS_TOAST: 'app:running-sessions-toast',
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_SAVE: 'settings:save',
 } as const
 
 // --- Session types ---
@@ -91,4 +93,11 @@ export interface FileEntry {
   isDirectory: boolean
   size: number
   modifiedAt: string
+}
+
+// --- Settings types ---
+
+export interface CanvasSettings {
+  analysisModel: string
+  analysisProvider: string | null
 }
