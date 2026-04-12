@@ -4,7 +4,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
@@ -220,6 +220,14 @@ app.whenReady().then(() => {
       // Skip in test mode — test fixtures intentionally seed active sessions.
       if (process.env.NODE_ENV !== 'test') {
         reconcileStaleActiveSessions()
+      }
+
+      // (4b) Restore warm-return state: if the user had a session selected when
+      // they last closed the app, ensure that session is visible (hidden=0).
+      // This preserves the "exactly how you left it" experience on restart.
+      const savedState = getWorkspaceState()
+      if (savedState.selectedSessionId) {
+        setSessionHidden(savedState.selectedSessionId, 0)
       }
 
       // (5) For returning users, build lightweight SessionState stubs from DB
