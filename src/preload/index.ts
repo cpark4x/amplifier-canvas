@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry, WorkspaceState } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, WorkspaceState, CanvasSettings } from '../shared/types'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
@@ -181,6 +181,16 @@ const api = {
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, handler)
     }
+  },
+
+  // Settings: get current settings
+  getSettings: (): Promise<CanvasSettings> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET) as Promise<CanvasSettings>
+  },
+
+  // Settings: save settings
+  saveSettings: (settings: CanvasSettings): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings) as Promise<{ success: boolean }>
   },
 }
 

@@ -21,6 +21,8 @@ import type { DiscoveredProject } from './discovery'
 import { getAnalysis, triggerAnalysis } from './analysisService'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 import { addProjectWatch } from './watcher'
+import { getSettings, saveSettings, getDefaultSettings } from './settings'
+import type { CanvasSettings } from '../shared/types'
 
 // Track allowed directories for file access security
 let allowedDirs: string[] = []
@@ -354,6 +356,31 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     },
   )
 
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_GET,
+    async (): Promise<CanvasSettings> => {
+      try {
+        return getSettings()
+      } catch (err) {
+        console.error('[ipc] SETTINGS_GET failed:', err)
+        return getDefaultSettings()
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_SAVE,
+    async (_event, settings: CanvasSettings): Promise<{ success: boolean }> => {
+      try {
+        saveSettings(settings)
+        return { success: true }
+      } catch (err) {
+        console.error('[ipc] SETTINGS_SAVE failed:', err)
+        return { success: false }
+      }
+    },
+  )
+
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
@@ -372,6 +399,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)
+    ipcMain.removeHandler(IPC_CHANNELS.SETTINGS_GET)
+    ipcMain.removeHandler(IPC_CHANNELS.SETTINGS_SAVE)
     killAllPtys()
   })
 }
