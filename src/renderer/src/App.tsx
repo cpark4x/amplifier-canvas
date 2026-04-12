@@ -234,6 +234,7 @@ function App(): React.ReactElement {
       }}>
         <Sidebar
           collapsed={sidebarCollapsed}
+          hidden={!workspaceLoaded}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onNewProject={() => setShowModal(true)}
           onNewSession={(projectSlug, projectPath) => {

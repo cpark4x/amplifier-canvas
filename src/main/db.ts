@@ -146,16 +146,18 @@ export function upsertSession(session: {
   status: string
   byteOffset: number
   hidden?: boolean
+  title?: string | null
 }): void {
   const d = getDatabase()
   const hidden = session.hidden ? 1 : 0
   d.prepare(`
-    INSERT INTO sessions (id, projectSlug, startedBy, startedAt, status, byteOffset, hidden)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, projectSlug, startedBy, startedAt, status, byteOffset, hidden, title)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       status = excluded.status,
-      byteOffset = excluded.byteOffset
-  `).run(session.id, session.projectSlug, session.startedBy, session.startedAt, session.status, session.byteOffset, hidden)
+      byteOffset = excluded.byteOffset,
+      title = COALESCE(excluded.title, sessions.title)
+  `).run(session.id, session.projectSlug, session.startedBy, session.startedAt, session.status, session.byteOffset, hidden, session.title ?? null)
 }
 
 export function unhideSession(id: string): void {

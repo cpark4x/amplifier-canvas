@@ -295,17 +295,6 @@ app.whenReady().then(() => {
         // Ensure session exists in DB. For brand-new sessions (not from scan),
         // this INSERT creates the row. For known sessions, it updates status/offset.
         // hidden=false because the watcher only fires for actively-used sessions.
-        upsertSession({
-          id: data.sessionId,
-          projectSlug: data.projectSlug,
-          startedBy: 'external',
-          startedAt: new Date().toISOString(),
-          status,
-          byteOffset: newByteOffset,
-          hidden: false,
-        })
-        unhideSession(data.sessionId)
-
         const sessionPath = join(projectsDir, data.projectSlug, 'sessions', data.sessionId)
         const existingWorkDir = liveSessions.get(data.sessionId)?.workDir
         const workDir = extractWorkDir(events, sessionPath) ?? existingWorkDir
@@ -326,6 +315,20 @@ app.whenReady().then(() => {
         const existingTitle = liveSessions.get(data.sessionId)?.title
         const firstPrompt = extractFirstPrompt(events)
         const title = (firstPrompt ? deriveSessionTitle(firstPrompt) : undefined) ?? existingTitle
+
+        // Persist session to DB with title on every watcher update — not just finalization.
+        // COALESCE in the SQL ensures we never overwrite a good title with null.
+        upsertSession({
+          id: data.sessionId,
+          projectSlug: data.projectSlug,
+          startedBy: 'external',
+          startedAt,
+          status,
+          byteOffset: newByteOffset,
+          hidden: false,
+          title: title ?? null,
+        })
+        unhideSession(data.sessionId)
         const stats = extractSessionStats(events)
         const endEvent = events.find((e: { type: string; timestamp: string; data: Record<string, unknown> }) => e.type === 'session:end')
         const endedAt = endEvent?.timestamp

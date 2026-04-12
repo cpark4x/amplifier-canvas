@@ -13,6 +13,7 @@ function isJustStarted(startedAt?: string): boolean {
 
 type SidebarProps = {
   collapsed: boolean
+  hidden?: boolean
   onToggle: () => void
   onNewProject?: () => void
   onNewSession?: (projectSlug: string, projectPath: string) => void
@@ -28,7 +29,7 @@ interface Project {
 
 // ---- Helpers ----------------------------------------------------------------
 
-const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input'])
+const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input', 'loading'])
 const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed', 'stopped'])
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
@@ -95,7 +96,7 @@ function formatStats(session: SessionState): string {
 
 // ---- Component --------------------------------------------------------------
 
-function Sidebar({ collapsed, onToggle, onNewProject, onNewSession, onSessionSelect }: SidebarProps): React.ReactElement {
+function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSessionSelect }: SidebarProps): React.ReactElement {
   // Subscribe to both sessions and registeredProjects so sidebar re-renders when either changes
   const sessions = useCanvasStore((s) => s.sessions)
   const registeredProjects = useCanvasStore((s) => s.registeredProjects)
@@ -199,6 +200,7 @@ function Sidebar({ collapsed, onToggle, onNewProject, onNewSession, onSessionSel
         overflow: 'hidden',
         transition: 'width 0.15s ease, min-width 0.15s ease',
         padding: collapsed ? 0 : '12px 0',
+        visibility: hidden ? 'hidden' : 'visible',
       }}
     >
       {/* Collapsed: just the toggle */}
@@ -558,7 +560,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
           fontSize: '11px',
           flexShrink: 0,
           color:
-            session.status === 'running' || session.status === 'active'
+            session.status === 'running' || session.status === 'active' || session.status === 'needs_input'
               ? 'var(--amber)'
               : session.status === 'done'
                 ? 'var(--green)'
@@ -567,9 +569,13 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
       >
         {session.status === 'running' || session.status === 'active'
           ? (isJustStarted(session.startedAt) ? 'just started' : 'running')
-          : session.status === 'done'
-            ? 'done'
-            : ''}
+          : session.status === 'needs_input'
+            ? 'needs input'
+            : session.status === 'loading'
+              ? 'loading…'
+              : session.status === 'done'
+                ? 'done'
+                : ''}
       </span>
     </div>
   )
