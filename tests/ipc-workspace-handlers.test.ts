@@ -131,11 +131,23 @@ injectCache('../src/main/pty', {
   writeToPty: () => {},
   resizePty: () => {},
   killPty: () => {},
+  killAllPtys: () => {},
+  getPty: () => null,
+  hasPty: () => false,
+  appendToBuffer: () => {},
+  getBuffer: () => '',
 })
 
 // scanner stub
 injectCache('../src/main/scanner', {
   getAmplifierHome: () => '/fake-amplifier-home',
+  scanSingleProject: () => [],
+  isSubSession: () => false,
+})
+
+// watcher stub
+injectCache('../src/main/watcher', {
+  addProjectWatch: () => {},
 })
 
 // db stub — includes all workspace model functions
@@ -329,12 +341,18 @@ describe('registerIpcHandlers — workspace model channels', () => {
     const win = makeMockWindow()
     registerIpcHandlers(win)
 
-    const handler = registeredHandlers.get(CH.PROJECT_REGISTER)!
-    const result = await handler({}, { slug: 'my-proj', path: '/home/my-proj', name: 'My Proj' })
+    // Use a writable temp path since the handler calls mkdirSync
+    const tmpProjPath = path.join(require('os').tmpdir(), `canvas-test-proj-${Date.now()}`)
 
-    assert.deepEqual(result, { success: true })
-    assert.deepEqual(mockUpsertProjectCalls, [['my-proj', '/home/my-proj', 'My Proj']])
+    const handler = registeredHandlers.get(CH.PROJECT_REGISTER)!
+    const result = await handler({}, { slug: 'my-proj', path: tmpProjPath, name: 'My Proj' }) as { success: boolean; sessions?: unknown[] }
+
+    assert.equal(result.success, true)
+    assert.deepEqual(mockUpsertProjectCalls, [['my-proj', tmpProjPath, 'My Proj']])
     assert.deepEqual(mockSetProjectRegisteredCalls, [['my-proj', 1]])
+
+    // Cleanup temp dir
+    try { require('fs').rmSync(tmpProjPath, { recursive: true, force: true }) } catch {}
   })
 
   test('PROJECT_REGISTER returns {success: false} on error', async () => {
@@ -404,7 +422,8 @@ describe('registerIpcHandlers — workspace model channels', () => {
     }
 
     const handler = registeredHandlers.get(CH.WORKSPACE_SAVE)!
-    const result = await handler({}, { state: fakeState })
+    // Handler receives state directly as second arg (not wrapped in {state:})
+    const result = await handler({}, fakeState)
 
     assert.deepEqual(result, { success: true })
     assert.equal(mockSaveWorkspaceStateCalls.length, 1)
@@ -535,6 +554,6 @@ describe('push functions — workspace model', () => {
 
     const msg = sentMessages.find((m) => m.channel === CH.RUNNING_SESSIONS_TOAST)
     assert.ok(msg !== undefined, 'pushRunningSessionsToast must send RUNNING_SESSIONS_TOAST')
-    assert.equal(msg!.data, 3)
+    assert.deepEqual(msg!.data, { count: 3 })
   })
 })

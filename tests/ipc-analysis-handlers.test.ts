@@ -119,16 +119,44 @@ injectCache('../src/main/pty', {
   writeToPty: () => {},
   resizePty: () => {},
   killPty: () => {},
+  killAllPtys: () => {},
+  getPty: () => null,
+  hasPty: () => false,
+  appendToBuffer: () => {},
+  getBuffer: () => '',
 })
 
 // scanner stub
 injectCache('../src/main/scanner', {
   getAmplifierHome: () => '/tmp',
+  scanSingleProject: () => [],
+  isSubSession: () => false,
 })
 
 // db stub
 injectCache('../src/main/db', {
   getSessionById: () => null,
+  getRegisteredProjects: () => [],
+  setProjectRegistered: () => {},
+  setSessionHidden: () => {},
+  upsertProject: () => {},
+  getRegisteredProjectCount: () => 0,
+})
+
+// watcher stub
+injectCache('../src/main/watcher', {
+  addProjectWatch: () => {},
+})
+
+// workspace stub
+injectCache('../src/main/workspace', {
+  getWorkspaceState: () => ({}),
+  saveWorkspaceState: () => {},
+})
+
+// discovery stub
+injectCache('../src/main/discovery', {
+  discoverProjects: () => [],
 })
 
 // --------------------------------------------------------------------------
