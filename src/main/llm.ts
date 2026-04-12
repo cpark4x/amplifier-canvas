@@ -110,7 +110,7 @@ export async function invokeLLM(prompt: string, options: InvokeLLMOptions = {}):
     const timer = setTimeout(() => {
       timedOut = true
       proc.kill()
-      reject(new Error(`invokeLLM timeout: process killed after ${timeoutMs}ms`))
+      reject(new Error(`invokeLLM timed out: process killed after ${timeoutMs}ms`))
     }, timeoutMs)
 
     // Buffer stdout
@@ -151,7 +151,7 @@ export async function invokeLLM(prompt: string, options: InvokeLLMOptions = {}):
       if (jsonStartIndex === -1) {
         reject(
           new Error(
-            `amplifier output did not contain JSON. stdout: ${stdoutBuffer.trim() || '(empty)'}`,
+            `No JSON found in amplifier output. stdout: ${stdoutBuffer.trim() || '(empty)'}`,
           ),
         )
         return
@@ -172,7 +172,7 @@ export async function invokeLLM(prompt: string, options: InvokeLLMOptions = {}):
       if (typeof parsed.response !== 'string') {
         reject(
           new Error(
-            `amplifier JSON output is missing the 'response' string field. Got: ${jsonStr.trim()}`,
+            `amplifier JSON output is missing "response" field. Got: ${jsonStr.trim()}`,
           ),
         )
         return

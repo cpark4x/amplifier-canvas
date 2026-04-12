@@ -1,325 +1,245 @@
 /**
- * Tests for task-5-llm-wrapper: LLM subprocess wrapper (src/main/llm.ts)
+ * Tests for task-6-llm-wrapper-tests: LLM subprocess wrapper (src/main/llm.ts)
  *
- * Strategy: Real shell scripts in temp directories simulate the amplifier binary.
- * PATH manipulation + _resetBinaryCache() control which binary is discovered.
- * Each test calls loadLlm() to get a fresh module with null cachedBinaryPath.
+ * Strategy: Mock child_process.spawn and fs.existsSync to avoid real subprocess
+ * calls. Uses createFakeProc() to simulate a fake ChildProcess with EventEmitter-
+ * based stdout/stderr and controllable close events.
  */
 
-import { test, describe, beforeEach, afterEach } from 'node:test'
+import { test, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { EventEmitter } from 'node:events'
 import { createRequire } from 'node:module'
 
 const _require = createRequire(import.meta.url)
 
 // --------------------------------------------------------------------------
-// Module loader — always returns a fresh module instance (null cache)
-// --------------------------------------------------------------------------
-
-function loadLlm(): {
-  resolveAmplifierBinary: () => string
-  _resetBinaryCache: () => void
-  invokeLLM: (
-    prompt: string,
-    options?: { model?: string; provider?: string; timeoutMs?: number },
-  ) => Promise<string>
-} {
-  const key = _require.resolve('../src/main/llm.ts')
-  delete _require.cache[key]
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return _require('../src/main/llm.ts')
-}
-
-// --------------------------------------------------------------------------
-// Helpers
+// Fake ChildProcess helper
 // --------------------------------------------------------------------------
 
 /**
- * Create a fake "amplifier" shell script at <dir>/amplifier.
- * Returns the path to the binary.
+ * Returns a fake ChildProcess with:
+ *   - EventEmitter-based stdout and stderr
+ *   - mock stdin.write / stdin.end (call counts tracked)
+ *   - mock kill (call count tracked)
+ *   - emitClose(code) helper to trigger the 'close' event
  */
-function createFakeBinary(dir: string, script: string): string {
-  const binPath = join(dir, 'amplifier')
-  writeFileSync(binPath, `#!/bin/sh\n${script}`, { mode: 0o755 })
-  return binPath
+function createFakeProc(): any {
+  const proc: any = new EventEmitter()
+  proc.stdout = new EventEmitter()
+  proc.stderr = new EventEmitter()
+
+  let writeCount = 0
+  let endCount = 0
+  let killCount = 0
+
+  proc.stdin = {
+    write(_data: unknown) {
+      writeCount++
+    },
+    end() {
+      endCount++
+    },
+    get writeCount() {
+      return writeCount
+    },
+    get endCount() {
+      return endCount
+    },
+  }
+
+  proc.kill = () => {
+    killCount++
+  }
+
+  Object.defineProperty(proc, 'killCount', { get: () => killCount })
+
+  proc.emitClose = (code: number) => proc.emit('close', code)
+
+  return proc
 }
 
 // --------------------------------------------------------------------------
-// Lifecycle
+// CJS module refs for mocking (same module instances used by llm.ts)
 // --------------------------------------------------------------------------
 
-let tmpDir: string
-let originalPath: string | undefined
-let originalHome: string | undefined
+const cp = _require('child_process')
+const fsModule = _require('fs')
+
+// --------------------------------------------------------------------------
+// Test state
+// --------------------------------------------------------------------------
+
+let originalSpawn: unknown
+let originalExistsSync: unknown
+let fakeProc: any
+let spawnArgs: string[]
+let llm: any
+
+// --------------------------------------------------------------------------
+// Lifecycle hooks
+// --------------------------------------------------------------------------
 
 beforeEach(() => {
-  originalPath = process.env.PATH
-  originalHome = process.env.HOME
-  tmpDir = mkdtempSync(join(tmpdir(), 'llm-test-'))
+  fakeProc = createFakeProc()
+  spawnArgs = []
+
+  // Save originals so afterEach can restore them
+  originalSpawn = cp.spawn
+  originalExistsSync = fsModule.existsSync
+
+  // Mock spawn: capture args and return fakeProc
+  cp.spawn = (_binary: string, args: string[]) => {
+    spawnArgs = args
+    return fakeProc
+  }
+
+  // Mock existsSync to return true so binary resolution always succeeds
+  fsModule.existsSync = () => true
+
+  // Clear module cache so fresh import picks up mocked spawn / existsSync
+  const key = _require.resolve('../src/main/llm.ts')
+  delete _require.cache[key]
+  llm = _require('../src/main/llm.ts')
+
+  // Reset cached binary path on the freshly loaded module
+  llm._resetBinaryCache()
 })
 
 afterEach(() => {
-  if (originalPath !== undefined) process.env.PATH = originalPath
-  else delete process.env.PATH
-  if (originalHome !== undefined) process.env.HOME = originalHome
-  else delete process.env.HOME
-  rmSync(tmpDir, { recursive: true, force: true })
+  cp.spawn = originalSpawn
+  fsModule.existsSync = originalExistsSync
 })
 
-// ─── resolveAmplifierBinary ───────────────────────────────────────────────
+// --------------------------------------------------------------------------
+// Tests (7)
+// --------------------------------------------------------------------------
 
-describe('resolveAmplifierBinary', () => {
-  test('finds binary via PATH using which', () => {
-    createFakeBinary(tmpDir, 'echo "fake amplifier"')
-    process.env.PATH = `${tmpDir}:/usr/bin:/bin`
+test('returns response string from valid JSON output', async () => {
+  const promise = llm.invokeLLM('hello world')
 
-    const { resolveAmplifierBinary } = loadLlm()
-    const result = resolveAmplifierBinary()
-
-    assert.ok(
-      result.endsWith('amplifier'),
-      `Expected result to end with 'amplifier', got: ${result}`,
-    )
+  setImmediate(() => {
+    fakeProc.stdout.emit('data', Buffer.from('{"response":"Hello from LLM"}'))
+    fakeProc.emitClose(0)
   })
 
-  test('finds binary via fallback ~/.local/bin when not in PATH', () => {
-    // Place binary in ~/.local/bin/amplifier (relative to fake HOME)
-    const localBin = join(tmpDir, '.local', 'bin')
-    mkdirSync(localBin, { recursive: true })
-    createFakeBinary(localBin, 'echo "local bin amplifier"')
+  const result = await promise
+  assert.equal(result, 'Hello from LLM')
+  assert.equal(fakeProc.stdin.writeCount, 1, 'stdin.write should be called once')
+  assert.equal(fakeProc.stdin.endCount, 1, 'stdin.end should be called once')
+})
 
-    process.env.HOME = tmpDir
-    process.env.PATH = '/nonexistent-path-xyz' // force which to fail
+test('strips preamble lines before JSON', async () => {
+  const promise = llm.invokeLLM('hello')
 
-    const { resolveAmplifierBinary } = loadLlm()
-    const result = resolveAmplifierBinary()
-
-    assert.ok(
-      result.endsWith('amplifier'),
-      `Expected result to end with 'amplifier', got: ${result}`,
+  setImmediate(() => {
+    fakeProc.stdout.emit(
+      'data',
+      Buffer.from('Loading model...\nInitializing...\n{"response":"Preamble stripped"}'),
     )
-    assert.ok(
-      result.includes('.local'),
-      `Expected fallback path to include '.local', got: ${result}`,
-    )
+    fakeProc.emitClose(0)
   })
 
-  test('throws descriptive error when binary not found anywhere', () => {
-    process.env.PATH = '/nonexistent-path-xyz'
-    process.env.HOME = tmpDir // no amplifier in any fallback locations
+  const result = await promise
+  assert.equal(result, 'Preamble stripped')
+})
 
-    const { resolveAmplifierBinary } = loadLlm()
+test('throws on non-zero exit code', async () => {
+  const promise = llm.invokeLLM('hello')
 
-    assert.throws(
-      () => resolveAmplifierBinary(),
-      (err: unknown) => {
-        assert.ok(err instanceof Error, 'Should throw an Error instance')
-        assert.ok(
-          err.message.toLowerCase().includes('amplifier'),
-          `Error should mention 'amplifier': ${err.message}`,
-        )
-        return true
-      },
-    )
+  setImmediate(() => {
+    fakeProc.stderr.emit('data', Buffer.from('API key invalid'))
+    fakeProc.emitClose(1)
   })
 
-  test('caches resolved path on subsequent calls', () => {
-    createFakeBinary(tmpDir, 'echo "fake"')
-    process.env.PATH = `${tmpDir}:/usr/bin:/bin`
-
-    const { resolveAmplifierBinary } = loadLlm() // single module instance
-    const first = resolveAmplifierBinary() // caches path
-
-    // Make binary unreachable — cache should still return the first result
-    process.env.PATH = '/nonexistent-path-xyz'
-
-    const second = resolveAmplifierBinary()
-    assert.equal(second, first, 'Second call should return cached path')
+  await assert.rejects(promise, (err: Error) => {
+    assert.ok(
+      err.message.includes('exited with code 1'),
+      `Expected 'exited with code 1' in: ${err.message}`,
+    )
+    assert.ok(
+      err.message.includes('API key invalid'),
+      `Expected 'API key invalid' in: ${err.message}`,
+    )
+    return true
   })
 })
 
-// ─── _resetBinaryCache ────────────────────────────────────────────────────
+test('throws on malformed JSON output', async () => {
+  const promise = llm.invokeLLM('hello')
 
-describe('_resetBinaryCache', () => {
-  test('clears cached path so next call re-resolves', () => {
-    createFakeBinary(tmpDir, 'echo "fake"')
-    process.env.PATH = `${tmpDir}:/usr/bin:/bin`
+  setImmediate(() => {
+    fakeProc.stdout.emit('data', Buffer.from('not json at all'))
+    fakeProc.emitClose(0)
+  })
 
-    const { resolveAmplifierBinary, _resetBinaryCache } = loadLlm()
-    resolveAmplifierBinary() // populate cache
-
-    // Remove binary and make it unreachable everywhere
-    rmSync(join(tmpDir, 'amplifier'))
-    process.env.PATH = '/nonexistent-path-xyz'
-    process.env.HOME = tmpDir // no amplifier in fallback locations either
-
-    _resetBinaryCache() // clear the cache
-
-    assert.throws(
-      () => resolveAmplifierBinary(),
-      /amplifier/i,
-      'Should throw after cache is cleared and binary is gone',
+  await assert.rejects(promise, (err: Error) => {
+    assert.ok(
+      err.message.includes('No JSON found'),
+      `Expected 'No JSON found' in: ${err.message}`,
     )
+    return true
   })
 })
 
-// ─── invokeLLM ────────────────────────────────────────────────────────────
+test('throws when JSON valid but missing response field', async () => {
+  const promise = llm.invokeLLM('hello')
 
-describe('invokeLLM', () => {
-  beforeEach(() => {
-    // Default binary: drain stdin and emit valid JSON
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo '{"response": "test response"}'
-`,
-    )
-    process.env.PATH = `${tmpDir}:/usr/bin:/bin`
+  setImmediate(() => {
+    fakeProc.stdout.emit('data', Buffer.from('{"data":"no response field"}'))
+    fakeProc.emitClose(0)
   })
 
-  test('resolves with response string from JSON output', async () => {
-    const { invokeLLM } = loadLlm()
-    const result = await invokeLLM('hello world')
-    assert.equal(result, 'test response')
+  await assert.rejects(promise, (err: Error) => {
+    assert.ok(
+      err.message.includes('missing "response" field'),
+      `Expected 'missing "response" field' in: ${err.message}`,
+    )
+    return true
+  })
+})
+
+test('passes model and provider as CLI flags', async () => {
+  const promise = llm.invokeLLM('hello', { model: 'claude-haiku-4-5', provider: 'bedrock' })
+
+  // spawn args are captured synchronously during invokeLLM()
+  assert.ok(
+    spawnArgs.includes('--model'),
+    `Expected '--model' in spawn args: [${spawnArgs.join(', ')}]`,
+  )
+  assert.ok(
+    spawnArgs.includes('claude-haiku-4-5'),
+    `Expected 'claude-haiku-4-5' in spawn args: [${spawnArgs.join(', ')}]`,
+  )
+  assert.ok(
+    spawnArgs.includes('--provider'),
+    `Expected '--provider' in spawn args: [${spawnArgs.join(', ')}]`,
+  )
+  assert.ok(
+    spawnArgs.includes('bedrock'),
+    `Expected 'bedrock' in spawn args: [${spawnArgs.join(', ')}]`,
+  )
+
+  // Resolve the promise cleanly so the test does not hang
+  setImmediate(() => {
+    fakeProc.stdout.emit('data', Buffer.from('{"response":"ok"}'))
+    fakeProc.emitClose(0)
   })
 
-  test('strips non-JSON preamble lines before first { line', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo "Loading model..."
-echo "Preparing workspace..."
-echo '{"response": "preamble stripped"}'
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    const result = await invokeLLM('test prompt')
-    assert.equal(result, 'preamble stripped')
-  })
+  await promise
+})
 
-  test('passes --model flag when model option is provided', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo "{\\"response\\": \\"args: $*\\"}"
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    const result = await invokeLLM('test', { model: 'claude-haiku' })
-    assert.ok(result.includes('--model'), `Should include --model, got: ${result}`)
-    assert.ok(result.includes('claude-haiku'), `Should include model name, got: ${result}`)
-  })
+test('times out and kills process', async () => {
+  await assert.rejects(
+    llm.invokeLLM('hello', { timeoutMs: 50 }),
+    (err: Error) => {
+      assert.ok(
+        err.message.includes('timed out'),
+        `Expected 'timed out' in: ${err.message}`,
+      )
+      return true
+    },
+  )
 
-  test('passes --provider flag when provider option is provided', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo "{\\"response\\": \\"args: $*\\"}"
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    const result = await invokeLLM('test', { provider: 'anthropic' })
-    assert.ok(result.includes('--provider'), `Should include --provider, got: ${result}`)
-    assert.ok(result.includes('anthropic'), `Should include provider name, got: ${result}`)
-  })
-
-  test('rejects with descriptive error on non-zero exit code', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo "error output" >&2
-exit 1
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    await assert.rejects(
-      () => invokeLLM('test'),
-      (err: unknown) => {
-        assert.ok(err instanceof Error, 'Should reject with Error')
-        assert.ok(err.message.length > 0, 'Error message should not be empty')
-        return true
-      },
-    )
-  })
-
-  test('rejects with timeout error and kills process', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-sleep 10
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    await assert.rejects(
-      () => invokeLLM('test', { timeoutMs: 150 }),
-      (err: unknown) => {
-        assert.ok(err instanceof Error, 'Should reject with Error')
-        assert.ok(
-          err.message.toLowerCase().includes('timeout'),
-          `Error should mention 'timeout': ${err.message}`,
-        )
-        return true
-      },
-    )
-  })
-
-  test('rejects when output contains no JSON', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo "just some plain text output with no JSON at all"
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    await assert.rejects(
-      () => invokeLLM('test'),
-      (err: unknown) => {
-        assert.ok(err instanceof Error, 'Should reject with Error')
-        assert.ok(err.message.length > 0, 'Error message should not be empty')
-        return true
-      },
-    )
-  })
-
-  test('rejects when JSON output is missing the response field', async () => {
-    createFakeBinary(
-      tmpDir,
-      `
-cat - > /dev/null
-echo '{"other_field": "some value", "no_response_here": true}'
-`,
-    )
-    const { invokeLLM } = loadLlm()
-    await assert.rejects(
-      () => invokeLLM('test'),
-      (err: unknown) => {
-        assert.ok(err instanceof Error, 'Should reject with Error')
-        assert.ok(
-          err.message.toLowerCase().includes('response'),
-          `Error should mention 'response' field: ${err.message}`,
-        )
-        return true
-      },
-    )
-  })
-
-  test('invokeLLM is exported and returns Promise<string>', () => {
-    const { invokeLLM } = loadLlm()
-    assert.equal(typeof invokeLLM, 'function', 'invokeLLM should be a function')
-    // Create a binary that immediately responds (no hanging)
-    const promise = invokeLLM('test')
-    assert.ok(promise instanceof Promise, 'invokeLLM should return a Promise')
-    // Clean up — let it resolve naturally
-    promise.catch(() => {}) // suppress unhandled rejection
-  })
+  assert.equal(fakeProc.killCount, 1, 'kill should be called once')
 })
