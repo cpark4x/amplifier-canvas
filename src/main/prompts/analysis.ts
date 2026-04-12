@@ -55,7 +55,7 @@ Section types and their content shapes:
 Rules:
 1. Always include "summary" as the first section.
 2. Omit sections that are not relevant to the session content.
-3. Use the exact hyphenated type names shown above (e.g., "key-moments", not "key_moments").
+3. Use the exact hyphenated type names shown above — do not use underscores or other variations.
 4. Return ONLY the JSON object — no markdown, no explanation, no code fences.
 5. Keep summaries concise but include actual details from the session.
 6. Base all content strictly on the provided digest data.
