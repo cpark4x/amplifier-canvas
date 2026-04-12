@@ -4,6 +4,13 @@ import ContextMenu from './ContextMenu'
 import type { ContextMenuItem } from './ContextMenu'
 import type { SessionState, SessionStatus } from '../../../shared/types'
 
+/** Returns true if a session started less than 30 seconds ago */
+function isJustStarted(startedAt?: string): boolean {
+  if (!startedAt) return false
+  const elapsed = Date.now() - new Date(startedAt).getTime()
+  return elapsed < 30_000
+}
+
 type SidebarProps = {
   collapsed: boolean
   onToggle: () => void
@@ -559,7 +566,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
         }}
       >
         {session.status === 'running' || session.status === 'active'
-          ? 'running'
+          ? (isJustStarted(session.startedAt) ? 'just started' : 'running')
           : session.status === 'done'
             ? 'done'
             : ''}

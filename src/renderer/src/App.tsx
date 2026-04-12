@@ -232,6 +232,9 @@ function App(): React.ReactElement {
           onNewProject={() => setShowModal(true)}
           onNewSession={(projectSlug, projectPath) => {
             const ptyId = `terminal-${projectSlug}-${Date.now()}`
+            // Show optimistic placeholder in sidebar immediately
+            const rp = useCanvasStore.getState().registeredProjects.find((p) => p.slug === projectSlug)
+            useCanvasStore.getState().addOptimisticSession(projectSlug, rp?.name ?? projectSlug)
             setTerminalSessionId(ptyId)
             setShowTerminal(true)
             window.electronAPI.spawnPty(ptyId, 80, 24, projectPath).then(() => {
@@ -393,6 +396,8 @@ function App(): React.ReactElement {
               useCanvasStore.getState().registerProject(slug, projectName, path)
               useCanvasStore.getState().selectProject(slug)
               useCanvasStore.getState().toggleProjectExpanded(slug)
+              // Show optimistic placeholder in sidebar immediately
+              useCanvasStore.getState().addOptimisticSession(slug, projectName)
               setShowModal(false)
               setTerminalSessionId(ptyId)
               setShowTerminal(true)
@@ -415,6 +420,8 @@ function App(): React.ReactElement {
             useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            // Show optimistic placeholder in sidebar immediately
+            useCanvasStore.getState().addOptimisticSession(project.slug, project.name)
             setShowModal(false)
             setTerminalSessionId(ptyId)
             setShowTerminal(true)
