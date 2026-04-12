@@ -25,6 +25,8 @@ import type {
   TestStatus,
   FileChange,
   GitOperation,
+  AnalysisSection,
+  AnalysisSectionType,
 } from '../shared/analysisTypes'
 
 // --- Public API ---
@@ -132,6 +134,69 @@ function parseJSON<T>(json: string | null | undefined): T | null {
   } catch {
     return null
   }
+}
+
+const VALID_SECTION_TYPES = new Set<AnalysisSectionType>([
+  'summary',
+  'changes',
+  'key-moments',
+  'next-steps',
+  'decisions',
+  'action-items',
+  'open-questions',
+])
+
+export function parseAnalysisResponse(raw: string): AnalysisResult {
+  // Strip markdown code fences if present
+  let text = raw
+  if (text.startsWith('```')) {
+    const lines = text.split('\n')
+    text = lines.slice(1, lines.length - 1).join('\n')
+  }
+
+  // Parse JSON
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error(`LLM response is not valid JSON: ${raw.slice(0, 200)}`)
+  }
+
+  // Validate top-level structure
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !Array.isArray((parsed as Record<string, unknown>)['sections'])
+  ) {
+    throw new Error('LLM response missing "sections" array')
+  }
+
+  const sections = (parsed as Record<string, unknown>)['sections'] as unknown[]
+
+  // Validate each section
+  for (const section of sections) {
+    const s = section as Record<string, unknown>
+
+    if (typeof s['type'] !== 'string') {
+      throw new Error('Section missing "type" field')
+    }
+
+    const type = s['type']
+    if (!VALID_SECTION_TYPES.has(type as AnalysisSectionType)) {
+      throw new Error(`Invalid section type: "${type}"`)
+    }
+
+    if (typeof s['title'] !== 'string') {
+      throw new Error(`Section "${type}" missing "title" field`)
+    }
+
+    if (s['content'] === null || s['content'] === undefined) {
+      throw new Error(`Section "${type}" missing "content" field`)
+    }
+  }
+
+  const validatedSections = sections as AnalysisSection[]
+  return { sections: validatedSections }
 }
 
 function generateMockAnalysis(digest: SessionDigest): AnalysisResult {
