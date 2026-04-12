@@ -4,14 +4,14 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
 import { isSubSession } from './scanner'
 import { unhideSession } from './db'
 import { getWorkspaceState } from './workspace'
-import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
+import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
 
 // Main-process session registry — watcher pushes new sessions here
@@ -228,6 +228,38 @@ app.whenReady().then(() => {
       const savedState = getWorkspaceState()
       if (savedState.selectedSessionId) {
         setSessionHidden(savedState.selectedSessionId, 0)
+      }
+
+      // (4c) Back-fill titles for sessions that have null titles.
+      // This happens when sessions were created before the title persistence fix,
+      // or when a session ended while the app wasn't running.
+      let titlesBackfilled = 0
+      for (const project of registeredProjects) {
+        const untitled = getSessionsWithoutTitles(project.slug)
+        if (untitled.length > 0) {
+          console.log(`[startup] Back-filling titles for ${untitled.length} sessions in ${project.slug}`)
+        }
+        for (const row of untitled) {
+          const eventsPath = join(projectsDir, project.slug, 'sessions', row.id, 'events.jsonl')
+          try {
+            // Use headReadEvents (reads from byte 0) — the first prompt is near the
+            // start of the file. tailReadEvents would miss it on large sessions.
+            const events = headReadEvents(eventsPath)
+            const firstPrompt = extractFirstPrompt(events)
+            if (firstPrompt) {
+              const title = deriveSessionTitle(firstPrompt)
+              if (title) {
+                updateSessionTitle(row.id, title)
+                titlesBackfilled++
+              }
+            }
+          } catch {
+            // Skip sessions whose events.jsonl is missing or unreadable
+          }
+        }
+      }
+      if (titlesBackfilled > 0) {
+        console.log(`[startup] Back-filled ${titlesBackfilled} session titles`)
       }
 
       // (5) For returning users, build lightweight SessionState stubs from DB

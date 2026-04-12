@@ -170,6 +170,18 @@ export function updateSessionStatus(id: string, status: string): void {
   d.prepare('UPDATE sessions SET status = ? WHERE id = ?').run(status, id)
 }
 
+export function updateSessionTitle(id: string, title: string): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET title = ? WHERE id = ?').run(title, id)
+}
+
+export function getSessionsWithoutTitles(projectSlug: string): Array<{ id: string; byteOffset: number }> {
+  const d = getDatabase()
+  return d.prepare(
+    'SELECT id, byteOffset FROM sessions WHERE projectSlug = ? AND title IS NULL'
+  ).all(projectSlug) as Array<{ id: string; byteOffset: number }>
+}
+
 export function updateByteOffset(id: string, offset: number): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET byteOffset = ? WHERE id = ?').run(offset, id)
