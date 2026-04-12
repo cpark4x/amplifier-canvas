@@ -64,6 +64,7 @@ let mockGetSettingsResult: unknown = { analysisModel: 'claude-sonnet-4-5', analy
 let mockGetSettingsShouldThrow = false
 let mockSaveSettingsCalls: unknown[] = []
 let mockSaveSettingsShouldThrow = false
+let mockSaveSettingsResult: { success: boolean } = { success: true }
 
 // --------------------------------------------------------------------------
 // Register require.cache stubs for every module that ipc.ts imports
@@ -166,7 +167,7 @@ injectCache('../src/main/settings', {
   saveSettings(settings: unknown) {
     if (mockSaveSettingsShouldThrow) throw new Error('settings write error')
     mockSaveSettingsCalls.push(settings)
-    return { success: true }
+    return mockSaveSettingsResult
   },
   getDefaultSettings() {
     return { analysisModel: 'claude-sonnet-4-5', analysisProvider: null }
@@ -203,6 +204,7 @@ function reset() {
   mockGetSettingsShouldThrow = false
   mockSaveSettingsCalls = []
   mockSaveSettingsShouldThrow = false
+  mockSaveSettingsResult = { success: true }
 }
 
 // Cleanup cache entries after all tests
@@ -287,6 +289,24 @@ describe('registerIpcHandlers — settings channels', () => {
     const result = await handler({}, fakeSettings) as { success: boolean }
 
     assert.equal(result.success, false)
+  })
+
+  test('SETTINGS_SAVE propagates {success: false} returned by saveSettings() without throwing', async () => {
+    // Regression: handler must forward the return value from saveSettings(), not always
+    // return {success: true}. A disk-full scenario may be caught inside saveSettings()
+    // and returned as {success: false} without throwing.
+    const win = makeMockWindow()
+    registerIpcHandlers(win)
+
+    mockSaveSettingsResult = { success: false }
+
+    const fakeSettings = { analysisModel: 'claude-haiku-3', analysisProvider: null }
+
+    const handler = registeredHandlers.get(CH.SETTINGS_SAVE)!
+    const result = await handler({}, fakeSettings) as { success: boolean }
+
+    assert.equal(result.success, false, 'handler must propagate {success: false} from saveSettings()')
+    assert.equal(mockSaveSettingsCalls.length, 1, 'saveSettings() must be called once')
   })
 
   // ---- AC: Cleanup on window close ----
