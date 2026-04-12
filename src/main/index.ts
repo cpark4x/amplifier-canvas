@@ -4,7 +4,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
@@ -214,7 +214,15 @@ app.whenReady().then(() => {
         return
       }
 
-      // (4) For returning users, build lightweight SessionState stubs from DB
+      // (4) Reconcile stale sessions: any session still marked 'active' from a
+      // previous app run is not actually running. Mark it 'done' so it doesn't
+      // show a misleading green "running" dot in the sidebar.
+      // Skip in test mode — test fixtures intentionally seed active sessions.
+      if (process.env.NODE_ENV !== 'test') {
+        reconcileStaleActiveSessions()
+      }
+
+      // (5) For returning users, build lightweight SessionState stubs from DB
       const sessions: SessionState[] = []
 
       for (const project of registeredProjects) {

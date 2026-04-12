@@ -333,3 +333,17 @@ export function getRegisteredProjectCount(): number {
   const row = d.prepare('SELECT COUNT(*) as count FROM projects WHERE registered = 1').get() as { count: number }
   return row.count
 }
+
+/**
+ * On app startup, mark all 'active'/'running' sessions as 'done'.
+ * No PTY survives an app restart, so any session still marked active is stale.
+ */
+export function reconcileStaleActiveSessions(): void {
+  const d = getDatabase()
+  const result = d.prepare(
+    "UPDATE sessions SET status = 'done' WHERE status IN ('active', 'running')"
+  ).run()
+  if (result.changes > 0) {
+    console.log(`[db] Reconciled ${result.changes} stale active sessions → done`)
+  }
+}
