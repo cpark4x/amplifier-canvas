@@ -33,7 +33,7 @@ current_work:
   workspace_model:
     name: "Workspace Model"
     plan: "docs/plans/2026-04-10-workspace-model-implementation.md"
-    status: "all 15 tasks implemented — pending verification"
+    status: done
     delivered:
       - "Workspace DB (projects table, workspace_state table)"
       - "Project discovery via amplifier CLI"

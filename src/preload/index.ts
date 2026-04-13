@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry, WorkspaceState } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, WorkspaceState, CanvasSettings } from '../shared/types'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
@@ -64,6 +64,17 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.SESSIONS_CHANGED, handler)
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.SESSIONS_CHANGED, handler)
+    }
+  },
+
+  // Projects: receive registered projects list from main
+  onProjectsChanged: (callback: (projects: Array<{ slug: string; name: string; path: string }>) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, projects: Array<{ slug: string; name: string; path: string }>): void => {
+      callback(projects)
+    }
+    ipcRenderer.on(IPC_CHANNELS.PROJECTS_CHANGED, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PROJECTS_CHANGED, handler)
     }
   },
 
@@ -170,6 +181,16 @@ const api = {
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.RUNNING_SESSIONS_TOAST, handler)
     }
+  },
+
+  // Settings: get current settings
+  getSettings: (): Promise<CanvasSettings> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET) as Promise<CanvasSettings>
+  },
+
+  // Settings: save settings
+  saveSettings: (settings: CanvasSettings): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings) as Promise<{ success: boolean }>
   },
 }
 

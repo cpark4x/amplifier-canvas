@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { SessionState } from '../../../shared/types'
+import { useCanvasStore } from '../store'
 
 interface DiscoveredProject {
   slug: string
@@ -66,7 +67,11 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
     window.electronAPI
       .registerProject(selectedExisting.slug, selectedExisting.path, selectedExisting.name)
       .then((result) => {
-        setProjectSessions(result.sessions ?? [])
+        const sessions = result.sessions ?? []
+        setProjectSessions(sessions)
+        // Sessions stay local to the modal for the choose-action screen.
+        // Only the session the user actually launches gets added to the sidebar.
+        useCanvasStore.getState().registerProject(selectedExisting.slug, selectedExisting.name, selectedExisting.path)
         setLoadingSessions(false)
         setStep('choose-action')
       })

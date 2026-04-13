@@ -1,10 +1,11 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { readdirSync, readFileSync, statSync, mkdirSync, existsSync } from 'fs'
+import { mkdirSync, existsSync } from 'fs'
+import { readdir, stat, readFile } from 'fs/promises'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer } from './pty'
-import { getAmplifierHome } from './scanner'
+import { getAmplifierHome, scanSingleProject } from './scanner'
 import {
   getSessionById,
   getRegisteredProjects,
@@ -19,14 +20,22 @@ import { discoverProjects } from './discovery'
 import type { DiscoveredProject } from './discovery'
 import { getAnalysis, triggerAnalysis } from './analysisService'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
-import { getAmplifierHome, scanSingleProject } from './scanner'
 import { addProjectWatch } from './watcher'
+import { getSettings, saveSettings, getDefaultSettings } from './settings'
+import type { CanvasSettings } from '../shared/types'
 
 // Track allowed directories for file access security
 let allowedDirs: string[] = []
 
 export function setAllowedDirs(dirs: string[]): void {
   allowedDirs = dirs.map((d) => resolve(normalize(d)))
+}
+
+export function addAllowedDir(dir: string): void {
+  const resolved = resolve(normalize(dir))
+  if (!allowedDirs.includes(resolved)) {
+    allowedDirs.push(resolved)
+  }
 }
 
 export function isPathAllowed(requestedPath: string): boolean {
@@ -112,51 +121,53 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   // --- New IPC handlers for Phase 1C ---
 
-  ipcMain.handle(IPC_CHANNELS.LIST_DIR, (_event, { path }: { path: string }): FileEntry[] => {
-    if (!isPathAllowed(path)) {
-      console.error('[ipc] Blocked file access to disallowed path:', path)
+  ipcMain.handle(IPC_CHANNELS.LIST_DIR, async (_event, { path: dirPath }: { path: string }): Promise<FileEntry[]> => {
+    if (!isPathAllowed(dirPath)) {
+      console.error('[ipc] Blocked file access to disallowed path:', dirPath)
       return []
     }
 
     try {
-      const entries = readdirSync(path, { withFileTypes: true })
-      return entries.map((entry): FileEntry => {
-        const fullPath = join(path, entry.name)
+      const entries = await readdir(dirPath, { withFileTypes: true })
+      const results: FileEntry[] = []
+      for (const entry of entries) {
+        const fullPath = join(dirPath, entry.name)
         let size = 0
         let modifiedAt = new Date().toISOString()
 
         try {
-          const stat = statSync(fullPath)
-          size = stat.size
-          modifiedAt = stat.mtime.toISOString()
+          const s = await stat(fullPath)
+          size = s.size
+          modifiedAt = s.mtime.toISOString()
         } catch {
           // stat failed — return defaults
         }
 
-        return {
+        results.push({
           name: entry.name,
           path: fullPath,
           isDirectory: entry.isDirectory(),
           size,
           modifiedAt,
-        }
-      })
+        })
+      }
+      return results
     } catch {
-      console.error('[ipc] Failed to list directory:', path)
+      console.error('[ipc] Failed to list directory:', dirPath)
       return []
     }
   })
 
-  ipcMain.handle(IPC_CHANNELS.READ_TEXT, (_event, { path }: { path: string }): string => {
-    if (!isPathAllowed(path)) {
-      console.error('[ipc] Blocked file access to disallowed path:', path)
+  ipcMain.handle(IPC_CHANNELS.READ_TEXT, async (_event, { path: filePath }: { path: string }): Promise<string> => {
+    if (!isPathAllowed(filePath)) {
+      console.error('[ipc] Blocked file access to disallowed path:', filePath)
       return ''
     }
 
     try {
-      return readFileSync(path, 'utf-8')
+      return await readFile(filePath, 'utf-8')
     } catch {
-      console.error('[ipc] Failed to read file:', path)
+      console.error('[ipc] Failed to read file:', filePath)
       return ''
     }
   })
@@ -345,6 +356,30 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     },
   )
 
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_GET,
+    async (): Promise<CanvasSettings> => {
+      try {
+        return getSettings()
+      } catch (err) {
+        console.error('[ipc] SETTINGS_GET failed:', err)
+        return getDefaultSettings()
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_SAVE,
+    async (_event, settings: CanvasSettings): Promise<{ success: boolean }> => {
+      try {
+        return saveSettings(settings)
+      } catch (err) {
+        console.error('[ipc] SETTINGS_SAVE failed:', err)
+        return { success: false }
+      }
+    },
+  )
+
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
@@ -363,6 +398,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)
+    ipcMain.removeHandler(IPC_CHANNELS.SETTINGS_GET)
+    ipcMain.removeHandler(IPC_CHANNELS.SETTINGS_SAVE)
     killAllPtys()
   })
 }
@@ -372,6 +409,15 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 export function pushSessionsChanged(mainWindow: BrowserWindow, sessions: SessionState[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC_CHANNELS.SESSIONS_CHANGED, sessions)
+  }
+}
+
+export function pushProjectsChanged(
+  mainWindow: BrowserWindow,
+  projects: Array<{ slug: string; name: string; path: string }>
+): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC_CHANNELS.PROJECTS_CHANGED, projects)
   }
 }
 

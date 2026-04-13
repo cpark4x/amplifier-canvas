@@ -4,22 +4,32 @@ import ContextMenu from './ContextMenu'
 import type { ContextMenuItem } from './ContextMenu'
 import type { SessionState, SessionStatus } from '../../../shared/types'
 
+/** Returns true if a session started less than 30 seconds ago */
+function isJustStarted(startedAt?: string): boolean {
+  if (!startedAt) return false
+  const elapsed = Date.now() - new Date(startedAt).getTime()
+  return elapsed < 30_000
+}
+
 type SidebarProps = {
   collapsed: boolean
+  hidden?: boolean
   onToggle: () => void
   onNewProject?: () => void
+  onNewSession?: (projectSlug: string, projectPath: string) => void
   onSessionSelect?: (sessionId: string, workDir: string) => void
 }
 
 interface Project {
   slug: string
   name: string
+  path: string
   sessions: SessionState[]
 }
 
 // ---- Helpers ----------------------------------------------------------------
 
-const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input'])
+const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input', 'loading'])
 const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed', 'stopped'])
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
@@ -86,7 +96,7 @@ function formatStats(session: SessionState): string {
 
 // ---- Component --------------------------------------------------------------
 
-function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: SidebarProps): React.ReactElement {
+function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSessionSelect }: SidebarProps): React.ReactElement {
   // Subscribe to both sessions and registeredProjects so sidebar re-renders when either changes
   const sessions = useCanvasStore((s) => s.sessions)
   const registeredProjects = useCanvasStore((s) => s.registeredProjects)
@@ -97,6 +107,14 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
   const openViewer = useCanvasStore((s) => s.openViewer)
   const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
   const toggleProjectExpanded = useCanvasStore((s) => s.toggleProjectExpanded)
+
+  // Track which projects have their full history expanded (default: collapsed to 3)
+  const [expandedHistorySlugs, setExpandedHistorySlugs] = useState<string[]>([])
+  const toggleExpandedHistory = (slug: string) => {
+    setExpandedHistorySlugs((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    )
+  }
 
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -148,7 +166,7 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
 
     // Start with registered projects (ensures empty projects appear in sidebar)
     for (const rp of registeredProjects) {
-      projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, sessions: [] })
+      projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, path: rp.path, sessions: [] })
     }
 
     // Merge in sessions
@@ -160,6 +178,7 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
         projectMap.set(session.projectSlug, {
           slug: session.projectSlug,
           name: session.projectName,
+          path: '',
           sessions: [session],
         })
       }
@@ -181,6 +200,7 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
         overflow: 'hidden',
         transition: 'width 0.15s ease, min-width 0.15s ease',
         padding: collapsed ? 0 : '12px 0',
+        visibility: hidden ? 'hidden' : 'visible',
       }}
     >
       {/* Collapsed: just the toggle */}
@@ -357,10 +377,10 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
                         ))}
                       </div>
 
-                      {/* + New session — always visible when project is expanded */}
+                      {/* + New session — spawns a new session in this project */}
                       <div
                         data-testid="new-session-slot"
-                        onClick={onNewProject}
+                        onClick={() => onNewSession?.(project.slug, project.path)}
                         style={{
                           padding: '8px 14px',
                           fontSize: '11px',
@@ -377,41 +397,73 @@ function Sidebar({ collapsed, onToggle, onNewProject, onSessionSelect }: Sidebar
                         + New session
                       </div>
 
-                      {/* History section */}
-                      {historySessions.length > 0 && (
-                        <>
-                          {/* HISTORY label */}
-                          <div
-                            data-testid="history-label"
-                            style={{
-                              padding: '6px 12px 2px 14px',
-                              fontSize: '10px',
-                              textTransform: 'uppercase',
-                              color: '#A0977D',
-                              letterSpacing: '0.08em',
-                              fontWeight: 600,
-                              userSelect: 'none',
-                            }}
-                          >
-                            HISTORY
-                          </div>
+                      {/* History section — show 3, "see more" to expand */}
+                      {historySessions.length > 0 && (() => {
+                        const MAX_VISIBLE = 3
+                        const isShowingAll = expandedHistorySlugs.includes(project.slug)
+                        const visible = isShowingAll ? historySessions : historySessions.slice(0, MAX_VISIBLE)
+                        const hasMore = historySessions.length > MAX_VISIBLE
 
-                          {/* History session rows */}
-                          {historySessions.map((session) => (
-                            <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
-                              <HistorySessionRow
-                                session={session}
-                                isSelected={selectedSessionId === session.id}
-                                onSelect={() => {
-                                  selectSession(session.id)
-                                  openViewer()
-                                  onSessionSelect?.(session.id, session.workDir ?? '')
-                                }}
-                              />
+                        return (
+                          <>
+                            {/* HISTORY label */}
+                            <div
+                              data-testid="history-label"
+                              style={{
+                                padding: '6px 12px 2px 14px',
+                                fontSize: '10px',
+                                textTransform: 'uppercase',
+                                color: '#A0977D',
+                                letterSpacing: '0.08em',
+                                fontWeight: 600,
+                                userSelect: 'none',
+                              }}
+                            >
+                              HISTORY
                             </div>
-                          ))}
-                        </>
-                      )}
+
+                            {/* History session rows (capped) */}
+                            {visible.map((session) => (
+                              <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
+                                <HistorySessionRow
+                                  session={session}
+                                  isSelected={selectedSessionId === session.id}
+                                  onSelect={() => {
+                                    selectSession(session.id)
+                                    openViewer()
+                                    onSessionSelect?.(session.id, session.workDir ?? '')
+                                  }}
+                                />
+                              </div>
+                            ))}
+
+                            {/* "See more" / "Show less" toggle */}
+                            {hasMore && (
+                              <div
+                                data-testid="history-toggle"
+                                onClick={() => toggleExpandedHistory(project.slug)}
+                                style={{
+                                  padding: '4px 14px 8px',
+                                  fontSize: '10px',
+                                  color: 'var(--text-very-muted)',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                }}
+                                onMouseEnter={(e) => {
+                                  ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
+                                }}
+                                onMouseLeave={(e) => {
+                                  ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
+                                }}
+                              >
+                                {isShowingAll
+                                  ? 'Show less'
+                                  : `See ${historySessions.length - MAX_VISIBLE} more...`}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                     </>
                   )}
                 </div>
@@ -508,7 +560,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
           fontSize: '11px',
           flexShrink: 0,
           color:
-            session.status === 'running' || session.status === 'active'
+            session.status === 'running' || session.status === 'active' || session.status === 'needs_input'
               ? 'var(--amber)'
               : session.status === 'done'
                 ? 'var(--green)'
@@ -516,10 +568,14 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
         }}
       >
         {session.status === 'running' || session.status === 'active'
-          ? 'running'
-          : session.status === 'done'
-            ? 'done'
-            : ''}
+          ? (isJustStarted(session.startedAt) ? 'just started' : 'running')
+          : session.status === 'needs_input'
+            ? 'needs input'
+            : session.status === 'loading'
+              ? 'loading…'
+              : session.status === 'done'
+                ? 'done'
+                : ''}
       </span>
     </div>
   )

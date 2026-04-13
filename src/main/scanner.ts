@@ -13,6 +13,15 @@ import {
 } from './events-parser'
 import type { SessionState } from '../shared/types'
 
+/**
+ * Sub-agent sessions have IDs like `{parentId}_{agent-name}` (e.g.
+ * `ffc75aa008924448-0e164ec774014da7_foundation-git-ops`).
+ * Real user sessions are plain UUIDs with only hyphens.
+ */
+export function isSubSession(sessionId: string): boolean {
+  return sessionId.includes('_')
+}
+
 // Only show projects with activity in the last N days
 const RECENCY_DAYS = 14
 
@@ -39,7 +48,7 @@ export function scanSingleProject(
   if (!existsSync(sessionsDir)) return []
 
   const sessionDirs = readdirSync(sessionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
     .map((entry) => entry.name)
     .slice(-MAX_SESSIONS_PER_PROJECT)
     .reverse()
@@ -74,7 +83,9 @@ export function scanSingleProject(
         ? ((endEvent as { data: Record<string, unknown> }).data.exitCode as number)
         : undefined
 
-      // Persist to DB
+      // Persist to DB as hidden — sessions only become visible when the user
+      // explicitly launches or resumes them. This prevents the sidebar from
+      // filling with historical sessions the user never asked for.
       upsertSession({
         id: sessionId,
         projectSlug: slug,
@@ -82,6 +93,7 @@ export function scanSingleProject(
         startedAt,
         status,
         byteOffset: newByteOffset,
+        hidden: true,
       })
       finalizeSession(sessionId, {
         status,
@@ -167,7 +179,7 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     if (!existsSync(sessionsDir)) continue
 
     const allSessionNames = readdirSync(sessionsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
+      .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
       .map((entry) => entry.name)
 
     const recentNames = allSessionNames.slice(-MAX_SESSIONS_PER_PROJECT).reverse()
@@ -245,6 +257,7 @@ export async function scanSessionsAsync(
         startedAt,
         status,
         byteOffset: newByteOffset,
+        hidden: true,
       })
 
       finalizeSession(stub.id, {

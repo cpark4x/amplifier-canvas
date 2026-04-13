@@ -4,12 +4,14 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
-import { pushSessionsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, isPathAllowed } from './ipc'
+import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
+import { isSubSession } from './scanner'
+import { unhideSession } from './db'
 import { getWorkspaceState } from './workspace'
-import { tailReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
+import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
 
 // Main-process session registry — watcher pushes new sessions here
@@ -64,7 +66,7 @@ function createWindow(): BrowserWindow {
     height: WINDOW_CONFIG.height,
     minWidth: WINDOW_CONFIG.minWidth,
     minHeight: WINDOW_CONFIG.minHeight,
-    show: false,
+    show: true,   // Show immediately — no waiting for ready-to-show
     backgroundColor: '#F0EBE3',
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 12 } }
@@ -75,26 +77,15 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
-    clearTimeout(showFallback)
-  })
-
-  // Safety net: if ready-to-show never fires within 4s, show anyway.
-  // Prevents "invisible frozen app" when main-process I/O blocks the event loop.
-  const showFallback = setTimeout(() => {
-    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
-      console.warn('[window] ready-to-show did not fire within 4s — forcing show')
-      mainWindow.show()
-    }
-  }, 4000)
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalUrl(url)
     return { action: 'deny' }
   })
 
   loadRenderer(mainWindow)
+
+  // Open DevTools to diagnose renderer issues
+  
 
   return mainWindow
 }
@@ -180,11 +171,11 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(() => {
   buildAppMenu()
 
-  // Initialize database
-  initDatabase()
-
-  // Create window FIRST so it appears immediately
+  // Create and SHOW window immediately — before any sync I/O
   const mainWindow = createWindow()
+
+  // DB + IPC init — window is already visible so user sees something
+  initDatabase()
   registerIpcHandlers(mainWindow)
 
   // Register canvas:// protocol handler for secure image serving
@@ -213,13 +204,65 @@ app.whenReady().then(() => {
       // (2) Load only registered projects via getRegisteredProjects()
       const registeredProjects = getRegisteredProjects()
 
+      // (2b) Always push registered projects to renderer so they appear in the
+      // sidebar even when they have no visible sessions yet.
+      pushProjectsChanged(mainWindow, registeredProjects)
+
       // (3) If no registered projects, push empty sessions and return (first-time user)
       if (registeredProjects.length === 0) {
         pushSessionsChanged(mainWindow, [])
         return
       }
 
-      // (4) For returning users, build lightweight SessionState stubs from DB
+      // (4) Reconcile stale sessions: any session still marked 'active' from a
+      // previous app run is not actually running. Mark it 'done' so it doesn't
+      // show a misleading green "running" dot in the sidebar.
+      // Skip in test mode — test fixtures intentionally seed active sessions.
+      if (process.env.NODE_ENV !== 'test') {
+        reconcileStaleActiveSessions()
+      }
+
+      // (4b) Restore warm-return state: if the user had a session selected when
+      // they last closed the app, ensure that session is visible (hidden=0).
+      // This preserves the "exactly how you left it" experience on restart.
+      const savedState = getWorkspaceState()
+      if (savedState.selectedSessionId) {
+        setSessionHidden(savedState.selectedSessionId, 0)
+      }
+
+      // (4c) Back-fill titles for sessions that have null titles.
+      // This happens when sessions were created before the title persistence fix,
+      // or when a session ended while the app wasn't running.
+      let titlesBackfilled = 0
+      for (const project of registeredProjects) {
+        const untitled = getSessionsWithoutTitles(project.slug)
+        if (untitled.length > 0) {
+          console.log(`[startup] Back-filling titles for ${untitled.length} sessions in ${project.slug}`)
+        }
+        for (const row of untitled) {
+          const eventsPath = join(projectsDir, project.slug, 'sessions', row.id, 'events.jsonl')
+          try {
+            // Use headReadEvents (reads from byte 0) — the first prompt is near the
+            // start of the file. tailReadEvents would miss it on large sessions.
+            const events = headReadEvents(eventsPath)
+            const firstPrompt = extractFirstPrompt(events)
+            if (firstPrompt) {
+              const title = deriveSessionTitle(firstPrompt)
+              if (title) {
+                updateSessionTitle(row.id, title)
+                titlesBackfilled++
+              }
+            }
+          } catch {
+            // Skip sessions whose events.jsonl is missing or unreadable
+          }
+        }
+      }
+      if (titlesBackfilled > 0) {
+        console.log(`[startup] Back-filled ${titlesBackfilled} session titles`)
+      }
+
+      // (5) For returning users, build lightweight SessionState stubs from DB
       const sessions: SessionState[] = []
 
       for (const project of registeredProjects) {
@@ -244,8 +287,6 @@ app.whenReady().then(() => {
           })
         }
 
-        // (5) Start watchers only for registered projects
-        addProjectWatch(project.slug)
       }
 
       // Seed liveSessions map and push stubs to renderer
@@ -255,6 +296,16 @@ app.whenReady().then(() => {
       pushSessionsChanged(mainWindow, sessions)
 
       console.log(`[startup] Loaded ${registeredProjects.length} projects, ${sessions.length} sessions from DB`)
+
+      // DEFERRED: Start watchers AFTER the UI has data and can paint.
+      // chokidar's initial scan of 1000+ session dirs blocks the main thread.
+      // setTimeout(0) yields to the event loop so the renderer can render first.
+      setTimeout(() => {
+        for (const project of registeredProjects) {
+          addProjectWatch(project.slug)
+        }
+        console.log(`[startup] Watchers started for ${registeredProjects.length} projects`)
+      }, 0)
     } catch (err) {
       console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
       setAllowedDirs([projectsDir])
@@ -266,18 +317,24 @@ app.whenReady().then(() => {
   // Only projects the user explicitly adds get watched via addProjectWatch().
   initWatcher(amplifierHome, (event, data) => {
     try {
-      if (event === 'session-updated' && data.sessionId) {
+      if (event === 'session-updated' && data.sessionId && !isSubSession(data.sessionId)) {
         const eventsPath = join(amplifierHome, 'projects', data.projectSlug, 'sessions', data.sessionId, 'events.jsonl')
         const knownOffset = liveSessions.get(data.sessionId)?.byteOffset ?? 0
         const { events, newByteOffset } = tailReadEvents(eventsPath, knownOffset)
         const status = deriveSessionStatus(events)
         const recentFiles = extractFileActivity(events)
 
-        updateSessionStatus(data.sessionId, status)
-        updateByteOffset(data.sessionId, newByteOffset)
-
+        // Ensure session exists in DB. For brand-new sessions (not from scan),
+        // this INSERT creates the row. For known sessions, it updates status/offset.
+        // hidden=false because the watcher only fires for actively-used sessions.
         const sessionPath = join(projectsDir, data.projectSlug, 'sessions', data.sessionId)
-        const workDir = extractWorkDir(events, sessionPath)
+        const existingWorkDir = liveSessions.get(data.sessionId)?.workDir
+        const workDir = extractWorkDir(events, sessionPath) ?? existingWorkDir
+
+        // Widen file-access allowlist so the Viewer's file browser works
+        if (workDir) {
+          addAllowedDir(workDir)
+        }
 
         let startedAt: string
         const startEvent = events.find((e: { type: string; timestamp: string }) => e.type === 'session:start')
@@ -287,8 +344,23 @@ app.whenReady().then(() => {
           startedAt = new Date().toISOString()
         }
 
+        const existingTitle = liveSessions.get(data.sessionId)?.title
         const firstPrompt = extractFirstPrompt(events)
-        const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
+        const title = (firstPrompt ? deriveSessionTitle(firstPrompt) : undefined) ?? existingTitle
+
+        // Persist session to DB with title on every watcher update — not just finalization.
+        // COALESCE in the SQL ensures we never overwrite a good title with null.
+        upsertSession({
+          id: data.sessionId,
+          projectSlug: data.projectSlug,
+          startedBy: 'external',
+          startedAt,
+          status,
+          byteOffset: newByteOffset,
+          hidden: false,
+          title: title ?? null,
+        })
+        unhideSession(data.sessionId)
         const stats = extractSessionStats(events)
         const endEvent = events.find((e: { type: string; timestamp: string; data: Record<string, unknown> }) => e.type === 'session:end')
         const endedAt = endEvent?.timestamp

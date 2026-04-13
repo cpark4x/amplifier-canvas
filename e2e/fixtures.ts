@@ -83,7 +83,12 @@ function seedTestDatabase(): void {
     return existsSync(join(projectsDir, entry, 'sessions'))
   })
 
-  const statements: string[] = []
+  const statements: string[] = [
+    // Clear stale data so tests always start with exactly the fixture projects
+    'DELETE FROM sessions',
+    'DELETE FROM projects',
+    'DELETE FROM workspace_state',
+  ]
 
   for (const slug of projectSlugs) {
     const projPath = join(projectsDir, slug)
@@ -122,8 +127,7 @@ function seedTestDatabase(): void {
     }
   }
 
-  // Clear workspace state so tests start fresh
-  statements.push('DELETE FROM workspace_state')
+  // (workspace_state already cleared above)
 
   // Execute all statements in a single sqlite3 call
   if (statements.length > 0) {

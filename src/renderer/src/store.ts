@@ -16,6 +16,7 @@ let toastCounter = 0
 interface RegisteredProject {
   slug: string
   name: string
+  path: string
 }
 
 interface CanvasStore {
@@ -32,7 +33,8 @@ interface CanvasStore {
   // Actions
   setSessions: (sessions: SessionState[]) => void
   addSessions: (sessions: SessionState[]) => void
-  registerProject: (slug: string, name: string) => void
+  addOptimisticSession: (projectSlug: string, projectName: string) => void
+  registerProject: (slug: string, name: string, path?: string) => void
   unregisterProject: (slug: string) => void
   selectSession: (id: string | null) => void
   selectProject: (slug: string | null) => void
@@ -88,7 +90,30 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         })
       }
     }
-    set({ sessions: incoming })
+
+    // Replace optimistic placeholder sessions with real ones.
+    // Optimistic sessions have IDs like 'optimistic-{slug}-{ts}'.
+    // When real sessions arrive for the same project, remove the placeholder.
+    const optimistic = current.filter((s) => s.id.startsWith('optimistic-'))
+    let mergedSessions = [...incoming]
+    let newSelectedId = selectedId
+
+    for (const opt of optimistic) {
+      const realMatch = incoming.find(
+        (s) => s.projectSlug === opt.projectSlug && !s.id.startsWith('optimistic-')
+          && !current.some((c) => c.id === s.id) // truly new session
+      )
+      if (realMatch && selectedId === opt.id) {
+        // Transfer selection from placeholder to real session
+        newSelectedId = realMatch.id
+      }
+      // If no real match yet, keep the placeholder visible
+      if (!realMatch) {
+        mergedSessions.push(opt)
+      }
+    }
+
+    set({ sessions: mergedSessions, selectedSessionId: newSelectedId })
   },
 
   addSessions: (incoming) => {
@@ -100,10 +125,31 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     }
   },
 
-  registerProject: (slug, name) => {
+  addOptimisticSession: (projectSlug, projectName) => {
+    // Add a placeholder session immediately so it appears in the sidebar
+    // before the watcher IPC arrives. The placeholder uses a synthetic ID
+    // prefixed with 'optimistic-' so setSessions can replace it.
+    const placeholder: SessionState = {
+      id: `optimistic-${projectSlug}-${Date.now()}`,
+      projectSlug,
+      projectName,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      startedBy: 'user',
+      byteOffset: 0,
+      recentFiles: [],
+      title: 'New session',
+    }
+    set((state) => ({
+      sessions: [...state.sessions, placeholder],
+      selectedSessionId: placeholder.id,
+    }))
+  },
+
+  registerProject: (slug, name, path?) => {
     const current = get().registeredProjects
     if (!current.some((p) => p.slug === slug)) {
-      set({ registeredProjects: [...current, { slug, name }] })
+      set({ registeredProjects: [...current, { slug, name, path: path ?? '' }] })
     }
   },
 

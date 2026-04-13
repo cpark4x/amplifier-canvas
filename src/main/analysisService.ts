@@ -14,10 +14,12 @@ import {
   WRITE_OPERATIONS,
 } from './events-parser'
 import { buildSessionDigest } from './digestBuilder'
+import { buildAnalysisPrompt } from './prompts/analysis'
+import { invokeLLM } from './llm'
+import { getSettings } from './settings'
 import { getAmplifierHome } from './scanner'
 import type {
   SessionAnalysisData,
-  SessionDigest,
   AnalysisResult,
   MechanicalData,
   AnalysisStatus,
@@ -25,6 +27,8 @@ import type {
   TestStatus,
   FileChange,
   GitOperation,
+  AnalysisSection,
+  AnalysisSectionType,
 } from '../shared/analysisTypes'
 
 // --- Public API ---
@@ -63,7 +67,13 @@ export async function triggerAnalysis(sessionId: string): Promise<SessionAnalysi
     }
 
     const digest = buildSessionDigest(sessionId, row.projectSlug, events)
-    const analysisResult = generateMockAnalysis(digest)
+    const prompt = buildAnalysisPrompt(digest)
+    const settings = getSettings()
+    const raw = await invokeLLM(prompt, {
+      model: settings.analysisModel,
+      provider: settings.analysisProvider ?? undefined,
+    })
+    const analysisResult = parseAnalysisResponse(raw)
 
     saveAnalysisResult(sessionId, {
       analysis_json: JSON.stringify(analysisResult),
@@ -134,75 +144,66 @@ function parseJSON<T>(json: string | null | undefined): T | null {
   }
 }
 
-function generateMockAnalysis(digest: SessionDigest): AnalysisResult {
-  const sections: AnalysisResult['sections'] = []
+const VALID_SECTION_TYPES = new Set<AnalysisSectionType>([
+  'summary',
+  'changes',
+  'key-moments',
+  'next-steps',
+  'decisions',
+  'action-items',
+  'open-questions',
+])
 
-  // Always include summary section
-  const promptTexts = digest.prompts.map((p) => p.text).join(', ')
-  const summaryText =
-    digest.prompts.length > 0
-      ? `Session focused on: ${promptTexts.slice(0, 200)}${promptTexts.length > 200 ? '...' : ''}`
-      : 'Session completed with no recorded prompts.'
-
-  sections.push({
-    type: 'summary',
-    title: 'Summary',
-    content: { text: summaryText },
-  })
-
-  // Include changes section if files were modified
-  if (digest.filesChanged.length > 0) {
-    const prUrl = digest.gitOperations.find((op) => op.type === 'pr-create')?.prUrl
-    sections.push({
-      type: 'changes',
-      title: 'Changes',
-      content: {
-        files: digest.filesChanged.map((f) => ({
-          path: f.path,
-          changeType: f.changeType,
-        })),
-        ...(prUrl ? { prUrl } : {}),
-      },
-    })
+export function parseAnalysisResponse(raw: string): AnalysisResult {
+  // Strip markdown code fences if present
+  let text = raw
+  if (text.startsWith('```')) {
+    const lines = text.split('\n')
+    text = lines.slice(1, lines.length - 1).join('\n')
   }
 
-  // Include key-moments if errors or test results present
-  if (digest.errors.length > 0 || digest.testResults !== null) {
-    const moments: Array<{ timestamp: string; description: string }> = []
-
-    if (digest.testResults !== null) {
-      const ts = digest.testResults
-      moments.push({
-        timestamp: digest.duration.endedAt,
-        description: `Tests: ${ts.passed} passed, ${ts.failed} failed`,
-      })
-    }
-
-    for (const error of digest.errors.slice(0, 3)) {
-      moments.push({
-        timestamp: error.timestamp,
-        description: `Error: ${error.message.slice(0, 100)}`,
-      })
-    }
-
-    sections.push({
-      type: 'key-moments',
-      title: 'Key Moments',
-      content: { moments },
-    })
+  // Parse JSON
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error(`LLM response is not valid JSON: ${raw.slice(0, 200)}`)
   }
 
-  // Always include next-steps
-  sections.push({
-    type: 'next-steps',
-    title: 'Next Steps',
-    content: {
-      items: [
-        'Review the changes made in this session',
-        'Run the full test suite to verify nothing is broken',
-      ],
-    },
-  })
+  // Validate top-level structure
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !Array.isArray((parsed as Record<string, unknown>)['sections'])
+  ) {
+    throw new Error('LLM response missing "sections" array')
+  }
 
-  return { sections }
+  const sections = (parsed as Record<string, unknown>)['sections'] as unknown[]
+
+  // Validate each section
+  for (const section of sections) {
+    const s = section as Record<string, unknown>
+
+    if (typeof s['type'] !== 'string') {
+      throw new Error('Section missing "type" field')
+    }
+
+    const type = s['type']
+    if (!VALID_SECTION_TYPES.has(type as AnalysisSectionType)) {
+      throw new Error(`Invalid section type: "${type}"`)
+    }
+
+    if (typeof s['title'] !== 'string') {
+      throw new Error(`Section "${type}" missing "title" field`)
+    }
+
+    if (s['content'] === null || s['content'] === undefined) {
+      throw new Error(`Section "${type}" missing "content" field`)
+    }
+  }
+
+  const validatedSections = sections as AnalysisSection[]
+  return { sections: validatedSections }
 }
+

@@ -145,20 +145,41 @@ export function upsertSession(session: {
   startedAt: string
   status: string
   byteOffset: number
+  hidden?: boolean
+  title?: string | null
 }): void {
   const d = getDatabase()
+  const hidden = session.hidden ? 1 : 0
   d.prepare(`
-    INSERT INTO sessions (id, projectSlug, startedBy, startedAt, status, byteOffset)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, projectSlug, startedBy, startedAt, status, byteOffset, hidden, title)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       status = excluded.status,
-      byteOffset = excluded.byteOffset
-  `).run(session.id, session.projectSlug, session.startedBy, session.startedAt, session.status, session.byteOffset)
+      byteOffset = excluded.byteOffset,
+      title = COALESCE(excluded.title, sessions.title)
+  `).run(session.id, session.projectSlug, session.startedBy, session.startedAt, session.status, session.byteOffset, hidden, session.title ?? null)
+}
+
+export function unhideSession(id: string): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET hidden = 0 WHERE id = ?').run(id)
 }
 
 export function updateSessionStatus(id: string, status: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET status = ? WHERE id = ?').run(status, id)
+}
+
+export function updateSessionTitle(id: string, title: string): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET title = ? WHERE id = ?').run(title, id)
+}
+
+export function getSessionsWithoutTitles(projectSlug: string): Array<{ id: string; byteOffset: number }> {
+  const d = getDatabase()
+  return d.prepare(
+    'SELECT id, byteOffset FROM sessions WHERE projectSlug = ? AND title IS NULL'
+  ).all(projectSlug) as Array<{ id: string; byteOffset: number }>
 }
 
 export function updateByteOffset(id: string, offset: number): void {
@@ -325,4 +346,18 @@ export function getRegisteredProjectCount(): number {
   const d = getDatabase()
   const row = d.prepare('SELECT COUNT(*) as count FROM projects WHERE registered = 1').get() as { count: number }
   return row.count
+}
+
+/**
+ * On app startup, mark all 'active'/'running' sessions as 'done'.
+ * No PTY survives an app restart, so any session still marked active is stale.
+ */
+export function reconcileStaleActiveSessions(): void {
+  const d = getDatabase()
+  const result = d.prepare(
+    "UPDATE sessions SET status = 'done' WHERE status IN ('active', 'running')"
+  ).run()
+  if (result.changes > 0) {
+    console.log(`[db] Reconciled ${result.changes} stale active sessions → done`)
+  }
 }
