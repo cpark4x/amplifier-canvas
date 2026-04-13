@@ -409,7 +409,7 @@ function App(): React.ReactElement {
           onClose={() => setShowModal(false)}
           onCreateNew={(projectName) => {
             const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-            const amplifierHome = process.env['AMPLIFIER_HOME'] || `${process.env['HOME'] || '~'}/.amplifier`
+            const amplifierHome = (typeof process !== 'undefined' ? process.env['AMPLIFIER_HOME'] : undefined) || `${(typeof process !== 'undefined' ? process.env['HOME'] : undefined) || '~'}/.amplifier`
             const projPath = `${amplifierHome}/projects/${slug}`
             const ptyId = `terminal-${slug}`
 
