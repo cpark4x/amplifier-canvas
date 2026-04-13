@@ -3,6 +3,7 @@ import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
 import AddProjectModal from './components/AddProjectModal'
+import SettingsModal from './components/SettingsModal'
 import { ToastContainer } from './components/Toast'
 import { useCanvasStore } from './store'
 
@@ -69,6 +70,7 @@ function App(): React.ReactElement {
   const getSelectedSession = useCanvasStore((s) => s.getSelectedSession)
 
   const [showModal, setShowModal] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   // The terminal PTY session ID — either an Amplifier session ID (resume) or a
   // synthetic ID like 'terminal-<slug>' (new session, before Amplifier assigns one)
@@ -209,11 +211,11 @@ function App(): React.ReactElement {
             </svg>
           </button>
 
-          {/* Settings (placeholder) */}
+          {/* Settings */}
           <button
             data-testid="header-btn-settings"
             title="Settings"
-            onClick={() => undefined}
+            onClick={() => setSettingsOpen(true)}
             style={HEADER_BTN_STYLE}
             onMouseEnter={(e) => { ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.06)' }}
             onMouseLeave={(e) => { ;(e.currentTarget as HTMLButtonElement).style.background = 'none' }}
@@ -456,6 +458,7 @@ function App(): React.ReactElement {
           }}
         />
       )}
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ToastContainer />
     </div>
   )
