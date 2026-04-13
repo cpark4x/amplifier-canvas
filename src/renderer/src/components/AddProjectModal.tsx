@@ -38,6 +38,11 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
   // Discover projects when "Existing" tab is first opened
   useEffect(() => {
     if (activeTab === 'existing' && discovered.length === 0 && !loading) {
+      if (!window.electronAPI?.discoverProjects) {
+        // No Electron IPC bridge (browser dev mode) — graceful fallback
+        setDiscovered([])
+        return
+      }
       setLoading(true)
       window.electronAPI
         .discoverProjects('')
