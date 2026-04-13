@@ -283,6 +283,18 @@ function App(): React.ReactElement {
               alignItems: 'center',
               textAlign: 'center',
             }}>
+              {/* Logo mark — two offset squares */}
+              <svg
+                width="80"
+                height="80"
+                viewBox="0 0 512 512"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ marginBottom: 20 }}
+              >
+                <rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" strokeWidth="18" fill="none"/>
+                <rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" strokeWidth="18" fill="none"/>
+              </svg>
               <div style={{
                 fontSize: '28px',
                 fontWeight: 700,
@@ -404,7 +416,7 @@ function App(): React.ReactElement {
             window.electronAPI.registerProject(slug, path, projectName).then(() => {
               useCanvasStore.getState().registerProject(slug, projectName, path)
               useCanvasStore.getState().selectProject(slug)
-              useCanvasStore.getState().toggleProjectExpanded(slug)
+              useCanvasStore.getState().setExpandedProjectSlugs([slug])
               // Show optimistic placeholder in sidebar immediately
               useCanvasStore.getState().addOptimisticSession(slug, projectName)
               setShowModal(false)
@@ -421,14 +433,14 @@ function App(): React.ReactElement {
           onAddExisting={(project) => {
             useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
-            useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            useCanvasStore.getState().setExpandedProjectSlugs([project.slug])
             setShowModal(false)
           }}
           onNewSessionInProject={(project) => {
             const ptyId = `terminal-${project.slug}-${Date.now()}`
             useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
-            useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            useCanvasStore.getState().setExpandedProjectSlugs([project.slug])
             // Show optimistic placeholder in sidebar immediately
             useCanvasStore.getState().addOptimisticSession(project.slug, project.name)
             setShowModal(false)
@@ -445,7 +457,7 @@ function App(): React.ReactElement {
             useCanvasStore.getState().registerProject(project.slug, project.name, project.path)
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().selectSession(sessionId)
-            useCanvasStore.getState().toggleProjectExpanded(project.slug)
+            useCanvasStore.getState().setExpandedProjectSlugs([project.slug])
             setShowModal(false)
             setTerminalSessionId(sessionId)
             setShowTerminal(true)

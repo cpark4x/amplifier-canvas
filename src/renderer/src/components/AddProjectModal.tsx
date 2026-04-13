@@ -122,9 +122,16 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-            Add Project
-          </span>
+          <div>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {step === 'choose-action' && confirmedProject ? confirmedProject.name : 'Add Project'}
+            </span>
+            {step === 'choose-action' && confirmedProject && (
+              <div style={{ fontSize: 11, color: 'var(--text-very-muted)', marginTop: 2 }}>
+                {confirmedProject.path}
+              </div>
+            )}
+          </div>
           <button
             data-testid="modal-close"
             onClick={onClose}
@@ -197,42 +204,86 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
         <div style={{ marginTop: 16 }}>
 
           {/* === NEW TAB === */}
-          {step === 'browse' && activeTab === 'new' && (
+          {step === 'browse' && activeTab === 'new' && (() => {
+            const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+            const derivedPath = slug ? `~/Projects/${slug}` : ''
+            return (
             <>
-              <input
-                data-testid="project-name-input"
-                type="text"
-                placeholder="Project name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid var(--border)',
-                  background: '#F5F2EC',
-                  borderRadius: 3,
-                  fontSize: 13,
-                  fontFamily: 'var(--font-ui)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 11,
-                  color: 'var(--text-very-muted)',
-                  marginTop: 6,
-                }}
-              >
-                Creates a new Amplifier project
+              {/* Project Name */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Project Name
+                </label>
+                <input
+                  data-testid="project-name-input"
+                  type="text"
+                  placeholder="canvas-app"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid var(--border)',
+                    background: '#F5F2EC',
+                    borderRadius: 3,
+                    fontSize: 13,
+                    fontFamily: 'var(--font-ui)',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Location — derived from project name, disabled */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Location
+                </label>
+                <input
+                  data-testid="project-location"
+                  type="text"
+                  value={derivedPath}
+                  disabled
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid var(--border)',
+                    background: '#EDEAE4',
+                    borderRadius: 3,
+                    fontSize: 13,
+                    fontFamily: 'var(--font-ui)',
+                    color: 'var(--text-very-muted)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Bundle — radio buttons */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Bundle
+                </label>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-primary)' }} />
+                    </div>
+                    <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>foundation</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', opacity: 0.5 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                    <span style={{ fontSize: 13, color: 'var(--text-very-muted)' }}>custom</span>
+                  </label>
+                </div>
               </div>
 
               {/* Footer */}
               <div
                 style={{
-                  marginTop: 20,
+                  marginTop: 16,
                   display: 'flex',
                   justifyContent: 'flex-end',
                   gap: 12,
@@ -273,11 +324,12 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                     opacity: name.trim() ? 1 : 0.5,
                   }}
                 >
-                  Create Project
+                  Create Project {'\u2192'}
                 </button>
               </div>
             </>
-          )}
+            )
+          })()}
 
           {/* === EXISTING TAB — Browse step === */}
           {step === 'browse' && activeTab === 'existing' && (
@@ -438,31 +490,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
           {/* === CHOOSE ACTION STEP === */}
           {step === 'choose-action' && confirmedProject && (
             <>
-              {/* Selected project banner */}
-              <div
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 4,
-                  backgroundColor: 'rgba(0,0,0,0.04)',
-                  border: '1px solid var(--border)',
-                  marginBottom: 16,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {confirmedProject.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-very-muted)', marginTop: 2 }}>
-                    {confirmedProject.path}
-                  </div>
-                </div>
-                <span style={{ color: 'var(--amber)', fontSize: 14 }}>{'\u2713'}</span>
-              </div>
-
-              {/* New session option */}
+              {/* Start new session — always first, always prominent */}
               <div
                 data-testid="action-new-session"
                 onClick={() => onNewSessionInProject(confirmedProject)}
@@ -475,13 +503,13 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
               >
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    New session
+                    Start new session
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-very-muted)', marginTop: 2 }}>
-                    Start a fresh Amplifier session
+                    Fresh Amplifier session in this project
                   </div>
                 </div>
-                <span style={{ color: 'var(--amber)', fontSize: 12 }}>{'\u2192'}</span>
+                <span style={{ color: 'var(--amber)', fontSize: 14 }}>{'\u2192'}</span>
               </div>
 
               {/* Resume section — only if sessions exist */}
@@ -491,12 +519,15 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                     style={{
                       fontSize: 10,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
+                      letterSpacing: '0.08em',
+                      fontWeight: 600,
                       color: 'var(--text-very-muted)',
                       padding: '14px 0 6px',
+                      borderTop: '1px solid var(--border)',
+                      marginTop: 4,
                     }}
                   >
-                    Resume
+                    Or resume
                   </div>
                   {projectSessions
                     .filter((s) => s.status === 'done' || s.status === 'stopped' || s.status === 'failed')
@@ -540,7 +571,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                 </>
               )}
 
-              {/* Footer — just Cancel */}
+              {/* Footer — Cancel only (clicking a row IS the action) */}
               <div
                 style={{
                   marginTop: 16,
@@ -551,11 +582,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                 }}
               >
                 <button
-                  onClick={() => {
-                    setStep('browse')
-                    setConfirmedProject(null)
-                    setProjectSessions([])
-                  }}
+                  onClick={onClose}
                   style={{
                     fontSize: 13,
                     color: 'var(--text-muted)',
@@ -565,7 +592,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                     fontFamily: 'var(--font-ui)',
                   }}
                 >
-                  {'\u2190'} Back
+                  Cancel
                 </button>
               </div>
             </>
