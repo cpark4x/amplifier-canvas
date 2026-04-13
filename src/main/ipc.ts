@@ -238,9 +238,15 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       { slug, path: projPath, name }: { slug: string; path: string; name: string },
     ): Promise<{ success: boolean; sessions?: SessionState[]; error?: string }> => {
       try {
-        // (1) Create project directory if it doesn't exist (new projects)
+        // (1) Create project directory and sessions/ subdirectory if they don't exist.
+        // Creating sessions/ here ensures addProjectWatch() can set up the chokidar watcher
+        // immediately, so Amplifier-created sessions show up in the sidebar without a restart.
         if (!existsSync(projPath)) {
           mkdirSync(projPath, { recursive: true })
+        }
+        const sessionsDir = join(projPath, 'sessions')
+        if (!existsSync(sessionsDir)) {
+          mkdirSync(sessionsDir, { recursive: true })
         }
 
         // (2) Register in DB
@@ -251,7 +257,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const amplifierHome = getAmplifierHome()
         const sessions = scanSingleProject(amplifierHome, slug, name)
 
-        // (3) Start watching this project for live updates
+        // (4) Start watching this project for live updates.
+        // The sessions/ dir now exists so addProjectWatch() won't bail early.
         addProjectWatch(slug)
 
         // (4) Return sessions to the renderer — it will merge into its store

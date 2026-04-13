@@ -410,25 +410,35 @@ function App(): React.ReactElement {
           onCreateNew={(projectName) => {
             const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
             const amplifierHome = process.env['AMPLIFIER_HOME'] || `${process.env['HOME'] || '~'}/.amplifier`
-            const path = `${amplifierHome}/projects/${slug}`
+            const projPath = `${amplifierHome}/projects/${slug}`
             const ptyId = `terminal-${slug}`
 
-            window.electronAPI.registerProject(slug, path, projectName).then(() => {
-              useCanvasStore.getState().registerProject(slug, projectName, path)
-              useCanvasStore.getState().selectProject(slug)
-              useCanvasStore.getState().setExpandedProjectSlugs([slug])
-              // Show optimistic placeholder in sidebar immediately
-              useCanvasStore.getState().addOptimisticSession(slug, projectName)
-              setShowModal(false)
-              setTerminalSessionId(ptyId)
-              setShowTerminal(true)
+            window.electronAPI.registerProject(slug, projPath, projectName)
+              .then((result) => {
+                if (!result.success) {
+                  console.error('[App] registerProject failed:', result.error)
+                  return
+                }
+                useCanvasStore.getState().registerProject(slug, projectName, projPath)
+                useCanvasStore.getState().selectProject(slug)
+                useCanvasStore.getState().setExpandedProjectSlugs([slug])
+                // Show optimistic placeholder in sidebar immediately
+                useCanvasStore.getState().addOptimisticSession(slug, projectName)
+                setShowModal(false)
+                setTerminalSessionId(ptyId)
+                setShowTerminal(true)
 
-              window.electronAPI.spawnPty(ptyId, 80, 24, path).then(() => {
-                setTimeout(() => {
-                  window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
-                }, 200)
+                window.electronAPI.spawnPty(ptyId, 80, 24, projPath).then(() => {
+                  setTimeout(() => {
+                    window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                  }, 200)
+                }).catch((err: unknown) => {
+                  console.error('[App] spawnPty failed:', err)
+                })
               })
-            })
+              .catch((err: unknown) => {
+                console.error('[App] registerProject IPC error:', err)
+              })
           }}
           onAddExisting={(project) => {
             useCanvasStore.getState().registerProject(project.slug, project.name, project.path)

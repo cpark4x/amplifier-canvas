@@ -135,7 +135,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       projectName,
       status: 'active',
       startedAt: new Date().toISOString(),
-      startedBy: 'user',
+      startedBy: 'canvas',
       byteOffset: 0,
       recentFiles: [],
       title: 'New session',

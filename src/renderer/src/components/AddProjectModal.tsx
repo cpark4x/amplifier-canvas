@@ -211,7 +211,8 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
           {/* === NEW TAB === */}
           {step === 'browse' && activeTab === 'new' && (() => {
             const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-            const derivedPath = slug ? `~/Projects/${slug}` : ''
+            const amplifierHome = process.env['AMPLIFIER_HOME'] || '~/.amplifier'
+            const derivedPath = slug ? `${amplifierHome}/projects/${slug}` : ''
             return (
             <>
               {/* Project Name */}

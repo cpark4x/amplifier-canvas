@@ -131,8 +131,9 @@ const api = {
   },
 
   // Workspace: register a project (add to Canvas)
-  // Returns sessions loaded from disk for the newly registered project
-  registerProject: (slug: string, path: string, name: string): Promise<{ success: boolean; sessions?: SessionState[] }> => {
+  // Returns sessions loaded from disk for the newly registered project.
+  // On failure, success=false and error contains the reason.
+  registerProject: (slug: string, path: string, name: string): Promise<{ success: boolean; sessions?: SessionState[]; error?: string }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_REGISTER, { slug, path, name })
   },
 
