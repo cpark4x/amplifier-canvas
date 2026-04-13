@@ -70,6 +70,85 @@ body {
   color: var(--text-muted);
   margin-top: 4px;
 }
+.act-header-story {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-right);
+  border-left: 3px solid var(--amber);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.act-header-story strong {
+  font-weight: 600;
+}
+.act-header-story p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+/* ============================================================
+   SCREEN SPEC CARDS
+   ============================================================ */
+.screen-spec {
+  max-width: 1440px;
+  margin: -4px auto 12px;
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+.spec-section {
+  margin-bottom: 10px;
+}
+.spec-section:last-child {
+  margin-bottom: 0;
+}
+.spec-done {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.spec-heading {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--text-very-muted);
+  margin-bottom: 4px;
+}
+.spec-section p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.spec-done ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 24px;
+}
+.spec-done li {
+  padding: 2px 0 2px 18px;
+  position: relative;
+  break-inside: avoid;
+  color: var(--text-muted);
+}
+.spec-done li::before {
+  content: '\25A1';
+  position: absolute;
+  left: 0;
+  color: var(--text-very-muted);
+  font-size: 11px;
+}
 
 /* ============================================================
    SCREEN WRAPPER + LABEL
@@ -327,6 +406,89 @@ body {
   cursor: pointer;
 }
 .new-session-link:hover { color: var(--text-muted); }
+
+/* Project row: label + inline [+] for new session */
+.project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 4px;
+}
+.project-row .project-label { padding: 0; }
+.project-add-session-btn {
+  font-size: 14px;
+  color: var(--text-very-muted);
+  background: none;
+  border: none;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+.project-add-session-btn:hover { color: var(--amber); }
+
+/* Collapsed project row (multi-project view) */
+/* Expanded project group — wraps the project row + its sessions */
+.project-group-expanded {
+  background: rgba(0,0,0,0.025);
+  border-radius: 4px;
+  margin: 0 6px 6px;
+  padding: 4px 0;
+}
+.project-group-expanded .project-row { padding: 8px 8px 4px; }
+.project-group-expanded .session-row-new { padding: 4px 8px 4px 28px; }
+/* Left accent line on sessions to show parent-child */
+.project-group-expanded .session-row-new {
+  border-left: 2px solid var(--border);
+  margin-left: 14px;
+  padding-left: 14px;
+}
+.project-chevron {
+  font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-right: 4px;
+}
+.project-chevron-muted {
+  font-size: 10px; color: var(--text-very-muted); flex-shrink: 0; margin-right: 4px;
+}
+/* Collapsed project row */
+.project-row-collapsed {
+  display: flex;
+  align-items: center;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  gap: 6px;
+}
+.project-row-collapsed:hover { background: rgba(0,0,0,0.03); }
+.project-label-muted {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+.project-meta-muted {
+  font-size: 10px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+
+/* Bottom-of-sidebar "Add project" button */
+.sidebar-add-project {
+  margin-top: auto;
+  padding: 8px 14px;
+  margin: auto 10px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.sidebar-add-project:hover {
+  background: rgba(0,0,0,0.04);
+  color: var(--text-primary);
+}
 .session-resume-arrow {
   color: var(--amber);
   font-size: 12px;
@@ -1310,6 +1472,10 @@ body {
 <div class="act-header">
   <div class="act-header-label">Act 1 &mdash; Getting Started</div>
   <div class="act-header-subtitle">Seven screens: first launch through returning user.</div>
+  <div class="act-header-story">
+    <strong>Job to be done:</strong> Get from zero to a running Amplifier session inside Canvas with the minimum possible friction.
+    <p>You&rsquo;ve heard about Canvas. Maybe you&rsquo;re skeptical &mdash; you already use Amplifier from the terminal and it works fine. You download it, open it. The window appears. It&rsquo;s warm, quiet, mostly empty. There&rsquo;s nothing to learn because there&rsquo;s almost nothing on screen. The only question is: do you create a project? The whole act takes under a minute. By the end, Amplifier is running and you haven&rsquo;t left Canvas.</p>
+  </div>
 </div>
 
 
@@ -1318,9 +1484,35 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 1</span>
-    <span class="screen-label-title">Welcome: First Launch</span>
-    <span class="screen-label-desc">You just installed Canvas. The app opens with an empty sidebar and a welcome message.</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 1 &mdash; Scene 1.1</span>
+    <span class="screen-label-title">Welcome</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You open Canvas for the first time. The window is clean &mdash; a narrow sidebar on the left shows &ldquo;No projects yet&rdquo; with an &ldquo;Add project&rdquo; button at the bottom. The main area is warm off-white with a centered message: &ldquo;Welcome to Canvas &mdash; Your workspace for Amplifier sessions, files, and previews.&rdquo; One button: &ldquo;Create your first project &rarr;.&rdquo;</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Canvas&rsquo;s personality is established before anything functional happens. Warm, not cold. Inviting, not overwhelming. The sidebar is visible but empty &mdash; foreshadowing the structure that fills in later. The single call-to-action means zero decision paralysis.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Sidebar is empty: &ldquo;No projects yet&rdquo; centered in the sidebar area</li>
+        <li>Bottom of sidebar: &ldquo;Add project&rdquo; button pinned to bottom &mdash; bordered pill, centered text, muted color</li>
+        <li>NO &ldquo;PROJECTS&rdquo; header anywhere in the sidebar</li>
+        <li>NO &ldquo;+&rdquo; button at top of sidebar &mdash; there are no projects yet, so no project row, so no [+]</li>
+        <li>NO session rows, NO history section, NO &ldquo;HISTORY&rdquo; label</li>
+        <li>The &ldquo;Add project&rdquo; button and &ldquo;Create your first project &rarr;&rdquo; both open the same modal (Step 2a)</li>
+        <li>Main area: centered vertically and horizontally, not left-aligned or top-aligned</li>
+        <li>Logo mark (two offset squares) centered above the welcome text</li>
+        <li>Title reads &ldquo;Welcome to Canvas&rdquo;</li>
+        <li>Subtitle reads &ldquo;Your workspace for Amplifier sessions, files, and previews.&rdquo;</li>
+        <li>ONE button: &ldquo;Create your first project &rarr;&rdquo; &mdash; nothing else</li>
+        <li>Nothing else on screen &mdash; no settings, no getting-started wizard, no tutorial, no onboarding steps</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1342,19 +1534,16 @@ body {
 
       <!-- Sidebar — empty -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
         <div class="sidebar-empty">No projects yet</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
       <!-- Welcome main -->
       <div class="welcome-main">
         <div class="welcome-content">
           <svg width="80" height="80" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
-          <div class="welcome-title">Amplifier Canvas</div>
-          <div class="welcome-subtitle">Your projects, your sessions, your code &mdash; all in one place.</div>
+          <div class="welcome-title">Welcome to Canvas</div>
+          <div class="welcome-subtitle">Your workspace for Amplifier sessions, files, and previews.</div>
           <button class="welcome-btn">
             Create your first project <span class="btn-arrow">&rarr;</span>
           </button>
@@ -1371,9 +1560,33 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 2a</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 2a &mdash; Scene 1.3</span>
     <span class="screen-label-title">New Project: Modal</span>
-    <span class="screen-label-desc">Add Project modal &mdash; New tab. Name your project and pick a folder.</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You click &ldquo;Add project&rdquo; at the bottom of the sidebar (or &ldquo;Create your first project&rdquo; from the welcome screen). A modal appears over a subtle overlay. &ldquo;Add Project&rdquo; at the top. Two tabs: New and Existing. On the New tab: project name, location, and bundle choice. Footer: Cancel and &ldquo;Create Project &rarr;.&rdquo;</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>This is the only configuration moment in the entire onboarding. The choices are few and obvious. The modal is small, centered, and feels like a quick aside &mdash; not a commitment. The &ldquo;Existing&rdquo; tab signals Canvas respects your existing workflow.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Modal overlay dims the background &mdash; everything behind the overlay is non-interactive (sidebar, header buttons, terminal &mdash; all inert while the modal is open)</li>
+        <li>Modal title: &ldquo;Add Project&rdquo; &mdash; this title is correct HERE (it changes to the project name in Step 3b only)</li>
+        <li>Two tabs: &ldquo;New&rdquo; (active) and &ldquo;Existing&rdquo;</li>
+        <li>Fields: Project Name (text input) and Location (path, disabled/derived from project name)</li>
+        <li>Bundle choice: foundation (selected) / custom &mdash; radio buttons, not a dropdown</li>
+        <li>Footer: Cancel button + &ldquo;Create Project &rarr;&rdquo; button</li>
+        <li>Sidebar still shows &ldquo;No projects yet&rdquo; behind the overlay &mdash; NOT updated yet</li>
+        <li>NO project discovery list on this tab &mdash; that is the Existing tab (Step 3a)</li>
+        <li>NO extra fields, NO advanced options, NO &ldquo;configure bundle&rdquo; section &mdash; three fields only</li>
+        <li>Close button (&times;) in top-right corner dismisses the modal</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1395,11 +1608,8 @@ body {
 
       <!-- Sidebar — empty -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
         <div class="sidebar-empty">No projects yet</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
       <!-- Main with modal overlay -->
@@ -1462,9 +1672,35 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 2b</span>
-    <span class="screen-label-title">New Project: Session Launched</span>
-    <span class="screen-label-desc">Project created. Terminal is running your first Amplifier session.</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 2b &mdash; Scene 1.4</span>
+    <span class="screen-label-title">Session Started</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You hit create. The sidebar immediately shows your project name as a label (&ldquo;CANVAS-APP&rdquo;) with one session below it: amber dot, bold text, &ldquo;just started&rdquo; in amber. The main area is a full-width terminal. The Amplifier CLI banner appears. A blinking cursor waits for your first prompt.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Three things happened simultaneously: the project exists, a session is running, and the terminal is live. No intermediate screens, no &ldquo;setting up your workspace&rdquo; spinner. The session-first sidebar design is already visible &mdash; the project name is a label, not a destination. The session is the primary object.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Sidebar: project name &ldquo;CANVAS-APP&rdquo; as uppercase label with [+] button on the right (means &ldquo;new session&rdquo;)</li>
+        <li>NO &ldquo;PROJECTS&rdquo; header anywhere in the sidebar</li>
+        <li>NO &ldquo;+ New session&rdquo; text link &mdash; the [+] on the project row IS the new session action</li>
+        <li>Exactly ONE session row: amber dot, bold name &ldquo;main&rdquo;, badge &ldquo;just started&rdquo; in amber</li>
+        <li>&ldquo;Just started&rdquo; appears because the session was created moments ago. It transitions to &ldquo;active&rdquo; (green) once Amplifier finishes loading and is waiting for input.</li>
+        <li>NO other sessions &mdash; no history list, no completed sessions, no &ldquo;Initial setup&rdquo;, no &ldquo;HISTORY&rdquo; label</li>
+        <li>Bottom of sidebar: &ldquo;Add project&rdquo; button pinned to bottom &mdash; bordered pill, visually distinct from session [+]</li>
+        <li>Main area: full-width terminal, NO right panel, NO split view &mdash; two-pane layout (sidebar + terminal)</li>
+        <li>Terminal shows: prompt, &ldquo;amplifier run&rdquo;, bundle message, Amplifier startup banner with session ID</li>
+        <li>The startup banner (block characters + AMPLIFIER text) appears ONLY for new sessions &mdash; NOT for resumed sessions (see Step 3c)</li>
+        <li>Blinking cursor at prompt &mdash; ready for first input</li>
+        <li>Pane title: &ldquo;main &middot; canvas-app&rdquo; &mdash; session name first, project second</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1486,22 +1722,21 @@ body {
 
       <!-- Sidebar — project listed, session running -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-row">
+          <div class="project-label">CANVAS-APP</div>
+          <button class="project-add-session-btn" title="New session">+</button>
         </div>
-        <div class="project-label">CANVAS-APP</div>
-        <div class="new-session-link">+ New session</div>
         <div class="session-row-new active">
           <div class="session-dot amber"></div>
-          <span class="session-name bold">Initial setup</span>
-          <span class="session-age amber">running</span>
+          <span class="session-name bold">main</span>
+          <span class="session-age amber">just started</span>
         </div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
       <!-- Terminal zone -->
       <div class="terminal-zone">
-        <div class="pane-title">amplifier &middot; canvas-app</div>
+        <div class="pane-title">main &middot; canvas-app</div>
         <div class="terminal-area">
           <span class="t-prompt"><span class="t-path">~/Projects/canvas-app</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
           <span class="t"> amplifier run</span>
@@ -1529,9 +1764,33 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 3a</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 3a &mdash; Scene 1.3 (Existing tab)</span>
     <span class="screen-label-title">Existing Project: Browse</span>
-    <span class="screen-label-desc">Add Project modal &mdash; Existing tab. Browse discovered projects on your machine.</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>Instead of creating a new project, you click the &ldquo;Existing&rdquo; tab. Canvas has already discovered projects on your machine that have Amplifier sessions. A search bar at top, a scrollable list of discovered projects below &mdash; each showing name, session count, last-active timestamp, and path.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Canvas doesn&rsquo;t force you to start fresh. If you&rsquo;ve been using Amplifier from the terminal, your history is already here. The discovery mechanism signals trust: &ldquo;We know you have a workflow. We&rsquo;ll join it, not replace it.&rdquo;</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Same modal shell as Step 2a &mdash; overlay dims background, everything behind is non-interactive</li>
+        <li>Modal title: &ldquo;Add Project&rdquo; &mdash; same as Step 2a (title changes to project name only in Step 3b)</li>
+        <li>Two tabs: &ldquo;New&rdquo; and &ldquo;Existing&rdquo; (active)</li>
+        <li>Search input with placeholder &ldquo;Search projects&hellip;&rdquo;</li>
+        <li>Scrollable list of discovered projects, <strong>sorted by most recently active first</strong></li>
+        <li>Each project row: name, session count, last-active time, file path</li>
+        <li>Sort order is visually obvious: top project has the most recent timestamp, bottom has the oldest</li>
+        <li>One project is selected (highlighted with checkmark)</li>
+        <li>Footer: Cancel + &ldquo;Add Project &rarr;&rdquo;</li>
+        <li>Sidebar still shows &ldquo;No projects yet&rdquo; behind overlay</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1553,11 +1812,8 @@ body {
 
       <!-- Sidebar — empty -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
         <div class="sidebar-empty">No projects yet</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
       <!-- Main with modal overlay -->
@@ -1654,9 +1910,34 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 3b</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 3b &mdash; Scene 1.3 (Choose action)</span>
     <span class="screen-label-title">Existing Project: Choose Action</span>
-    <span class="screen-label-desc">User selected Amplifier Canvas &mdash; now choose: start fresh or resume a past session.</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You selected amplifier-canvas from the list. The modal title changes to the project name with its path. The tabs disappear &mdash; you&rsquo;re no longer choosing a project, you&rsquo;re choosing what to do. Two clear options: start a new session (top, prominent) or resume one of the existing sessions listed below.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>&ldquo;Start new session&rdquo; is always the top option &mdash; starting fresh is the default action, not buried under history. Resume sessions are a convenience, not the primary path. This screen answers one question: &ldquo;Do you want to pick up where you left off, or start clean?&rdquo;</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Modal title: project name (e.g. &ldquo;amplifier-canvas&rdquo;) &mdash; NOT &ldquo;Add Project&rdquo;</li>
+        <li>Project path shown below the title (e.g. ~/Projects/amplifier-canvas)</li>
+        <li>NO tabs &mdash; project selection is done, this screen is about the session choice</li>
+        <li>NO project banner row with checkmark &mdash; the title IS the project context</li>
+        <li>&ldquo;Start new session&rdquo; row with arrow &mdash; always first, always prominent</li>
+        <li>&ldquo;Resume&rdquo; section label below with a separator line</li>
+        <li>Past sessions listed: name + time ago + arrow, <strong>sorted most recent first</strong></li>
+        <li>Most recent session has full-color text, older sessions are muted</li>
+        <li>&ldquo;See more&hellip;&rdquo; ONLY when sessions exceed visible limit (not shown if all fit)</li>
+        <li>Footer: Cancel only (clicking a row IS the action)</li>
+        <li>Sidebar still shows &ldquo;No projects yet&rdquo; &mdash; project not added until action chosen</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1678,51 +1959,36 @@ body {
 
       <!-- Sidebar — still empty, modal open -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
         <div class="sidebar-empty">No projects yet</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
-      <!-- Main with modal overlay — same shell as 3a, different content -->
+      <!-- Main with modal overlay — project selected, choose session action -->
       <div class="modal-host">
         <div class="modal-overlay"></div>
         <div class="modal" style="width:460px;">
           <div class="modal-header">
-            <span class="modal-title">Add Project</span>
+            <span class="modal-title">amplifier-canvas</span>
             <button class="modal-close">&times;</button>
           </div>
 
-          <!-- Same tab row — Existing still active -->
-          <div class="modal-tab-row">
-            <button class="modal-tab">New</button>
-            <button class="modal-tab active">Existing</button>
-          </div>
-
-          <!-- Content — project selected, choose action -->
+          <!-- NO tabs — project is chosen, this is the session decision -->
           <div class="modal-tab-content">
 
-            <!-- Selected project banner -->
-            <div class="discovered-project-row selected" style="margin-bottom:16px;">
-              <div class="discovered-project-info">
-                <div class="discovered-project-name">amplifier-canvas</div>
-                <div class="discovered-project-path">~/Projects/amplifier-canvas</div>
-              </div>
-              <div class="discovered-project-check">&#x2713;</div>
-            </div>
+            <!-- Project path context -->
+            <div style="font-size:11px;color:var(--text-very-muted);margin-bottom:16px;">~/Projects/amplifier-canvas</div>
 
-            <!-- New session action -->
+            <!-- Start new session — always first, always prominent -->
             <div class="discovered-project-row" style="cursor:pointer;">
               <div class="discovered-project-info">
-                <div class="discovered-project-name">New session</div>
-                <div class="discovered-project-meta">Start a fresh Amplifier session</div>
+                <div class="discovered-project-name">Start new session</div>
+                <div class="discovered-project-meta">Fresh Amplifier session in this project</div>
               </div>
               <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
             </div>
 
-            <!-- Resume section -->
-            <div style="padding:14px 0 6px;font-size:10px;text-transform:uppercase;color:var(--text-very-muted);letter-spacing:0.08em;font-weight:600;">Resume</div>
+            <!-- Resume section — sorted most recent first -->
+            <div style="padding:14px 0 6px;font-size:10px;text-transform:uppercase;color:var(--text-very-muted);letter-spacing:0.08em;font-weight:600;">Or resume</div>
 
             <div class="discovered-project-row" style="cursor:pointer;">
               <div class="discovered-project-info">
@@ -1748,7 +2014,7 @@ body {
               <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
             </div>
 
-            <div class="see-more-link" style="padding:6px 0;">See more&hellip;</div>
+            <!-- NO "See more" — all 3 sessions fit. Only show when sessions exceed visible limit. -->
 
             <div class="modal-footer">
               <button class="modal-cancel">Cancel</button>
@@ -1767,9 +2033,32 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 3c</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 3c &mdash; Scene 1.4 (Existing path)</span>
     <span class="screen-label-title">Existing Project: Session Launched</span>
-    <span class="screen-label-desc">User chose to resume &ldquo;Improve error handling&rdquo; &mdash; session is running in the terminal.</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You chose &ldquo;Improve error handling&rdquo; from the resume list. The modal closes. The sidebar shows the project with one session. The terminal shows the prior conversation &mdash; your last exchange from 2 hours ago &mdash; then a &ldquo;session restored&rdquo; marker. You&rsquo;re looking at where you left off, cursor waiting for your next message.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Resuming a session must feel like picking up a conversation you stepped away from, not starting a new one. The prior context scrolls in first &mdash; you see what you asked, what the assistant found, where it stopped. Then the restore marker draws a line between &ldquo;then&rdquo; and &ldquo;now.&rdquo; No startup banner, no bundle messages &mdash; those are for new sessions. This is a continuation.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Sidebar: project name &ldquo;AMPLIFIER-CANVAS&rdquo; with [+] button on the right</li>
+        <li>ONE session row &mdash; green dot, bold name &ldquo;Improve error handling&rdquo;, badge &ldquo;active&rdquo;</li>
+        <li>Green dot + &ldquo;active&rdquo; means the session is open and waiting for input. Amber dot + &ldquo;running&rdquo; only when Amplifier is mid-turn.</li>
+        <li>Bottom of sidebar: &ldquo;Add project&rdquo; button</li>
+        <li>Pane title: &ldquo;Improve error handling &middot; amplifier-canvas&rdquo;</li>
+        <li>Terminal shows the prior conversation FIRST: your message, assistant response, tool call summary, follow-up</li>
+        <li>THEN a &ldquo;session restored&rdquo; separator line &mdash; this is the boundary between past and now</li>
+        <li>Cursor blinking below the separator &mdash; you&rsquo;re back where you left off</li>
+        <li>NO &ldquo;amplifier --resume&rdquo; command visible, NO startup banner, NO bundle message &mdash; Canvas handles the resume; the terminal shows the conversation, not the plumbing</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1789,37 +2078,44 @@ body {
     <!-- Body -->
     <div class="body-row">
 
-      <!-- Sidebar — project active, session running -->
+      <!-- Sidebar — project active, resumed session -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-row">
+          <div class="project-label">AMPLIFIER-CANVAS</div>
+          <button class="project-add-session-btn" title="New session">+</button>
         </div>
-        <div class="project-label">AMPLIFIER-CANVAS</div>
-        <div class="new-session-link">+ New session</div>
         <div class="session-row-new active">
-          <div class="session-dot amber"></div>
+          <div class="session-dot green"></div>
           <span class="session-name bold">Improve error handling</span>
-          <span class="session-age amber">running</span>
+          <span class="session-age">active</span>
         </div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
-      <!-- Terminal zone — resumed session -->
+      <!-- Terminal zone — resumed session: prior conversation then restore marker -->
       <div class="terminal-zone">
-        <div class="pane-title">amplifier &middot; amplifier-canvas</div>
-        <div class="terminal-area">
-          <span class="t-prompt"><span class="t-path">~/Projects/amplifier-canvas</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
-          <span class="t"> amplifier --resume a3f2b1c4</span>
-          <br>
-          <span class="t" style="color:var(--green);">Bundle &lsquo;foundation&rsquo; prepared successfully</span>
+        <div class="pane-title">Improve error handling &middot; amplifier-canvas</div>
+        <div class="terminal-area" style="padding-top:18px;">
+          <!-- Prior conversation (the tail end of what happened 2h ago) -->
+          <span class="t" style="color:var(--amber);">you:</span>
+          <span class="t"> Can you improve the error handling in the API layer?</span>
           <br><br>
-          <span class="t" style="color:var(--amber);">&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;&#x2580;</span>
+          <span class="t" style="color:var(--green);">assistant:</span>
+          <span class="t"> I&rsquo;ll analyze the current error handling patterns across</span>
           <br>
-          <span class="t" style="color:var(--amber);">  AMPLIFIER</span><span class="t" style="color:var(--text-very-muted);">  &middot;  amplifier-canvas  &middot;  session a3f2b1c4</span>
-          <br>
-          <span class="t" style="color:var(--amber);">&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;&#x2584;</span>
+          <span class="t">the API routes. Let me check what we have&hellip;</span>
           <br><br>
-          <span class="t" style="color:var(--text-muted);">Resuming session a3f2b1c4&hellip;</span>
+          <span class="t" style="color:var(--text-very-muted);">[3 tool calls &middot; read_file, grep, read_file]</span>
+          <br><br>
+          <span class="t" style="color:var(--green);">assistant:</span>
+          <span class="t"> Found 4 routes with bare try/catch blocks. I&rsquo;ll create</span>
+          <br>
+          <span class="t">a shared error middleware and refactor each route to use it.</span>
+          <br>
+          <span class="t">Want me to proceed?</span>
+          <br><br>
+          <!-- Session restore marker — this is where "now" begins -->
+          <span class="t" style="color:var(--text-very-muted);">&mdash;&mdash; session restored &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;</span>
           <br><br>
           <span class="t" style="color:var(--amber);">&gt;</span>
           <span class="t">  <span class="terminal-cursor"></span></span>
@@ -1836,9 +2132,41 @@ body {
      ==================================================================== -->
 <div class="screen-wrapper">
   <div class="screen-label">
-    <span class="screen-label-step">ACT 1 &middot; STEP 4</span>
+    <span class="screen-label-step">ACT 1 &middot; STEP 4 &mdash; Scene 1.2</span>
     <span class="screen-label-title">Returning to Canvas</span>
-    <span class="screen-label-desc">You closed Canvas yesterday. It opens exactly where you left off &mdash; same project, same session, same view.</span>
+  </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You open Canvas on Thursday morning. You last used it Tuesday evening, working on amplifier-canvas. Canvas opens instantly. The sidebar shows exactly what you left &mdash; amplifier-canvas is expanded with its sessions listed below, the last session is selected and its history visible in the terminal. Two other projects (team-pulse, budget-tracker) are collapsed below.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Zero-load orientation. The screen tells you where you are before you ask. Sessions that ran in background show their final state without replay. Starting new work is one click &mdash; the [+] on the project row. Removing a project is non-destructive &mdash; the sessions stay on disk.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Sidebar: 3 projects visible, <strong>sorted by most recently active first</strong></li>
+        <li>Expanded project (amplifier-canvas): &#x25BE; chevron + uppercase label + [+] on right, session rows indented below</li>
+        <li>Session rows are visually indented under their project &mdash; they are clearly children, not siblings</li>
+        <li>Collapsed projects (team-pulse, budget-tracker): &#x25B8; chevron + uppercase muted label + last-activity time (e.g. &ldquo;3d ago&rdquo;, &ldquo;1w ago&rdquo;)</li>
+        <li>Collapsed projects have NO [+] button, NO session rows &mdash; expand first to see sessions and [+]</li>
+        <li>A thin separator line between expanded and collapsed project sections</li>
+        <li>Completed session row: green dot, session name, &ldquo;done &middot; 2h 14m&rdquo; badge</li>
+        <li>Green dot + &ldquo;done&rdquo; means the session finished. NOT amber, NOT &ldquo;running&rdquo;, NOT &ldquo;active&rdquo;.</li>
+        <li>Bottom of sidebar: &ldquo;Add project&rdquo; button pinned to bottom &mdash; bordered pill</li>
+        <li>NO &ldquo;PROJECTS&rdquo; header anywhere in the sidebar</li>
+        <li>NO &ldquo;+ New session&rdquo; text link &mdash; the [+] on the project row IS the new session action</li>
+        <li>NO &ldquo;HISTORY&rdquo; label above completed sessions &mdash; sessions just appear under their project</li>
+        <li>Completed-session pane title: checkmark + session name + project name + &ldquo;done &middot; duration &middot; timestamp&rdquo;</li>
+        <li>Main area: TWO-pane layout &mdash; sidebar + terminal (full width, no right panel in Act 1)</li>
+        <li>Terminal shows the completed session as read-only history: user prompt, tool calls, final response</li>
+        <li>NO blinking cursor &mdash; the session is done, the terminal is not interactive</li>
+        <li>Clicking a collapsed project expands it (reveals sessions + [+]) and collapses the previously expanded project &mdash; only one project expanded at a time</li>
+        <li>New session on any project: click to expand (if collapsed), then [+] &mdash; two clicks max</li>
+      </ul>
+    </div>
   </div>
   <div class="screen">
 
@@ -1858,38 +2186,45 @@ body {
     <!-- Body -->
     <div class="body-row">
 
-      <!-- Sidebar — three projects, amplifier-canvas selected -->
+      <!-- Sidebar — three projects, sorted by most recently active -->
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">PROJECTS</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
 
-        <div class="discovered-project-row selected" style="cursor:pointer;">
-          <div class="discovered-project-info">
-            <div class="discovered-project-name">Amplifier Canvas</div>
-            <div class="discovered-project-meta">Improve error handling &middot; done</div>
+        <!-- PROJECT 1: amplifier-canvas (EXPANDED — most recent) -->
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">AMPLIFIER-CANVAS</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new">
+            <div class="session-dot green"></div>
+            <span class="session-name">Improve error handling</span>
+            <span class="session-age">done &middot; 2h 14m</span>
+          </div>
+          <div class="session-row-new">
+            <div class="session-dot green"></div>
+            <span class="session-name">Set up CI pipeline</span>
+            <span class="session-age">done &middot; 45m</span>
           </div>
         </div>
 
-        <div class="discovered-project-row" style="cursor:pointer;">
-          <div class="discovered-project-info">
-            <div class="discovered-project-name" style="color:var(--text-muted);">Team Pulse</div>
-            <div class="discovered-project-meta">Last session 3d ago</div>
-          </div>
-          <span style="font-size:9px;color:var(--text-very-muted);">&#x25B8;</span>
+        <!-- PROJECT 2: team-pulse (COLLAPSED) -->
+        <div class="project-row-collapsed">
+          <span class="project-chevron-muted">&#x25B8;</span>
+          <div class="project-label-muted">TEAM-PULSE</div>
+          <span class="project-meta-muted">3d ago</span>
+        </div>
+        <!-- PROJECT 3: budget-tracker (COLLAPSED) -->
+        <div class="project-row-collapsed">
+          <span class="project-chevron-muted">&#x25B8;</span>
+          <div class="project-label-muted">BUDGET-TRACKER</div>
+          <span class="project-meta-muted">1w ago</span>
         </div>
 
-        <div class="discovered-project-row" style="cursor:pointer;">
-          <div class="discovered-project-info">
-            <div class="discovered-project-name" style="color:var(--text-muted);">Budget Tracker</div>
-            <div class="discovered-project-meta">Last session 1w ago</div>
-          </div>
-          <span style="font-size:9px;color:var(--text-very-muted);">&#x25B8;</span>
-        </div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
 
-      <!-- Terminal zone — completed session restored -->
+      <!-- Terminal zone — completed session, full width (no right panel in Act 1) -->
       <div class="terminal-zone">
         <div class="pane-title-complete">&#x2713; Improve error handling &nbsp;&middot;&nbsp; amplifier-canvas
           <span>done &middot; 2h 14m &middot; Tuesday 11:42 PM</span>
@@ -1910,69 +2245,6 @@ body {
           <span class="t-amplifier-label">Amplifier:</span>
           <span class="t-response">Done. Added structured error codes, improved stack trace formatting,</span>
           <span class="t-response">and unified the error boundary logic across the CLI module. All 14 tests green.</span>
-          <span class="t blank"></span>
-          <span class="t-user-prompt">&gt; exit</span>
-          <span class="t success">&nbsp;&nbsp;&#x2713; Session complete &mdash; 2h 14m &middot; 6 prompts &middot; 89k tokens</span>
-          <span class="t blank"></span>
-          <span class="t-prompt"><span class="t-path">~/Projects/amplifier-canvas</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
-          <span class="t"><span class="terminal-cursor"></span></span>
-        </div>
-      </div>
-
-      <!-- Right panel — SUMMARY tab active -->
-      <div class="right-panel">
-        <div class="tab-row-primary">
-          <span class="tab-primary">FILES</span>
-          <span class="tab-primary">APP</span>
-          <span class="tab-primary active">SUMMARY</span>
-          <span class="tab-primary">CHANGES</span>
-        </div>
-        <div class="panel-content" style="padding:14px;overflow-y:auto;">
-
-          <!-- Hero block -->
-          <div class="summary-hero">
-            <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
-            <div class="summary-tldr">Added structured error codes and improved stack traces across the CLI error handling layer.</div>
-            <div class="summary-status done">
-              <span class="summary-status-icon">&#x2713;</span>
-              <span class="summary-status-text">All tests passing &middot; build clean</span>
-            </div>
-            <div class="summary-stats">
-              <span>2h 14m</span>
-              <span>6 prompts</span>
-              <span>8 files</span>
-              <span>89k tokens</span>
-              <span>Tuesday 11:42 PM</span>
-            </div>
-          </div>
-
-          <!-- Where you left off -->
-          <div class="analysis-section">
-            <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
-            <div class="summary-trail-row"><span class="summary-trail-turn">T:6</span><span class="summary-trail-text">All 14 tests passing &mdash; exited cleanly</span></div>
-            <div class="summary-trail-row"><span class="summary-trail-turn">T:5</span><span class="summary-trail-text">Unified error boundary logic in parser.ts</span></div>
-            <div class="summary-trail-row"><span class="summary-trail-turn">T:3</span><span class="summary-trail-text">Added structured error-codes.ts with typed exit codes</span></div>
-          </div>
-
-          <!-- Collapsed sections -->
-          <div style="margin-top:10px;">
-            <div class="summary-collapsed-row">
-              <span class="summary-collapsed-chevron">&#x25B8;</span>
-              <span>Prompts</span>
-              <span class="summary-collapsed-count">6 prompts</span>
-            </div>
-            <div class="summary-collapsed-row">
-              <span class="summary-collapsed-chevron">&#x25B8;</span>
-              <span>Key moments</span>
-              <span class="summary-collapsed-count">3 milestones</span>
-            </div>
-            <div class="summary-collapsed-row">
-              <span class="summary-collapsed-chevron">&#x25B8;</span>
-              <span>Next steps</span>
-              <span class="summary-collapsed-count">2 suggestions</span>
-            </div>
-          </div>
-
         </div>
       </div>
 
