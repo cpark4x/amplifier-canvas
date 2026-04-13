@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useCanvasStore } from '../store'
 import ContextMenu from './ContextMenu'
 import type { ContextMenuItem } from './ContextMenu'
 import type { SessionState, SessionStatus } from '../../../shared/types'
+import { useState } from 'react'
 
 /** Returns true if a session started less than 30 seconds ago */
 function isJustStarted(startedAt?: string): boolean {
@@ -36,19 +37,14 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',
   active: '#F59E0B',
   needs_input: '#F59E0B',
-  done: '#3ECF8E', // Emerald
+  done: '#3ECF8E',
   failed: '#EF4444',
-  loading: '#6B7280', // Gray — analysis loading
-  stopped: '#6B7280', // Gray — neutral indicator
+  loading: '#6B7280',
+  stopped: '#6B7280',
 }
 
 /**
  * Returns a human-readable relative time string for a given ISO timestamp.
- * < 1 minute  → "just now"
- * < 60 minutes → "Xm ago"
- * < 24 hours   → "Xh ago"
- * < 7 days     → "Xd ago"
- * else         → "Mon D"  (e.g. "Apr 7")
  */
 function formatRelativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime()
@@ -73,48 +69,33 @@ function formatDuration(startedAt: string, endedAt: string): string {
   return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`
 }
 
-/** Returns a stats summary line, e.g. "5m · 1 prompt · 2 files". Omits zero values. */
-function formatStats(session: SessionState): string {
-  const parts: string[] = []
-
-  if (session.startedAt && session.endedAt) {
-    parts.push(formatDuration(session.startedAt, session.endedAt))
+/** Returns the most recent activity timestamp for a project (for sorting). */
+function getProjectLastActivity(project: Project): number {
+  let latest = 0
+  for (const s of project.sessions) {
+    if (s.endedAt) {
+      const t = new Date(s.endedAt).getTime()
+      if (t > latest) latest = t
+    }
+    if (s.startedAt) {
+      const t = new Date(s.startedAt).getTime()
+      if (t > latest) latest = t
+    }
   }
-
-  const prompts = session.promptCount ?? 0
-  if (prompts > 0) {
-    parts.push(`${prompts} ${prompts === 1 ? 'prompt' : 'prompts'}`)
-  }
-
-  const files = session.filesChangedCount ?? 0
-  if (files > 0) {
-    parts.push(`${files} ${files === 1 ? 'file' : 'files'}`)
-  }
-
-  return parts.join(' · ')
+  return latest
 }
 
 // ---- Component --------------------------------------------------------------
 
 function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSessionSelect }: SidebarProps): React.ReactElement {
-  // Subscribe to both sessions and registeredProjects so sidebar re-renders when either changes
   const sessions = useCanvasStore((s) => s.sessions)
   const registeredProjects = useCanvasStore((s) => s.registeredProjects)
-  const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
   const openViewer = useCanvasStore((s) => s.openViewer)
   const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
-  const toggleProjectExpanded = useCanvasStore((s) => s.toggleProjectExpanded)
-
-  // Track which projects have their full history expanded (default: collapsed to 3)
-  const [expandedHistorySlugs, setExpandedHistorySlugs] = useState<string[]>([])
-  const toggleExpandedHistory = (slug: string) => {
-    setExpandedHistorySlugs((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
-    )
-  }
+  const setExpandedProjectSlugs = useCanvasStore((s) => s.setExpandedProjectSlugs)
 
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -160,16 +141,27 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
     setContextMenu({ x: e.clientX, y: e.clientY, items })
   }
 
-  // Derive projects from registered projects + sessions
+  // Toggle expansion: only one project expanded at a time
+  const handleToggleProject = (slug: string) => {
+    const isExpanded = expandedProjectSlugs.includes(slug)
+    if (isExpanded) {
+      // Collapse it
+      setExpandedProjectSlugs([])
+    } else {
+      // Expand this one, collapse all others
+      setExpandedProjectSlugs([slug])
+    }
+    selectProject(slug)
+  }
+
+  // Derive projects, sorted by most recently active
   const projects: Project[] = useMemo(() => {
     const projectMap = new Map<string, Project>()
 
-    // Start with registered projects (ensures empty projects appear in sidebar)
     for (const rp of registeredProjects) {
       projectMap.set(rp.slug, { slug: rp.slug, name: rp.name, path: rp.path, sessions: [] })
     }
 
-    // Merge in sessions
     for (const session of sessions) {
       const existing = projectMap.get(session.projectSlug)
       if (existing) {
@@ -183,7 +175,11 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
         })
       }
     }
-    return Array.from(projectMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+
+    // Sort by most recently active first
+    return Array.from(projectMap.values()).sort((a, b) => {
+      return getProjectLastActivity(b) - getProjectLastActivity(a)
+    })
   }, [sessions, registeredProjects])
 
   return (
@@ -199,7 +195,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
         flexDirection: 'column',
         overflow: 'hidden',
         transition: 'width 0.15s ease, min-width 0.15s ease',
-        padding: collapsed ? 0 : '12px 0',
+        padding: collapsed ? 0 : '8px 0 0',
         visibility: hidden ? 'hidden' : 'visible',
       }}
     >
@@ -225,85 +221,46 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
             ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-very-muted)'
           }}
         >
-          {/* Right-pointing chevron (expand) */}
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
             <polyline points="3,1 7,5 3,9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
           </svg>
         </button>
       )}
 
-      {/* Expanded sidebar */}
+      {/* Expanded sidebar — NO "PROJECTS" header, NO "HISTORY" label */}
       {!collapsed && (
         <>
-          {/* Section header: "Projects" + "+" button — matches storyboard exactly */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 16px 8px',
-            }}
-          >
-            <span
-              data-testid="sidebar-section-label"
+          {/* Collapse toggle — small chevron at top right */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 8px 4px' }}>
+            <button
+              data-testid="sidebar-toggle"
+              onClick={onToggle}
               style={{
-                fontSize: '10px',
-                textTransform: 'uppercase',
                 color: 'var(--text-very-muted)',
-                letterSpacing: '0.08em',
-                fontWeight: 600,
+                background: 'none',
+                border: 'none',
+                padding: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+              }}
+              onMouseLeave={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-very-muted)'
               }}
             >
-              Projects
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                data-testid="sidebar-add-btn"
-                onClick={onNewProject}
-                style={{
-                  fontSize: '14px',
-                  color: 'var(--text-very-muted)',
-                  background: 'none',
-                  border: 'none',
-                  lineHeight: 1,
-                  padding: 0,
-                  cursor: 'pointer',
-                }}
-              >
-                +
-              </button>
-              <button
-                data-testid="sidebar-toggle"
-                onClick={onToggle}
-                style={{
-                  color: 'var(--text-very-muted)',
-                  background: 'none',
-                  border: 'none',
-                  lineHeight: 1,
-                  padding: '2px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                onMouseEnter={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
-                }}
-                onMouseLeave={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-very-muted)'
-                }}
-              >
-                {/* Left-pointing chevron (collapse) */}
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <polyline points="7,1 3,5 7,9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                </svg>
-              </button>
-            </div>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="7,1 3,5 7,9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
+            </button>
           </div>
 
-          {/* Content area */}
+          {/* Project list */}
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {/* Empty state — storyboard Screen 1 */}
+            {/* Empty state — Step 1: no projects yet */}
             {projects.length === 0 && (
               <div
                 data-testid="sidebar-empty"
@@ -311,164 +268,197 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                   fontSize: '11px',
                   color: 'var(--text-very-muted)',
                   textAlign: 'center',
-                  padding: '12px 16px',
+                  padding: '24px 16px',
                 }}
               >
                 No projects yet
               </div>
             )}
 
-            {/* Project + session list — storyboard Screens 3+ */}
+            {/* Project list — sorted by most recently active */}
             {projects.map((project) => {
               const isExpanded = expandedProjectSlugs.includes(project.slug)
-              const activeSessions = project.sessions.filter((s) => ACTIVE_STATUSES.has(s.status))
-              const historySessions = project.sessions
-                .filter((s) => COMPLETED_STATUSES.has(s.status))
-                .sort((a, b) => {
-                  if (!a.endedAt && !b.endedAt) return 0
-                  if (!a.endedAt) return 1
-                  if (!b.endedAt) return -1
-                  return new Date(b.endedAt).getTime() - new Date(a.endedAt).getTime()
-                })
 
-              return (
-                <div key={project.slug}>
-                  {/* Project label */}
+              // All sessions sorted by most recent first (active first, then completed)
+              const allSessions = [...project.sessions].sort((a, b) => {
+                // Active sessions first
+                const aActive = ACTIVE_STATUSES.has(a.status) ? 1 : 0
+                const bActive = ACTIVE_STATUSES.has(b.status) ? 1 : 0
+                if (aActive !== bActive) return bActive - aActive
+                // Then by most recent
+                const aTime = a.endedAt ? new Date(a.endedAt).getTime() : a.startedAt ? new Date(a.startedAt).getTime() : 0
+                const bTime = b.endedAt ? new Date(b.endedAt).getTime() : b.startedAt ? new Date(b.startedAt).getTime() : 0
+                return bTime - aTime
+              })
+
+              // For collapsed: show last activity time
+              const lastActivity = getProjectLastActivity(project)
+              const lastActivityStr = lastActivity > 0 ? formatRelativeTime(new Date(lastActivity).toISOString()) : ''
+
+              if (isExpanded) {
+                // ── EXPANDED PROJECT: tinted container with sessions ──
+                return (
                   <div
-                    data-testid="project-item"
-                    data-selected={selectedProjectSlug === project.slug ? 'true' : 'false'}
-                    data-expanded={expandedProjectSlugs.includes(project.slug) ? 'true' : 'false'}
-                    onClick={() => {
-                      selectProject(project.slug)
-                      toggleProjectExpanded(project.slug)
-                    }}
-                    onContextMenu={(e) => handleProjectContextMenu(e, project.slug)}
+                    key={project.slug}
                     style={{
-                      padding: '12px 12px 4px',
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      letterSpacing: '0.1em',
-                      textTransform: 'uppercase',
-                      color: 'var(--text-very-muted)',
-                      cursor: 'pointer',
-                      userSelect: 'none',
+                      background: 'rgba(0,0,0,0.025)',
+                      borderRadius: 4,
+                      margin: '0 6px 6px',
+                      padding: '4px 0',
                     }}
                   >
-                    <span data-testid="project-name">{project.name}</span>
-                  </div>
-
-                  {/* Show sessions only when project is expanded */}
-                  {isExpanded && (
-                    <>
-                      {/* Active session rows */}
-                      <div>
-                        {activeSessions.map((session) => (
-                          <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
-                            <SessionRow
-                              session={session}
-                              isSelected={selectedSessionId === session.id}
-                              onSelect={() => {
-                                selectSession(session.id)
-                                openViewer()
-                                onSessionSelect?.(session.id, session.workDir ?? '')
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* + New session — spawns a new session in this project */}
-                      <div
-                        data-testid="new-session-slot"
-                        onClick={() => onNewSession?.(project.slug, project.path)}
+                    {/* Project header row: ▾ chevron + NAME + [+] button */}
+                    <div
+                      data-testid="project-item"
+                      data-expanded="true"
+                      onClick={() => handleToggleProject(project.slug)}
+                      onContextMenu={(e) => handleProjectContextMenu(e, project.slug)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '8px 8px 4px',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
+                        {'\u25BE'}
+                      </span>
+                      <span
+                        data-testid="project-name"
                         style={{
-                          padding: '8px 14px',
-                          fontSize: '11px',
-                          color: 'var(--text-very-muted)',
-                          cursor: 'pointer',
-                        }}
-                        onMouseEnter={(e) => {
-                          ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
-                        }}
-                        onMouseLeave={(e) => {
-                          ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: 'var(--text-muted)',
+                          flex: 1,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        + New session
+                        {project.name}
+                      </span>
+                      <button
+                        data-testid="new-session-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onNewSession?.(project.slug, project.path)
+                        }}
+                        style={{
+                          fontSize: 14,
+                          color: 'var(--text-very-muted)',
+                          background: 'none',
+                          border: 'none',
+                          lineHeight: 1,
+                          padding: '0 2px',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                        title="New session"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Session rows — indented with left border */}
+                    {allSessions.map((session) => (
+                      <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
+                        <UnifiedSessionRow
+                          session={session}
+                          isSelected={selectedSessionId === session.id}
+                          onSelect={() => {
+                            selectSession(session.id)
+                            openViewer()
+                            onSessionSelect?.(session.id, session.workDir ?? '')
+                          }}
+                        />
                       </div>
-
-                      {/* History section — show 3, "see more" to expand */}
-                      {historySessions.length > 0 && (() => {
-                        const MAX_VISIBLE = 3
-                        const isShowingAll = expandedHistorySlugs.includes(project.slug)
-                        const visible = isShowingAll ? historySessions : historySessions.slice(0, MAX_VISIBLE)
-                        const hasMore = historySessions.length > MAX_VISIBLE
-
-                        return (
-                          <>
-                            {/* HISTORY label */}
-                            <div
-                              data-testid="history-label"
-                              style={{
-                                padding: '6px 12px 2px 14px',
-                                fontSize: '10px',
-                                textTransform: 'uppercase',
-                                color: '#A0977D',
-                                letterSpacing: '0.08em',
-                                fontWeight: 600,
-                                userSelect: 'none',
-                              }}
-                            >
-                              HISTORY
-                            </div>
-
-                            {/* History session rows (capped) */}
-                            {visible.map((session) => (
-                              <div key={session.id} onContextMenu={(e) => handleSessionContextMenu(e, session)}>
-                                <HistorySessionRow
-                                  session={session}
-                                  isSelected={selectedSessionId === session.id}
-                                  onSelect={() => {
-                                    selectSession(session.id)
-                                    openViewer()
-                                    onSessionSelect?.(session.id, session.workDir ?? '')
-                                  }}
-                                />
-                              </div>
-                            ))}
-
-                            {/* "See more" / "Show less" toggle */}
-                            {hasMore && (
-                              <div
-                                data-testid="history-toggle"
-                                onClick={() => toggleExpandedHistory(project.slug)}
-                                style={{
-                                  padding: '4px 14px 8px',
-                                  fontSize: '10px',
-                                  color: 'var(--text-very-muted)',
-                                  cursor: 'pointer',
-                                  userSelect: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                  ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'
-                                }}
-                                onMouseLeave={(e) => {
-                                  ;(e.currentTarget as HTMLDivElement).style.color = 'var(--text-very-muted)'
-                                }}
-                              >
-                                {isShowingAll
-                                  ? 'Show less'
-                                  : `See ${historySessions.length - MAX_VISIBLE} more...`}
-                              </div>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </>
-                  )}
-                </div>
-              )
+                    ))}
+                  </div>
+                )
+              } else {
+                // ── COLLAPSED PROJECT: ▸ chevron + NAME + last activity ──
+                return (
+                  <div
+                    key={project.slug}
+                    data-testid="project-item"
+                    data-expanded="false"
+                    onClick={() => handleToggleProject(project.slug)}
+                    onContextMenu={(e) => handleProjectContextMenu(e, project.slug)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '7px 14px',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      gap: 6,
+                      transition: 'background 0.12s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
+                    }}
+                    onMouseLeave={(e) => {
+                      ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    <span style={{ fontSize: 10, color: 'var(--text-very-muted)', flexShrink: 0 }}>
+                      {'\u25B8'}
+                    </span>
+                    <span
+                      data-testid="project-name"
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-very-muted)',
+                        flex: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {project.name}
+                    </span>
+                    {lastActivityStr && (
+                      <span style={{ fontSize: 10, color: 'var(--text-very-muted)', flexShrink: 0 }}>
+                        {lastActivityStr}
+                      </span>
+                    )}
+                  </div>
+                )
+              }
             })}
+          </div>
+
+          {/* Bottom: "Add project" button — always visible */}
+          <div style={{ padding: '8px 12px' }}>
+            <button
+              data-testid="sidebar-add-btn"
+              onClick={onNewProject}
+              style={{
+                width: '100%',
+                padding: '6px 0',
+                fontSize: 11,
+                color: 'var(--text-muted)',
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 4,
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+              onMouseEnter={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--text-muted)'
+              }}
+              onMouseLeave={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+              }}
+            >
+              Add project
+            </button>
           </div>
         </>
       )}
@@ -493,8 +483,43 @@ interface SessionRowProps {
   onSelect: () => void
 }
 
-/** Active session row (running / active / needs_input) */
-function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
+/**
+ * Unified session row — used for ALL sessions (active + completed).
+ * Shows: dot + name + status label
+ * Indented under expanded project with left border.
+ */
+function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
+  const isActive = ACTIVE_STATUSES.has(session.status)
+  const isDone = session.status === 'done'
+
+  // Build the status label
+  let statusLabel = ''
+  let statusColor = 'var(--text-very-muted)'
+
+  if (session.status === 'running' || session.status === 'active') {
+    statusLabel = isJustStarted(session.startedAt) ? 'just started' : 'running'
+    statusColor = 'var(--amber)'
+  } else if (session.status === 'needs_input') {
+    statusLabel = 'needs input'
+    statusColor = 'var(--amber)'
+  } else if (session.status === 'loading') {
+    statusLabel = 'loading\u2026'
+    statusColor = 'var(--text-very-muted)'
+  } else if (isDone) {
+    // "done · 2h 14m"
+    const duration = session.startedAt && session.endedAt
+      ? formatDuration(session.startedAt, session.endedAt)
+      : ''
+    statusLabel = duration ? `done \u00B7 ${duration}` : 'done'
+    statusColor = 'var(--green)'
+  } else if (session.status === 'failed') {
+    statusLabel = 'failed'
+    statusColor = '#EF4444'
+  } else if (session.status === 'stopped') {
+    statusLabel = 'stopped'
+    statusColor = 'var(--text-very-muted)'
+  }
+
   return (
     <div
       data-testid="session-item"
@@ -503,15 +528,16 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
       data-selected={isSelected ? 'true' : 'false'}
       onClick={onSelect}
       style={{
-        height: 36,
-        padding: '0 12px 0 14px',
+        height: 32,
+        padding: '0 8px 0 0',
+        marginLeft: 14,
+        paddingLeft: 12,
+        borderLeft: '2px solid var(--border)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
-        position: 'relative',
+        gap: 8,
         backgroundColor: isSelected ? 'var(--bg-sidebar-active)' : 'transparent',
-        borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid transparent',
         transition: 'background 0.12s ease',
       }}
       onMouseEnter={(e) => {
@@ -520,7 +546,7 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
         }
       }}
       onMouseLeave={(e) => {
-        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? '#E8E0D4' : 'transparent'
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? 'var(--bg-sidebar-active)' : 'transparent'
       }}
     >
       {/* Status dot */}
@@ -542,8 +568,8 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
       <span
         data-testid="session-name"
         style={{
-          fontSize: '12px',
-          fontWeight: session.status === 'running' || session.status === 'active' ? 600 : 400,
+          fontSize: 12,
+          fontWeight: isActive ? 600 : 400,
           color: 'var(--text-primary)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -557,138 +583,14 @@ function SessionRow({ session, isSelected, onSelect }: SessionRowProps): React.R
       {/* Status label */}
       <span
         style={{
-          fontSize: '11px',
+          fontSize: 10,
           flexShrink: 0,
-          color:
-            session.status === 'running' || session.status === 'active' || session.status === 'needs_input'
-              ? 'var(--amber)'
-              : session.status === 'done'
-                ? 'var(--green)'
-                : 'var(--text-very-muted)',
+          color: statusColor,
+          whiteSpace: 'nowrap',
         }}
       >
-        {session.status === 'running' || session.status === 'active'
-          ? (isJustStarted(session.startedAt) ? 'just started' : 'running')
-          : session.status === 'needs_input'
-            ? 'needs input'
-            : session.status === 'loading'
-              ? 'loading…'
-              : session.status === 'done'
-                ? 'done'
-                : ''}
+        {statusLabel}
       </span>
-    </div>
-  )
-}
-
-/** History session row (done / failed / stopped) — shows title, relative time, and stats */
-function HistorySessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
-  return (
-    <div
-      data-testid="history-item"
-      data-session-id={session.id}
-      data-project-slug={session.projectSlug}
-      data-selected={isSelected ? 'true' : 'false'}
-      onClick={onSelect}
-      style={{
-        padding: '4px 12px 4px 14px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '8px',
-        position: 'relative',
-        backgroundColor: isSelected ? 'var(--bg-sidebar-active)' : 'transparent',
-        borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid transparent',
-        transition: 'background 0.12s ease',
-      }}
-      onMouseEnter={(e) => {
-        if (!isSelected) {
-          ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
-        }
-      }}
-      onMouseLeave={(e) => {
-        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? '#E8E0D4' : 'transparent'
-      }}
-    >
-      {/* Status dot — vertically centered with title line */}
-      <span
-        data-testid="status-dot"
-        data-status={session.status}
-        style={{
-          width: 6,
-          height: 6,
-          minWidth: 6,
-          borderRadius: '50%',
-          backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
-          display: 'inline-block',
-          flexShrink: 0,
-          marginTop: 5,
-        }}
-      />
-
-      {/* Content: title + time, then stats */}
-      <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-        {/* Title + relative time + resume button */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 4 }}>
-          <span
-            data-testid="history-title"
-            style={{
-              fontSize: '12px',
-              fontWeight: 400,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flex: 1,
-            }}
-          >
-            {session.title ?? session.id}
-          </span>
-          {session.endedAt && (
-            <span
-              style={{
-                fontSize: '10px',
-                color: '#A0977D',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {formatRelativeTime(session.endedAt)}
-            </span>
-          )}
-          <button
-            data-testid="resume-btn"
-            onClick={(e) => {
-              e.stopPropagation()
-              window.electronAPI.resumeSession(session.id)
-            }}
-            style={{
-              fontSize: '10px',
-              color: 'var(--text-very-muted)',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Resume {'\u2192'}
-          </button>
-        </div>
-
-        {/* Stats line */}
-        <span
-          data-testid="history-stats"
-          style={{
-            fontSize: '10px',
-            color: '#A0977D',
-            display: 'block',
-          }}
-        >
-          {formatStats(session)}
-        </span>
-      </div>
     </div>
   )
 }
