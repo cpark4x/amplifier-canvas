@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Amplifier Canvas &mdash; Act 3: Power User</title>
+<link rel="stylesheet" href="system.css">
+<style>
+
+/* ============================================================
+   ACT FILE &mdash; PAGE LAYOUT
+   ============================================================ */
+body {
+  background: var(--bg-page);
+  font-family: var(--font-ui);
+  padding: 48px 0;
+  min-width: 1440px;
+}
+
+/* ============================================================
+   ACT HEADER
+   ============================================================ */
+.act-header {
+  max-width: 1440px;
+  margin: 0 auto 48px;
+  padding: 0 0 16px;
+  border-bottom: 2px solid var(--border);
+}
+.act-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.act-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.act-header .act-story {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-right);
+  border-left: 3px solid var(--amber);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.act-header .act-story strong { font-weight: 600; }
+.act-header .act-story span { color: var(--text-muted); font-size: 11.5px; }
+
+/* ============================================================
+   SCENE CONTAINER
+   ============================================================ */
+.scene {
+  max-width: 1440px;
+  margin: 0 auto 80px;
+}
+.scene[data-status]::before {
+  content: attr(data-scene) " \2014 " attr(data-status);
+  display: inline-block;
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: 12px;
+}
+.scene[data-status="done"]::before {
+  background: rgba(76,175,116,0.12);
+  color: var(--green);
+}
+.scene[data-status="drift"]::before {
+  background: rgba(245,158,11,0.12);
+  color: var(--amber);
+}
+.scene[data-status="not-built"]::before {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-very-muted);
+}
+
+/* ============================================================
+   STORY SECTION
+   ============================================================ */
+.story {
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.story h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.story .beat {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.story .why {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   SCREEN SECTION &mdash; wrapper for mockups
+   ============================================================ */
+.screen {
+  margin-bottom: 16px;
+}
+.screen-variant {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--amber);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 12px 0 8px;
+}
+
+/* ============================================================
+   VERIFY SECTION
+   ============================================================ */
+.verify {
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.verify ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 24px;
+}
+.verify li {
+  padding: 2px 0 2px 18px;
+  position: relative;
+  break-inside: avoid;
+  color: var(--text-muted);
+}
+.verify li::before {
+  content: '\25A1';
+  position: absolute;
+  left: 0;
+  color: var(--text-very-muted);
+  font-size: 11px;
+}
+
+
+/* ============================================================
+   FRAME &mdash; the 1440&times;900 screen mockup container
+   ============================================================ */
+.frame {
+  width: 1440px;
+  height: 900px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+
+/* ============================================================
+   SHARED: APP HEADER
+   ============================================================ */
+.app-header {
+  height: 38px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.app-header-left { display: flex; align-items: center; gap: 8px; }
+.logo-mark { width: 22px; height: 22px; flex-shrink: 0; display: block; line-height: 1; }
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.app-header-right { display: flex; align-items: center; gap: 2px; }
+.header-icon-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text-very-muted);
+  background: none; border: none; border-radius: 3px; line-height: 1;
+}
+
+
+/* ============================================================
+   SHARED: BODY ROW
+   ============================================================ */
+.body-row {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+
+/* ============================================================
+   SHARED: SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: 200px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-empty {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  text-align: center;
+  padding: 12px 16px;
+}
+.sidebar-add-project {
+  margin-top: auto;
+  padding: 8px 14px;
+  margin: auto 10px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+}
+
+
+/* ============================================================
+   SIDEBAR &mdash; SESSION-FIRST DESIGN
+   ============================================================ */
+.project-label {
+  padding: 12px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-very-muted);
+  user-select: none;
+}
+.session-row-new {
+  height: 36px;
+  padding: 0 12px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+}
+.session-row-new.active { background: var(--bg-sidebar-active); }
+.session-row-new.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--amber);
+  border-radius: 0 1px 1px 0;
+}
+.session-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.session-dot.amber { background: var(--amber); }
+.session-dot.green { background: var(--green); }
+.session-dot.gray  { background: var(--text-very-muted); }
+.session-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-name.bold { font-weight: 600; }
+.session-age {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+.session-age.amber { color: var(--amber); }
+.session-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 0 12px;
+}
+
+/* Project row: label + inline [+] */
+.project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 4px;
+}
+.project-row .project-label { padding: 0; }
+.project-add-session-btn {
+  font-size: 14px;
+  color: var(--text-very-muted);
+  background: none; border: none;
+  line-height: 1; padding: 0; cursor: pointer;
+}
+
+/* Expanded project group */
+.project-group-expanded {
+  background: rgba(0,0,0,0.025);
+  border-radius: 4px;
+  margin: 0 6px 6px;
+  padding: 4px 0;
+}
+.project-group-expanded .project-row { padding: 8px 8px 4px; }
+.project-group-expanded .session-row-new {
+  padding: 4px 8px 4px 28px;
+  border-left: 2px solid var(--border);
+  margin-left: 14px;
+  padding-left: 14px;
+}
+.project-chevron { font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-right: 4px; }
+.project-chevron-muted { font-size: 10px; color: var(--text-very-muted); flex-shrink: 0; margin-right: 4px; }
+
+/* Collapsed project row */
+.project-row-collapsed {
+  display: flex;
+  align-items: center;
+  padding: 7px 14px;
+  cursor: pointer;
+  gap: 6px;
+}
+.project-label-muted {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); flex: 1;
+}
+.project-meta-muted {
+  font-size: 10px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+
+/* Worktree path badge */
+.worktree-badge {
+  font: 9px/1.3 var(--font-mono);
+  color: var(--text-very-muted);
+  padding-left: 14px;
+  margin-top: 1px;
+  letter-spacing: 0.02em;
+}
+
+/* Session done badge &mdash; filled green circle with checkmark */
+.session-done-badge {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 8px; font-weight: 700; line-height: 1;
+}
+
+/* Session failed badge &mdash; filled red circle with X */
+.session-failed-badge {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #D94545;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 8px; font-weight: 700; line-height: 1;
+}
+
+
+/* ============================================================
+   SHARED: TERMINAL ZONE
+   ============================================================ */
+.terminal-zone {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+.pane-title {
+  height: 28px;
+  background: var(--bg-pane-title);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.pane-title-complete {
+  background: var(--bg-pane-title);
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font: 11px var(--font-ui);
+  color: var(--green);
+  gap: 10px;
+  flex-shrink: 0;
+}
+.pane-title-complete span { color: var(--text-very-muted); }
+.terminal-area {
+  flex: 1;
+  background: var(--bg-terminal);
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-terminal);
+  overflow: hidden;
+}
+.t { display: block; }
+.t.success { color: var(--green); }
+.t.dim     { opacity: 0.7; }
+.t.blank   { display: block; height: 1.65em; }
+.terminal-cursor {
+  display: inline-block;
+  width: 8px; height: 13px;
+  background: var(--amber);
+  vertical-align: middle;
+  margin-left: 1px;
+  position: relative;
+  top: -1px;
+}
+
+/* Shell prompt */
+.t-prompt { color: #6A8A6A; font: 11px/1.6 var(--font-mono); display: block; padding: 0 14px; }
+.t-prompt .t-path { color: #8A9E8A; }
+.t-prompt .t-branch { color: #C4784A; }
+.t-prompt .t-dollar { color: var(--text-terminal); }
+
+/* Tool call lines */
+.t-tool { color: var(--text-very-muted); display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); }
+.t-tool::before { content: '\25C6 '; color: #5A8A9A; }
+
+/* Terminal response lines */
+.t-user-prompt { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
+.t-amplifier-label { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
+.t-response { display: block; padding: 0 14px; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
+
+/* Ctrl+C hint */
+.ctrl-hint { font: 10px var(--font-mono); color: var(--text-very-muted); opacity: 0.7; margin-left: auto; padding-right: 4px; }
+
+
+/* ============================================================
+   RIGHT PANEL
+   ============================================================ */
+.right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--bg-right);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Primary tab row */
+.tab-row-primary {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.tab-primary {
+  font-size: 12px;
+  font-weight: 500;
+  padding-bottom: 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.tab-primary.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+}
+
+/* Panel content */
+.panel-content {
+  flex: 1;
+  padding: 16px;
+  overflow: hidden;
+}
+
+
+/* ============================================================
+   SUMMARY TAB &mdash; Hero + Details + Trail
+   ============================================================ */
+.summary-hero { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.summary-tldr { font: 13px/1.6 var(--font-ui); color: var(--text-primary); margin-bottom: 8px; }
+.summary-status { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.summary-status-icon { font-size: 11px; flex-shrink: 0; }
+.summary-status-text { font: 11px/1.3 var(--font-ui); }
+.summary-status.done .summary-status-icon,
+.summary-status.done .summary-status-text { color: var(--green); }
+.summary-status.failed .summary-status-icon,
+.summary-status.failed .summary-status-text { color: #D94545; }
+.summary-status.failed .summary-status-text { font-weight: 600; }
+.summary-status.paused .summary-status-icon,
+.summary-status.paused .summary-status-text { color: var(--text-very-muted); }
+.summary-stats { display: flex; gap: 6px; font: 10px var(--font-mono); color: var(--text-very-muted); }
+.summary-stats span:not(:last-child)::after { content: '\00b7'; margin-left: 6px; }
+
+.summary-details-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.summary-details-toggle { display: flex; align-items: center; gap: 5px; }
+.summary-details-chevron { font-size: 8px; color: var(--text-very-muted); }
+.summary-details-label { font: 11px var(--font-ui); font-weight: 600; color: var(--text-primary); }
+.summary-details-preview { font: 10px var(--font-mono); color: var(--text-very-muted); }
+
+.summary-trail-row { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.summary-trail-row:last-child { border-bottom: none; }
+.summary-trail-turn { font: 10px/1.4 var(--font-mono); color: var(--text-very-muted); flex-shrink: 0; width: 28px; }
+.summary-trail-text { font: 11px/1.4 var(--font-ui); color: var(--text-muted); }
+
+.summary-collapsed-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 0; font: 10px var(--font-ui); color: var(--text-very-muted); cursor: pointer;
+}
+.summary-collapsed-chevron { font-size: 8px; }
+.summary-collapsed-count { margin-left: auto; font: 10px var(--font-mono); }
+
+/* Analysis sections (used inside SUMMARY tab) */
+.analysis-section { margin-bottom: 14px; }
+.analysis-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--border);
+}
+.analysis-section-label {
+  font: 10px/1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-very-muted); font-weight: 600;
+}
+.analysis-section-toggle { font-size: 9px; color: var(--text-very-muted); }
+.analysis-section-body { padding-top: 8px; }
+
+
+/* ============================================================
+   PROJECT ZONE &mdash; replaces terminal for project-level views
+   ============================================================ */
+.project-zone {
+  display: flex; flex-direction: column; flex: 1;
+  overflow: hidden; min-width: 0; background: var(--bg-right);
+}
+.project-pane-title {
+  height: 28px; background: var(--bg-pane-title);
+  padding: 0 16px; font-size: 11px; color: var(--text-muted);
+  display: flex; align-items: center; flex-shrink: 0; gap: 8px;
+}
+.project-tab-bar {
+  height: 36px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-end; padding: 0 24px;
+  gap: 28px; flex-shrink: 0; background: var(--bg-right);
+}
+.project-tab {
+  font-size: 12px; font-weight: 500; padding-bottom: 8px;
+  color: var(--text-very-muted); border-bottom: 2px solid transparent;
+  margin-bottom: -1px; cursor: pointer;
+}
+.project-tab.active { color: var(--text-primary); border-bottom-color: var(--amber); }
+.project-content { flex: 1; padding: 32px 40px; overflow-y: auto; }
+.project-heading { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 4px; }
+.project-field-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-very-muted); font-weight: 600; margin-bottom: 6px; margin-top: 20px; display: block; }
+.project-field-text { font-size: 13px; color: var(--text-primary); line-height: 1.6; }
+
+/* Stats grid */
+.proj-stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 24px; }
+.proj-stat-cell { background: var(--bg-right); padding: 16px; }
+.proj-stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; line-height: 1; }
+.proj-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-very-muted); }
+
+/* Session rows in project view */
+.proj-session-row { display: flex; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.proj-session-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
+.proj-session-meta { font-size: 11px; color: var(--text-very-muted); font-family: var(--font-mono); }
+.proj-session-resume { font-size: 11px; color: var(--amber); cursor: pointer; flex-shrink: 0; }
+
+/* Outcome rows */
+.on-track-banner { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-sidebar-active); border-radius: 4px; margin-bottom: 20px; }
+.outcome-row { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.outcome-row:last-child { border-bottom: none; }
+.outcome-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.outcome-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.outcome-text { font: 500 13px/1.4 var(--font-ui); color: var(--text-primary); flex: 1; }
+.outcome-badge { font: 10px/1 var(--font-ui); text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 3px; flex-shrink: 0; }
+.outcome-evidence { font: 11px/1.5 var(--font-ui); color: var(--text-muted); padding-left: 16px; }
+
+/* LLM-generated content indicators */
+.llm-header { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+.llm-spark { color: var(--amber); font-size: 11px; }
+.llm-label { font: 600 10px/1 var(--font-ui); text-transform: uppercase; letter-spacing: .08em; color: var(--amber); }
+.llm-footer { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font: 10px var(--font-ui); color: var(--text-very-muted); }
+.llm-regen { color: var(--amber); cursor: pointer; }
+.llm-section { background: rgba(245,158,11,0.04); border: 1px solid rgba(245,158,11,0.14); border-radius: 4px; padding: 12px 14px; margin-bottom: 14px; }
+.llm-insight { font: 12px/1.6 var(--font-ui); color: var(--text-primary); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.llm-insight:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.llm-insight-label { font: 10px/1 var(--font-ui); text-transform: uppercase; letter-spacing: .06em; color: var(--text-very-muted); margin-bottom: 4px; }
+
+
+/* ============================================================
+   TOAST NOTIFICATION
+   ============================================================ */
+.toast {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1C1A16;
+  border: 1px solid #3A3530;
+  border-radius: 6px;
+  padding: 12px 16px;
+  min-width: 380px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+.toast-title { font: 12px/1 var(--font-ui); color: #E8E4DC; font-weight: 600; margin-bottom: 6px; }
+.toast-stats { font: 11px/1 var(--font-mono); color: var(--text-muted); }
+
+</style>
+</head>
+<body>
+
+<!-- ====================================================================
+     ACT 3 HEADER
+     ==================================================================== -->
+<div class="act-header">
+  <h1>Act 3 &mdash; Power User</h1>
+  <p>Six scenes: session history, review, states, commit, project overview, and multi-project. Canvas becomes your workshop.</p>
+  <div class="act-story">
+    <strong>Job to be done:</strong> Work across parallel sessions without conflicts, stay informed without interruption, and accumulate project-level memory that persists across sessions.<br>
+    <span>You&rsquo;ve been using Canvas for a while now. The terminal is comfortable. The viewer is useful. But you&rsquo;re starting to push harder &mdash; multiple sessions on the same project, long-running tasks in the background, context you need to remember across days. This is where Canvas transitions from utility to infrastructure. Sessions stop being ephemeral terminal instances and become meaningful units of work with identity, history, and memory.</span>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCENE 3.1 &mdash; SESSION HISTORY OVERVIEW
+     ==================================================================== -->
+<section class="scene" data-scene="3.1" data-status="not-built">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 3.1 &mdash; Session History Overview</h3>
+    <p class="beat">You look at the sidebar and see the full story of your project&rsquo;s sessions. CANVAS-APP has four sessions: two completed (green checkmarks), one failed (red dot), and one currently running (amber dot). Each row shows the session name, status, duration, and worktree badge. The sidebar is the index &mdash; a glanceable record of everything that&rsquo;s happened.</p>
+    <p class="why">The sidebar is the session ledger. At a glance you know: what&rsquo;s done, what&rsquo;s running, what broke. Green/amber/red/gray dots create an instant attention hierarchy &mdash; your eye goes to the failure first, then the running session, then the completed work. No hunting through terminal history.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar &mdash; multiple sessions in different states -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Database layer</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 45m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot" style="margin-top:3px;flex-shrink:0;background:#D94545;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Stripe migration</span>
+                  <span class="session-age" style="color:#D94545;">failed &middot; 42m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Dark mode</span>
+                  <span class="session-age amber">31m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone &mdash; Dark mode session active -->
+        <div class="terminal-zone">
+          <div class="pane-title">Dark mode &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; add dark mode toggle to the settings panel</span>
+            <span class="t blank"></span>
+            <span class="t-tool">read_file src/components/Settings.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 142 lines read</span>
+            <span class="t-tool">read_file src/theme/tokens.ts</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 67 lines read</span>
+            <span class="t blank"></span>
+            <span class="t dim">&nbsp;&nbsp;I&rsquo;ll add a dark mode toggle to Settings.tsx that</span>
+            <span class="t dim">&nbsp;&nbsp;switches the CSS custom properties in tokens.ts...</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Sidebar shows one expanded project (CANVAS-APP) with four sessions</li>
+      <li>Auth module: green checkmark badge, &ldquo;done &middot; 1h 12m&rdquo;, worktree &ldquo;main&rdquo;</li>
+      <li>Database layer: green checkmark badge, &ldquo;done &middot; 45m&rdquo;, worktree &ldquo;main&rdquo;</li>
+      <li>Stripe migration: red dot, &ldquo;failed &middot; 42m&rdquo;, worktree &ldquo;main&rdquo;</li>
+      <li>Dark mode: amber dot, &ldquo;31m&rdquo;, worktree &ldquo;&#x219F; worktree/dark-mode&rdquo; (selected/active)</li>
+      <li>Session separators between each row</li>
+      <li>Terminal shows Dark mode session with active cursor</li>
+      <li>NO right panel &mdash; two-pane layout (sidebar + terminal)</li>
+      <li>Pane title: &ldquo;Dark mode &middot; Canvas-App&rdquo;</li>
+      <li>&ldquo;Add project&rdquo; button at sidebar bottom</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 3.2 &mdash; SESSION REVIEW
+     ==================================================================== -->
+<section class="scene" data-scene="3.2" data-status="done">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 3.2 &mdash; Session Review</h3>
+    <p class="beat">You click Auth module in the sidebar. The terminal switches to that session&rsquo;s history &mdash; read-only, showing the git commands that were run. The right panel opens to the SUMMARY tab: a hero block with one-line TLDR (&ldquo;Built the auth module with JWT validation, role-based middleware, and integration tests&rdquo;), green &ldquo;All tests passing&rdquo; status, stats row (duration, prompts, files, tokens, date). Below: collapsed &ldquo;Session details&rdquo; with preview, &ldquo;Where you left off&rdquo; trail, and expandable sections.</p>
+    <p class="why">SUMMARY is the answer to &ldquo;what happened?&rdquo; &mdash; no scrolling through chat history. The trail anchors you to the exact moment. Stats give you the shape of the session at a glance. A session is no longer something that happened and vanished &mdash; it&rsquo;s a chapter you can re-read.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">31m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal &mdash; read-only history -->
+        <div class="terminal-zone">
+          <div class="pane-title">Auth module &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; git add -A &amp;&amp; git commit -m "feat: auth module implementation"</span>
+            <span class="t dim">&nbsp;&nbsp;[main a3f2b1c] feat: auth module implementation</span>
+            <span class="t dim">&nbsp;&nbsp;12 files changed, 847 insertions(+), 23 deletions(-)</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; git push origin main</span>
+            <span class="t dim">&nbsp;&nbsp;To github.com/chrispark/canvas-app2.git</span>
+            <span class="t dim">&nbsp;&nbsp;* [new branch] main &rarr; main</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; gh pr create --title "feat: auth module" --base main</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; PR #47 created</span>
+            <span class="t dim">&nbsp;&nbsp;https://github.com/chrispark/canvas-app2/pull/47</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+
+        <!-- Right panel: SUMMARY tab -->
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary active">SUMMARY</span>
+          </div>
+          <div class="panel-content" style="padding:14px;overflow-y:auto;">
+
+            <!-- Hero block -->
+            <div class="summary-hero">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+              <div class="summary-tldr">Built the auth module with JWT validation, role-based middleware, and integration tests.</div>
+              <div class="summary-status done">
+                <span class="summary-status-icon">&#x2713;</span>
+                <span class="summary-status-text">All tests passing &middot; build clean &middot; PR #47 opened</span>
+              </div>
+              <div class="summary-stats">
+                <span>1h 12m</span>
+                <span>8 prompts</span>
+                <span>12 files</span>
+                <span>142k tokens</span>
+                <span>Today, 8:14 AM</span>
+              </div>
+            </div>
+
+            <!-- Collapsed session details -->
+            <div class="summary-details-row">
+              <div class="summary-details-toggle">
+                <span class="summary-details-chevron">&#x25B8;</span>
+                <span class="summary-details-label">Session details</span>
+              </div>
+              <span class="summary-details-preview">main &middot; claude-sonnet-4 &middot; 3 agents</span>
+            </div>
+
+            <!-- Where you left off -->
+            <div class="analysis-section">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:31</span><span class="summary-trail-text">Pushed to main, created PR #47</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:28</span><span class="summary-trail-text">All 14 tests passing after final refactor</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:22</span><span class="summary-trail-text">Added role-based middleware to auth routes</span></div>
+            </div>
+
+            <!-- Collapsed sections -->
+            <div style="margin-top:10px;">
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Prompts</span>
+                <span class="summary-collapsed-count">8 prompts</span>
+              </div>
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Key moments</span>
+                <span class="summary-collapsed-count">4 milestones</span>
+              </div>
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Next steps</span>
+                <span class="summary-collapsed-count">4 suggestions</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Auth module selected (active) in sidebar with green checkmark</li>
+      <li>Dark mode: amber dot, still running, NOT selected</li>
+      <li>SUMMARY tab active in right panel (not FILES, not APP)</li>
+      <li>Tab row: FILES, APP, SUMMARY &mdash; NO CHANGES tab</li>
+      <li>Hero block: TLDR text, green status with checkmark, stats row</li>
+      <li>Collapsed &ldquo;Session details&rdquo; with preview showing &ldquo;main &middot; claude-sonnet-4 &middot; 3 agents&rdquo;</li>
+      <li>&ldquo;Where you left off&rdquo; trail with T:31, T:28, T:22 entries</li>
+      <li>Collapsed Prompts, Key moments, Next steps sections</li>
+      <li>Terminal shows git commit/push/PR commands (read-only history)</li>
+      <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 3.3 &mdash; SESSION STATES
+     ==================================================================== -->
+<section class="scene" data-scene="3.3" data-status="drift">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 3.3 &mdash; Session States</h3>
+    <p class="beat">Three variants showing how the SUMMARY tab adapts to each session state. Done (green): happy path with &ldquo;All tests passing.&rdquo; Failed (red): the session broke &mdash; the trail explains why. Stale (gray): the session was abandoned days ago &mdash; the trail shows where it stopped.</p>
+    <p class="why">Each state has a distinct visual weight. Green is calm &mdash; everything&rsquo;s fine. Red is loud &mdash; something needs attention. Gray is neutral &mdash; not alarming, just &ldquo;hey, this is incomplete.&rdquo; The SUMMARY tab adapts its status line and tone to match. The user always knows the session&rsquo;s state before reading a single line of detail.</p>
+  </div>
+
+  <!-- THE SCREENS &mdash; three variants -->
+  <div class="screen">
+
+    <!-- 3.3a: Done state -->
+    <h4 class="screen-variant">3.3a &mdash; Done (green checkmark)</h4>
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+        <div class="terminal-zone">
+          <div class="pane-title">Auth module &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; npx jest --verbose</span>
+            <span class="t success">&nbsp;&nbsp;PASS  src/auth/jwt.test.ts (14 tests)</span>
+            <span class="t dim">&nbsp;&nbsp;Test Suites: 1 passed, 1 total</span>
+            <span class="t dim">&nbsp;&nbsp;Tests:       14 passed, 14 total</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary active">SUMMARY</span>
+          </div>
+          <div class="panel-content" style="padding:14px;overflow-y:auto;">
+            <div class="summary-hero">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+              <div class="summary-tldr">Built the auth module with JWT validation, role-based middleware, and integration tests.</div>
+              <div class="summary-status done">
+                <span class="summary-status-icon">&#x2713;</span>
+                <span class="summary-status-text">All tests passing &middot; build clean &middot; PR #47 opened</span>
+              </div>
+              <div class="summary-stats">
+                <span>1h 12m</span>
+                <span>8 prompts</span>
+                <span>12 files</span>
+                <span>142k tokens</span>
+                <span>Today, 8:14 AM</span>
+              </div>
+            </div>
+            <div class="summary-details-row">
+              <div class="summary-details-toggle">
+                <span class="summary-details-chevron">&#x25B8;</span>
+                <span class="summary-details-label">Session details</span>
+              </div>
+              <span class="summary-details-preview">main &middot; claude-sonnet-4 &middot; 3 agents</span>
+            </div>
+            <div class="analysis-section">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:31</span><span class="summary-trail-text">Pushed to main, created PR #47</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:28</span><span class="summary-trail-text">All 14 tests passing after final refactor</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:22</span><span class="summary-trail-text">Added role-based middleware to auth routes</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame: Done state -->
+
+
+    <!-- 3.3b: Failed state -->
+    <h4 class="screen-variant">3.3b &mdash; Failed (red dot)</h4>
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot" style="margin-top:3px;flex-shrink:0;background:#D94545;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Stripe migration</span>
+                  <span class="session-age" style="color:#D94545;">failed &middot; 42m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">31m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+        <div class="terminal-zone">
+          <div class="pane-title">Stripe migration &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; npm install @stripe/stripe-node@14</span>
+            <span class="t dim">&nbsp;&nbsp;+ @stripe/stripe-node@14.12.0</span>
+            <span class="t dim">&nbsp;&nbsp;updated 1 package in 3.2s</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; npx tsc --noEmit</span>
+            <span class="t" style="color:#D94545;">&nbsp;&nbsp;src/payments/stripe-webhook.ts(34,5): error TS2339:</span>
+            <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;Property 'payment_method_types' does not exist</span>
+            <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;on type 'PaymentIntentCreateParams'.</span>
+            <span class="t blank"></span>
+            <span class="t" style="color:#D94545;">&nbsp;&nbsp;src/payments/stripe-webhook.ts(58,12): error TS2339:</span>
+            <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;Property 'charges' does not exist on type</span>
+            <span class="t" style="color:#D94545;">&nbsp;&nbsp;&nbsp;&nbsp;'PaymentIntent'.</span>
+            <span class="t blank"></span>
+            <span class="t dim">&nbsp;&nbsp;Found 2 errors in 1 file.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary active">SUMMARY</span>
+          </div>
+          <div class="panel-content" style="padding:14px;overflow-y:auto;">
+            <div class="summary-hero">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+              <div class="summary-tldr">Refactored payment processing to use Stripe API v2024-12 with new PaymentIntent flow and webhook handlers.</div>
+              <div class="summary-status failed">
+                <span class="summary-status-icon">&#x2717;</span>
+                <span class="summary-status-text">Build broken &middot; 2 type errors in stripe-webhook.ts</span>
+              </div>
+              <div class="summary-stats">
+                <span>42m</span>
+                <span>11 prompts</span>
+                <span>7 files</span>
+                <span>89k tokens</span>
+                <span>Friday, 3:47 PM</span>
+              </div>
+            </div>
+            <div class="summary-details-row">
+              <div class="summary-details-toggle">
+                <span class="summary-details-chevron">&#x25B8;</span>
+                <span class="summary-details-label">Session details</span>
+              </div>
+              <span class="summary-details-preview">main &middot; claude-sonnet-4 &middot; 2 agents</span>
+            </div>
+            <div class="analysis-section">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:11</span><span class="summary-trail-text">Type error: &lsquo;payment_method_types&rsquo; does not exist on &lsquo;PaymentIntentCreateParams&rsquo;</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:9</span><span class="summary-trail-text">Replaced all checkout.sessions.create with paymentIntents.create</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:7</span><span class="summary-trail-text">Installed @stripe/stripe-node@14.x &mdash; breaking change from v12</span></div>
+            </div>
+            <div style="margin-top:10px;">
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Prompts</span>
+                <span class="summary-collapsed-count">11 prompts</span>
+              </div>
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Key moments</span>
+                <span class="summary-collapsed-count">3 milestones</span>
+              </div>
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Next steps</span>
+                <span class="summary-collapsed-count">2 suggestions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame: Failed state -->
+
+
+    <!-- 3.3c: Stale state (gray dot) -->
+    <h4 class="screen-variant">3.3c &mdash; Stale (gray dot)</h4>
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot gray" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Frontend components</span>
+                  <span class="session-age" style="color:var(--text-very-muted);">stale &middot; 34m</span>
+                </div>
+                <div class="worktree-badge">feat/dashboard-components</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">31m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+        <div class="terminal-zone">
+          <div class="pane-title">Frontend components &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; npx jest --verbose</span>
+            <span class="t success">&nbsp;&nbsp;PASS  src/components/DataTable.test.tsx</span>
+            <span class="t success">&nbsp;&nbsp;PASS  src/components/ChartWidget.test.tsx</span>
+            <span class="t dim">&nbsp;&nbsp;Test Suites: 2 passed, 2 total</span>
+            <span class="t dim">&nbsp;&nbsp;Tests:       8 passed, 8 total</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; cat src/components/FilterSidebar.tsx</span>
+            <span class="t dim">&nbsp;&nbsp;import React from 'react';</span>
+            <span class="t dim">&nbsp;&nbsp;</span>
+            <span class="t dim">&nbsp;&nbsp;export const FilterSidebar: React.FC = () =&gt; {</span>
+            <span class="t dim">&nbsp;&nbsp;&nbsp;&nbsp;// TODO: implement filter logic</span>
+            <span class="t dim">&nbsp;&nbsp;&nbsp;&nbsp;return &lt;div className="filter-sidebar"&gt;&lt;/div&gt;;</span>
+            <span class="t dim">&nbsp;&nbsp;};</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary active">SUMMARY</span>
+          </div>
+          <div class="panel-content" style="padding:14px;overflow-y:auto;">
+            <div class="summary-hero">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+              <div class="summary-tldr">Building React components for the dashboard &mdash; completed data table and chart widgets, started on filter sidebar.</div>
+              <div class="summary-status paused">
+                <span class="summary-status-icon">&#x25CB;</span>
+                <span class="summary-status-text">Stale &middot; last active 8 days ago</span>
+              </div>
+              <div class="summary-stats">
+                <span>34m</span>
+                <span>6 prompts</span>
+                <span>4 files</span>
+                <span>67k tokens</span>
+                <span>Mon, Mar 31</span>
+              </div>
+            </div>
+            <div class="summary-details-row">
+              <div class="summary-details-toggle">
+                <span class="summary-details-chevron">&#x25B8;</span>
+                <span class="summary-details-label">Session details</span>
+              </div>
+              <span class="summary-details-preview">feat/dashboard-components &middot; claude-sonnet-4 &middot; 1 agent</span>
+            </div>
+            <div class="analysis-section">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:6</span><span class="summary-trail-text">Scaffolded FilterSidebar.tsx &mdash; basic structure, no logic yet</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:5</span><span class="summary-trail-text">Chart widget passing all tests &mdash; 4 chart types supported</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:4</span><span class="summary-trail-text">DataTable component complete with sorting and pagination</span></div>
+            </div>
+            <div style="margin-top:10px;">
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Prompts</span>
+                <span class="summary-collapsed-count">6 prompts</span>
+              </div>
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Key moments</span>
+                <span class="summary-collapsed-count">2 milestones</span>
+              </div>
+              <div class="summary-collapsed-row">
+                <span class="summary-collapsed-chevron">&#x25B8;</span>
+                <span>Next steps</span>
+                <span class="summary-collapsed-count">3 suggestions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame: Stale state -->
+
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li><strong>3.3a Done:</strong> Green checkmark badge in sidebar, green status in SUMMARY</li>
+      <li><strong>3.3b Failed:</strong> Red dot in sidebar, &ldquo;failed &middot; 42m&rdquo;, red status &ldquo;Build broken&rdquo; in SUMMARY</li>
+      <li><strong>3.3c Stale:</strong> Gray dot in sidebar, &ldquo;stale &middot; 34m&rdquo;, gray status &ldquo;Stale &middot; last active 8 days ago&rdquo; in SUMMARY</li>
+      <li>Stats row shows absolute date &ldquo;Mon, Mar 31&rdquo; for stale session (not &ldquo;Today&rdquo;)</li>
+      <li>Tab row: FILES, APP, SUMMARY &mdash; NO CHANGES tab in any variant</li>
+      <li>Trail shows where session stopped (explains WHY for failed state)</li>
+      <li>SUMMARY tab active in all three variants</li>
+      <li>Session status dots: green=done, red=failed, gray=stale, amber=running</li>
+      <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title for any state</li>
+      <li>Stale uses gray dot (not amber) &mdash; neutral, not alarming</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 3.4 &mdash; COMMIT &amp; PUSH
+     ==================================================================== -->
+<section class="scene" data-scene="3.4" data-status="not-built">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 3.4 &mdash; Commit &amp; Push</h3>
+    <p class="beat">You commit from the terminal: <code>git add -A &amp;&amp; git commit</code>, <code>git push</code>, <code>gh pr create</code>. Canvas doesn&rsquo;t interfere &mdash; this is your CLI workflow. But the SUMMARY tab updates to surface the result: PR #47 opened, CI status, commit hash, file diff summary. The changes section lives inside SUMMARY, not as a separate tab &mdash; because what you committed is part of the session&rsquo;s story.</p>
+    <p class="why">Canvas is additive, not replacement. You commit the way you&rsquo;ve always committed. But Canvas shows you what you committed in a structured view &mdash; no need to open GitHub to check CI status. The CLI does the action. Canvas shows the receipt. Changes belong in SUMMARY because they&rsquo;re the session&rsquo;s output, not a separate concern.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">31m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+        <div class="terminal-zone">
+          <div class="pane-title">Auth module &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; git add -A &amp;&amp; git commit -m "feat: auth module implementation"</span>
+            <span class="t dim">&nbsp;&nbsp;[main a3f2b1c] feat: auth module implementation</span>
+            <span class="t dim">&nbsp;&nbsp;12 files changed, 847 insertions(+), 23 deletions(-)</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; git push origin main</span>
+            <span class="t dim">&nbsp;&nbsp;To github.com/chrispark/canvas-app2.git</span>
+            <span class="t dim">&nbsp;&nbsp;* [new branch] main &rarr; main</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; gh pr create --title "feat: auth module" --base main</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; PR #47 created</span>
+            <span class="t dim">&nbsp;&nbsp;https://github.com/chrispark/canvas-app2/pull/47</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+
+        <!-- Right panel: SUMMARY tab with changes section INSIDE -->
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary active">SUMMARY</span>
+          </div>
+          <div class="panel-content" style="padding:14px;overflow-y:auto;">
+
+            <!-- Hero block -->
+            <div class="summary-hero">
+              <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
+              <div class="summary-tldr">Built the auth module with JWT validation, role-based middleware, and integration tests.</div>
+              <div class="summary-status done">
+                <span class="summary-status-icon">&#x2713;</span>
+                <span class="summary-status-text">All tests passing &middot; build clean &middot; PR #47 opened</span>
+              </div>
+              <div class="summary-stats">
+                <span>1h 12m</span>
+                <span>8 prompts</span>
+                <span>12 files</span>
+                <span>142k tokens</span>
+                <span>Today, 8:14 AM</span>
+              </div>
+            </div>
+
+            <!-- Changes section &mdash; INSIDE SUMMARY tab -->
+            <div class="analysis-section">
+              <div style="font:13px/1.6 var(--font-ui);color:var(--text-primary);margin-bottom:8px;">Built the session panel sidebar with live status indicators, duration counters, and worktree badges.</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                <span style="color:var(--green);font-size:11px;">&#x2713;</span>
+                <span style="font:11px var(--font-ui);color:var(--green);">PR #47 opened &nbsp;&middot;&nbsp; no conflicts</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;display:inline-block;"></span>
+                <span style="font:11px var(--font-ui);color:var(--text-primary);">CI passing &nbsp;&middot;&nbsp; 14/14 checks</span>
+              </div>
+              <div style="display:flex;gap:10px;font:10px var(--font-mono);color:var(--text-very-muted);padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);">
+                <span>a3f2b1c</span><span>&middot;</span><span>feat/session-panel &rarr; main</span><span>&middot;</span><span>847 added</span><span>&middot;</span><span>23 removed</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--text-muted)"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                <span style="font:11px var(--font-mono);color:var(--text-muted);">chrispark/canvas-app2</span>
+                <span style="font:11px var(--font-ui);color:var(--amber);cursor:pointer;margin-left:auto;">View PR #47 &rarr;</span>
+              </div>
+            </div>
+
+            <!-- Files changed -->
+            <div class="analysis-section">
+              <div class="analysis-section-header">
+                <span class="analysis-section-label">Files changed &nbsp;<span style="font-weight:400;color:var(--text-very-muted);">12</span></span>
+                <span class="analysis-section-toggle">&#x25BE;</span>
+              </div>
+              <div class="analysis-section-body">
+                <div style="font:11px var(--font-mono);color:var(--text-muted);">
+                  <div style="font:10px var(--font-mono);color:var(--text-very-muted);padding:6px 0 3px;">src/components/</div>
+                  <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>SessionRow.tsx</span><span style="color:var(--amber);">+312</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>SessionStatus.tsx</span><span style="color:var(--amber);">+198</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>SessionPanel.tsx</span><span style="color:var(--green);">+84 &minus;23</span>
+                  </div>
+                  <div style="font:10px var(--font-mono);color:var(--text-very-muted);padding:6px 0 3px;">src/tests/</div>
+                  <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>SessionPanel.test.tsx</span><span style="color:var(--amber);">+214</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;padding:3px 0;color:var(--text-very-muted);">
+                    <span>+ 8 more files</span><span style="color:var(--amber);">&#x2192;</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>SUMMARY tab active &mdash; NO separate CHANGES tab</li>
+      <li>Changes section appears INSIDE SUMMARY tab (below the hero block)</li>
+      <li>PR #47 shown with CI checks passing (green dot, 14/14)</li>
+      <li>Commit hash a3f2b1c visible</li>
+      <li>File diff summary: 12 files changed with line counts</li>
+      <li>GitHub PR link: &ldquo;View PR #47 &rarr;&rdquo; in amber</li>
+      <li>GitHub icon + repo name shown</li>
+      <li>Terminal shows git commit/push/PR output</li>
+      <li>Tab row: FILES, APP, SUMMARY &mdash; three tabs only</li>
+      <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 3.5 &mdash; PROJECT OVERVIEW
+     ==================================================================== -->
+<section class="scene" data-scene="3.5" data-status="not-built">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 3.5 &mdash; Project Overview</h3>
+    <p class="beat">You click the project name (&ldquo;CANVAS-APP&rdquo;) in the sidebar. The main area transforms into a project-level view. OVERVIEW tab: AI assessment banner, project vision, structured outcomes from OUTCOMES.md with status badges. STATS tab: 2&times;2 aggregate grid (sessions, time, tokens, files) and LLM-generated insights for velocity, alignment, efficiency, and risk. This is where the flywheel becomes tangible.</p>
+    <p class="why">Projects have identity. The overview is the project&rsquo;s home page &mdash; what&rsquo;s the vision, what are the outcomes, what&rsquo;s the status. Stats turn invisible work into visible patterns &mdash; no developer tracks their token efficiency across sessions. Canvas sees what you can&rsquo;t because it has the data and the model to interpret it.</p>
+  </div>
+
+  <!-- THE SCREENS &mdash; two views -->
+  <div class="screen">
+
+    <!-- Overview tab -->
+    <h4 class="screen-variant">Overview tab</h4>
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">34m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+        <div class="project-zone">
+          <div class="project-pane-title">Canvas-App &nbsp;&middot;&nbsp; Project</div>
+          <div class="project-tab-bar">
+            <span class="project-tab active">OVERVIEW</span>
+            <span class="project-tab">STATS</span>
+            <span class="project-tab">HISTORY</span>
+          </div>
+          <div class="project-content">
+
+            <div class="on-track-banner" style="flex-direction:column;align-items:flex-start;gap:6px;">
+              <div class="llm-header">
+                <span class="llm-spark">&#x2736;</span>
+                <span class="llm-label">AI assessment</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;display:inline-block;"></span>
+                <span style="font:600 12px var(--font-ui);color:var(--text-primary);">On track</span>
+                <span style="font:11px var(--font-ui);color:var(--text-muted);">1 of 3 outcomes in progress &nbsp;&middot;&nbsp; 3 sessions completed &nbsp;&middot;&nbsp; last activity today</span>
+              </div>
+              <div style="font:10px var(--font-ui);color:var(--text-very-muted);display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end;">
+                Generated 2 min ago &nbsp;<span class="llm-regen">&#x21BA; Regenerate</span>
+              </div>
+            </div>
+
+            <div class="project-heading">Amplifier-Canvas</div>
+            <div style="font:13px/1.5 var(--font-ui);color:var(--text-muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">Amplifier is a powerful framework with no cockpit. Canvas is the cockpit.</div>
+
+            <span class="project-field-label">Vision</span>
+            <div class="project-field-text" style="margin-bottom:16px;">Give Amplifier users a visual layer that makes sessions more legible, files more accessible, and projects more coherent. Never slower than the CLI.</div>
+
+            <span class="project-field-label">Outcomes</span>
+
+            <div class="outcome-row">
+              <div class="outcome-header">
+                <span class="outcome-dot" style="background:var(--amber);"></span>
+                <span class="outcome-text">Daily driver adoption &mdash; power users within 30 days</span>
+                <span class="outcome-badge" style="background:rgba(245,158,11,0.12);color:var(--amber);">In progress</span>
+              </div>
+              <div class="outcome-evidence"><span class="llm-spark" style="font-size:9px;">&#x2736;</span> &#x2713; Session panel built &nbsp;&middot;&nbsp; File viewer in progress &nbsp;&middot;&nbsp; App preview pending</div>
+            </div>
+
+            <div class="outcome-row">
+              <div class="outcome-header">
+                <span class="outcome-dot" style="background:var(--border);"></span>
+                <span class="outcome-text">Demonstrably faster debugging vs CLI alone</span>
+                <span class="outcome-badge" style="background:var(--bg-sidebar-active);color:var(--text-very-muted);">Not started</span>
+              </div>
+              <div class="outcome-evidence" style="color:var(--text-very-muted);"><span class="llm-spark" style="font-size:9px;">&#x2736;</span> No sessions have addressed this yet</div>
+            </div>
+
+            <div class="outcome-row">
+              <div class="outcome-header">
+                <span class="outcome-dot" style="background:var(--border);"></span>
+                <span class="outcome-text">Positive internal team signal &mdash; first two weeks</span>
+                <span class="outcome-badge" style="background:var(--bg-sidebar-active);color:var(--text-very-muted);">Too early</span>
+              </div>
+              <div class="outcome-evidence" style="color:var(--text-very-muted);"><span class="llm-spark" style="font-size:9px;">&#x2736;</span> Demo needed before this can be evaluated</div>
+            </div>
+
+            <span class="project-field-label" style="margin-top:20px;">Status</span>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;display:inline-block;"></span>
+              <span style="font:12px var(--font-ui);color:var(--text-primary);">PR #47 open &nbsp;&middot;&nbsp; 2 sessions running &nbsp;&middot;&nbsp; last commit today</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame: Overview -->
+
+
+    <!-- Stats tab -->
+    <h4 class="screen-variant">Stats tab</h4>
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">34m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+        <div class="project-zone">
+          <div class="project-pane-title">Canvas-App &nbsp;&middot;&nbsp; Project</div>
+          <div class="project-tab-bar">
+            <span class="project-tab">OVERVIEW</span>
+            <span class="project-tab active">STATS</span>
+            <span class="project-tab">HISTORY</span>
+          </div>
+          <div class="project-content">
+            <div class="proj-stats-grid">
+              <div class="proj-stat-cell"><div class="proj-stat-value">8</div><div class="proj-stat-label">Sessions</div></div>
+              <div class="proj-stat-cell"><div class="proj-stat-value">12h 34m</div><div class="proj-stat-label">Total time</div></div>
+              <div class="proj-stat-cell"><div class="proj-stat-value">847k</div><div class="proj-stat-label">Tokens</div></div>
+              <div class="proj-stat-cell"><div class="proj-stat-value">156</div><div class="proj-stat-label">Files touched</div></div>
+            </div>
+
+            <div class="llm-section">
+              <div class="llm-header">
+                <span class="llm-spark">&#x2736;</span>
+                <span class="llm-label">LLM-generated</span>
+                <span style="font:10px var(--font-ui);color:var(--text-very-muted);margin-left:4px;">Insights</span>
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Velocity</div>
+                Sessions are getting shorter &mdash; avg 1h 45m early, now 28m. You&rsquo;re in a refinement phase.
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Alignment</div>
+                Outcome 2 (faster debugging) has never been addressed across 8 sessions. This may become a gap.
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Efficiency</div>
+                Token efficiency improving &mdash; 18k tokens per file change early, now 12k.
+              </div>
+              <div class="llm-insight" style="border-bottom:none;margin-bottom:0;padding-bottom:0;">
+                <div class="llm-insight-label">Risk</div>
+                File viewer has been in progress for 3 sessions without completing. May need focused attention.
+              </div>
+              <div class="llm-footer">
+                Generated 4 min ago &nbsp;<span class="llm-regen">&#x21BA; Regenerate</span>
+              </div>
+            </div>
+
+            <div style="font:10px var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--text-very-muted);margin-bottom:10px;">Per session</div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Auth module</span>
+              <span class="proj-session-meta">1h 12m &nbsp;&middot;&nbsp; 47 tool calls &nbsp;&middot;&nbsp; 12 files</span>
+            </div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Dark mode</span>
+              <span class="proj-session-meta">running &nbsp;&middot;&nbsp; 31 tool calls so far</span>
+            </div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Frontend components</span>
+              <span class="proj-session-meta">running &nbsp;&middot;&nbsp; 8 tool calls so far</span>
+            </div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Setup scaffold</span>
+              <span class="proj-session-meta">2h 04m &nbsp;&middot;&nbsp; 89 tool calls &nbsp;&middot;&nbsp; 23 files</span>
+            </div>
+            <div class="proj-session-row" style="border-bottom:none;">
+              <span class="proj-session-name" style="color:var(--text-muted);">+ 4 more sessions</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /frame: Stats -->
+
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Project-level view replaces terminal zone &mdash; no terminal visible</li>
+      <li><strong>Overview:</strong> OVERVIEW tab active with AI assessment banner (sparkle icon)</li>
+      <li>Outcomes list from OUTCOMES.md with status badges (In progress / Not started / Too early)</li>
+      <li>Vision statement and project heading visible</li>
+      <li>Status line: &ldquo;PR #47 open &middot; 2 sessions running &middot; last commit today&rdquo;</li>
+      <li><strong>Stats:</strong> STATS tab active, 4-column grid (8 sessions, 12h 34m, 847k tokens, 156 files)</li>
+      <li>Four LLM insight sections: Velocity, Alignment, Efficiency, Risk</li>
+      <li>Each insight has sparkle icon and &ldquo;Regenerate&rdquo; button</li>
+      <li>Per-session breakdown below insights</li>
+      <li>Pane title: &ldquo;Canvas-App &middot; Project&rdquo;</li>
+      <li>Sidebar shows project with one running session</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 3.6 &mdash; MULTI-PROJECT
+     ==================================================================== -->
+<section class="scene" data-scene="3.6" data-status="not-built">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 3.6 &mdash; Multi-Project</h3>
+    <p class="beat">You have three projects in the sidebar: CANVAS-APP (expanded, one running session), team-pulse (collapsed, showing &ldquo;3 sessions&rdquo;), and budget-tracker (collapsed, &ldquo;1 session&rdquo;). You click team-pulse &mdash; it expands, Canvas switches context. Each project is its own world with its own sessions, history, and memory. Switching feels like opening a different notebook.</p>
+    <p class="why">Multiple projects in one workspace is the natural end state for power users. The sidebar handles this with expand/collapse: the active project takes space, inactive projects are one line each. No separate &ldquo;project switcher&rdquo; or modal. The sidebar IS the project switcher. Workspace stays clean because only one project is expanded at a time.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="sidebar">
+          <!-- Active project: CANVAS-APP (expanded) -->
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Auth module</span>
+                  <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+                </div>
+                <div class="worktree-badge">main</div>
+              </div>
+            </div>
+            <div class="session-sep"></div>
+            <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name bold">Dark mode</span>
+                  <span class="session-age amber">34m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsed project: team-pulse -->
+          <div class="project-row-collapsed">
+            <span class="project-chevron-muted">&#x25B8;</span>
+            <span class="project-label-muted">TEAM-PULSE</span>
+            <span class="project-meta-muted">3 sessions</span>
+          </div>
+
+          <!-- Collapsed project: budget-tracker -->
+          <div class="project-row-collapsed">
+            <span class="project-chevron-muted">&#x25B8;</span>
+            <span class="project-label-muted">BUDGET-TRACKER</span>
+            <span class="project-meta-muted">1 session</span>
+          </div>
+
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone -->
+        <div class="terminal-zone">
+          <div class="pane-title">Dark mode &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt">&gt; add the theme toggle component</span>
+            <span class="t blank"></span>
+            <span class="t-tool">read_file src/theme/ThemeProvider.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 89 lines read</span>
+            <span class="t-tool">write_file src/components/ThemeToggle.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 47 lines written</span>
+            <span class="t blank"></span>
+            <span class="t dim">&nbsp;&nbsp;Created ThemeToggle.tsx with system/light/dark options.</span>
+            <span class="t dim">&nbsp;&nbsp;Uses ThemeProvider context to persist the choice.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Three projects visible in sidebar: CANVAS-APP (expanded), TEAM-PULSE (collapsed), BUDGET-TRACKER (collapsed)</li>
+      <li>CANVAS-APP: expanded with 2 sessions (Auth module done, Dark mode running/active)</li>
+      <li>TEAM-PULSE: collapsed single row with &ldquo;3 sessions&rdquo; meta</li>
+      <li>BUDGET-TRACKER: collapsed single row with &ldquo;1 session&rdquo; meta</li>
+      <li>Collapsed projects use muted text and right-pointing chevron</li>
+      <li>Only one project expanded at a time</li>
+      <li>Terminal shows active Dark mode session</li>
+      <li>&ldquo;Add project&rdquo; button at sidebar bottom</li>
+      <li>Pane title: &ldquo;Dark mode &middot; Canvas-App&rdquo;</li>
+      <li>No right panel &mdash; two-pane layout</li>
+    </ul>
+  </div>
+
+</section>
+
+</body>
+</html>

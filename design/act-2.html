@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Amplifier Canvas &mdash; Act 2: Your First Session</title>
+<link rel="stylesheet" href="system.css">
+<style>
+
+/* ============================================================
+   ACT FILE &mdash; PAGE LAYOUT
+   ============================================================ */
+body {
+  background: var(--bg-page);
+  font-family: var(--font-ui);
+  padding: 48px 0;
+  min-width: 1440px;
+}
+
+/* ============================================================
+   ACT HEADER
+   ============================================================ */
+.act-header {
+  max-width: 1440px;
+  margin: 0 auto 48px;
+  padding: 0 0 16px;
+  border-bottom: 2px solid var(--border);
+}
+.act-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.act-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.act-header .act-story {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-right);
+  border-left: 3px solid var(--amber);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.act-header .act-story strong { font-weight: 600; }
+.act-header .act-story span { color: var(--text-muted); font-size: 11.5px; }
+
+/* ============================================================
+   SCENE CONTAINER
+   ============================================================ */
+.scene {
+  max-width: 1440px;
+  margin: 0 auto 80px;
+}
+.scene[data-status]::before {
+  content: attr(data-scene) " \2014 " attr(data-status);
+  display: inline-block;
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: 12px;
+}
+.scene[data-status="done"]::before {
+  background: rgba(76,175,116,0.12);
+  color: var(--green);
+}
+.scene[data-status="drift"]::before {
+  background: rgba(245,158,11,0.12);
+  color: var(--amber);
+}
+.scene[data-status="not-built"]::before {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-very-muted);
+}
+
+/* ============================================================
+   STORY SECTION
+   ============================================================ */
+.story {
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.story h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.story .beat {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.story .why {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   SCREEN SECTION &mdash; wrapper for mockups
+   ============================================================ */
+.screen {
+  margin-bottom: 16px;
+}
+
+/* ============================================================
+   VERIFY SECTION
+   ============================================================ */
+.verify {
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.verify ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 24px;
+}
+.verify li {
+  padding: 2px 0 2px 18px;
+  position: relative;
+  break-inside: avoid;
+  color: var(--text-muted);
+}
+.verify li::before {
+  content: '\25A1';
+  position: absolute;
+  left: 0;
+  color: var(--text-very-muted);
+  font-size: 11px;
+}
+
+
+/* ============================================================
+   FRAME &mdash; the 1440&times;900 screen mockup container
+   ============================================================ */
+.frame {
+  width: 1440px;
+  height: 900px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+
+/* ============================================================
+   SHARED: APP HEADER
+   ============================================================ */
+.app-header {
+  height: 38px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.app-header-left { display: flex; align-items: center; gap: 8px; }
+.logo-mark { width: 22px; height: 22px; flex-shrink: 0; display: block; line-height: 1; }
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.app-header-right { display: flex; align-items: center; gap: 2px; }
+.header-icon-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text-very-muted);
+  background: none; border: none; border-radius: 3px; line-height: 1;
+}
+
+
+/* ============================================================
+   SHARED: BODY ROW
+   ============================================================ */
+.body-row {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+
+/* ============================================================
+   SHARED: SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: 200px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-add-project {
+  margin-top: auto;
+  padding: 8px 14px;
+  margin: auto 10px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+}
+
+
+/* ============================================================
+   SIDEBAR &mdash; SESSION-FIRST DESIGN
+   ============================================================ */
+.project-label {
+  padding: 12px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-very-muted);
+  user-select: none;
+}
+.session-row-new {
+  height: 36px;
+  padding: 0 12px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+}
+.session-row-new.active { background: var(--bg-sidebar-active); }
+.session-row-new.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--amber);
+  border-radius: 0 1px 1px 0;
+}
+.session-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.session-dot.amber { background: var(--amber); }
+.session-dot.green { background: var(--green); }
+.session-dot.gray  { background: var(--text-very-muted); }
+.session-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-name.bold { font-weight: 600; }
+.session-age {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+.session-age.amber { color: var(--amber); }
+
+/* Project row: label + inline [+] */
+.project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 4px;
+}
+.project-row .project-label { padding: 0; }
+.project-add-session-btn {
+  font-size: 14px;
+  color: var(--text-very-muted);
+  background: none; border: none;
+  line-height: 1; padding: 0; cursor: pointer;
+}
+
+/* Expanded project group */
+.project-group-expanded {
+  background: rgba(0,0,0,0.025);
+  border-radius: 4px;
+  margin: 0 6px 6px;
+  padding: 4px 0;
+}
+.project-group-expanded .project-row { padding: 8px 8px 4px; }
+.project-group-expanded .session-row-new {
+  padding: 4px 8px 4px 28px;
+  border-left: 2px solid var(--border);
+  margin-left: 14px;
+  padding-left: 14px;
+}
+.project-chevron { font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-right: 4px; }
+
+
+/* ============================================================
+   SHARED: TERMINAL ZONE
+   ============================================================ */
+.terminal-zone {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+.pane-title {
+  height: 28px;
+  background: var(--bg-pane-title);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.terminal-area {
+  flex: 1;
+  background: var(--bg-terminal);
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-terminal);
+  overflow: hidden;
+}
+.t { display: block; }
+.t.success { color: var(--green); }
+.t.blank   { display: block; height: 1.65em; }
+.t.dim     { color: var(--text-very-muted); }
+.terminal-cursor {
+  display: inline-block;
+  width: 8px; height: 13px;
+  background: var(--amber);
+  vertical-align: middle;
+  margin-left: 1px;
+  position: relative;
+  top: -1px;
+}
+
+/* Tool call lines */
+.t-tool { color: var(--text-very-muted); display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); }
+.t-tool::before { content: '\25C6 '; color: #5A8A9A; }
+
+/* Terminal text lines */
+.t-user-prompt { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
+.t-amplifier-label { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
+.t-response { display: block; padding: 0 14px; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
+
+/* Green bold prompt character (matching real Amplifier CLI) */
+.t-gp { color: var(--green); font-weight: 600; }
+
+
+/* ============================================================
+   SHARED: RIGHT PANEL
+   ============================================================ */
+.right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--bg-right);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Primary tab row */
+.tab-row-primary {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.tab-primary {
+  font-size: 12px;
+  font-weight: 500;
+  padding-bottom: 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.tab-primary.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+}
+
+/* Secondary (file) tab row */
+.tab-row-secondary {
+  height: 30px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.browse-btn {
+  width: 22px; height: 22px;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-very-muted); font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border-radius: 3px;
+}
+.browse-btn.active { color: var(--amber); }
+.file-tab {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 3px 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; cursor: pointer; white-space: nowrap;
+}
+.file-tab.active {
+  color: var(--text-primary);
+  font-weight: 500;
+  border-bottom-color: var(--amber);
+}
+.file-tab-close {
+  font-size: 10px;
+  color: var(--text-very-muted);
+  line-height: 1;
+}
+
+/* Panel content */
+.panel-content {
+  flex: 1;
+  padding: 16px;
+  overflow: hidden;
+}
+
+
+/* ============================================================
+   ACTIVITY BADGES &mdash; on file tabs
+   read = green, write = orange, edit = blue
+   ============================================================ */
+.activity-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.activity-dot.read  { background: var(--green); }
+.activity-dot.write { background: #F59E0B; }
+.activity-dot.edit  { background: #3B82F6; }
+
+
+/* ============================================================
+   DOCUMENT STYLES (rendered markdown in panel)
+   ============================================================ */
+.doc-h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.doc-h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 14px; margin-bottom: 6px; }
+.doc-p  { font-size: 13px; font-weight: 400; color: var(--text-primary); line-height: 1.6; }
+.doc-ul { padding-left: 16px; font-size: 13px; color: var(--text-primary); line-height: 1.75; }
+.doc-ul li::before { content: '\2014'; margin-right: 6px; color: var(--text-very-muted); }
+
+
+/* ============================================================
+   FILE BROWSER STYLES
+   ============================================================ */
+.file-browser-folder {
+  font-size: 11px; color: var(--text-very-muted);
+  margin-bottom: 6px; font-weight: 500; letter-spacing: 0.02em;
+}
+.file-browser-row {
+  height: 28px; display: flex; align-items: center;
+  font-size: 13px; color: var(--text-primary);
+  padding: 0 6px; border-radius: 3px; cursor: pointer; gap: 8px;
+}
+.file-browser-row.hover { background: var(--bg-sidebar-active); }
+.file-icon { font-size: 11px; color: var(--text-very-muted); flex-shrink: 0; }
+
+
+/* ============================================================
+   CODE VIEW (source code in panel)
+   ============================================================ */
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.65;
+  color: #3A3530;
+  white-space: pre;
+  overflow: hidden;
+  margin: 0;
+}
+.code-ln  { color: var(--text-very-muted); display: inline-block; width: 20px; text-align: right; margin-right: 12px; user-select: none; }
+.code-kw  { color: #8A5A35; }
+.code-str { color: #2E7D50; }
+.code-cmt { color: var(--text-very-muted); font-style: italic; }
+.code-tag { color: #5A8A9A; }
+
+</style>
+</head>
+<body>
+
+<!-- ====================================================================
+     ACT 2 HEADER
+     ==================================================================== -->
+<div class="act-header">
+  <h1>Act 2 &mdash; Your First Session</h1>
+  <p>Five scenes: the AI becomes your co-pilot. The viewer earns its place.</p>
+  <div class="act-story">
+    <strong>Job to be done:</strong> Discover that Canvas adds value <em>on top of</em> the CLI, without ever getting in the way. The viewer earns its place.<br>
+    <span>You&rsquo;re in the terminal. This feels familiar &mdash; it&rsquo;s just Amplifier. But you&rsquo;re inside Canvas, and over the next few minutes, the right panel is going to reveal itself. Not all at once. Not because you asked for it. Because the work creates artifacts worth seeing. The viewer doesn&rsquo;t exist until it has something to show.</span>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCENE 2.1 &mdash; FIRST PROMPT
+     ==================================================================== -->
+<section class="scene" data-scene="2.1" data-status="drift">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 2.1 &mdash; First Prompt</h3>
+    <p class="beat">You type: &ldquo;help me understand this codebase.&rdquo; Amplifier reads four files, listed as tool calls in the terminal. A green checkmark: &ldquo;&#x2713; 4 files read.&rdquo; Amplifier responds with a summary. The terminal occupies the full width. There is no right panel. There&rsquo;s nothing to show yet.</p>
+    <p class="why">This is the restraint that defines Canvas. A lesser product would open a file viewer the moment Amplifier reads a file. Canvas doesn&rsquo;t. The viewer has no content worth displaying &mdash; so it stays hidden. The terminal gets all the space. Canvas won&rsquo;t waste your screen real estate on empty panels.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active">
+              <div class="session-dot amber"></div>
+              <span class="session-name bold">Explore codebase</span>
+              <span class="session-age amber">active</span>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone &mdash; full width, no right panel -->
+        <div class="terminal-zone">
+          <div class="pane-title">Explore codebase &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> help me understand this codebase</span>
+            <span class="t blank"></span>
+            <span class="t-tool">read_file VISION.md</span>
+            <span class="t-tool">read_file OUTCOMES.md</span>
+            <span class="t-tool">read_file src/App.tsx</span>
+            <span class="t-tool">read_file package.json</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 4 files read</span>
+            <span class="t blank"></span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">This is amplifier-canvas &mdash; a React + TypeScript companion UI for Amplifier CLI sessions.</span>
+            <span class="t-response">Goal (VISION.md): give Amplifier users a visual cockpit. Three guiding principles in place.</span>
+            <span class="t-response">OUTCOMES.md lists 3 success criteria. src/App.tsx is the entry point. No tests yet.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Terminal shows user prompt (green bold <code>&gt;</code>), tool calls (read_file &times;4), success checkmark, Amplifier response summarizing the codebase</li>
+      <li>NO right panel visible &mdash; full-width terminal</li>
+      <li>NO shell prompt or startup banner &mdash; Canvas handles the plumbing</li>
+      <li>Terminal prompt character is green bold <code>&gt;</code> matching real Amplifier CLI</li>
+      <li>Sidebar shows one expanded project with one active session (amber dot)</li>
+      <li>Sidebar has &ldquo;Add project&rdquo; button at the bottom</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 2.2 &mdash; THE VIEWER EARNS ITS PLACE
+     ==================================================================== -->
+<section class="scene" data-scene="2.2" data-status="drift">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 2.2 &mdash; The Viewer Earns Its Place</h3>
+    <p class="beat">You type: &ldquo;let&rsquo;s review the vision together.&rdquo; Amplifier reads VISION.md and opens it in the viewer &mdash; the right panel slides in for the first time. The FILES tab is active. One file tab: VISION.md with a green activity dot (read). The terminal narrates: &ldquo;Opening VISION.md in viewer &rarr;.&rdquo;</p>
+    <p class="why">The viewer appeared because Amplifier decided you needed to <em>see</em> this file, not just hear about it. The panel didn&rsquo;t exist 10 seconds ago. It earned its place. The activity badge (green dot = read) tells you the operation type at a glance &mdash; no labels, no provenance text, just signal.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active">
+              <div class="session-dot amber"></div>
+              <span class="session-name bold">Explore codebase</span>
+              <span class="session-age amber">active</span>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone -->
+        <div class="terminal-zone">
+          <div class="pane-title">Explore codebase &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> help me understand this codebase</span>
+            <span class="t-tool">read_file VISION.md</span>
+            <span class="t-tool">read_file OUTCOMES.md</span>
+            <span class="t-tool">read_file src/App.tsx</span>
+            <span class="t-tool">read_file package.json</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 4 files read</span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">This is amplifier-canvas &mdash; a React + TypeScript companion UI for Amplifier sessions.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> let&rsquo;s review the vision together</span>
+            <span class="t blank"></span>
+            <span class="t-tool">read_file VISION.md</span>
+            <span class="t dim">&nbsp;&nbsp;Opening VISION.md in viewer &rarr;</span>
+            <span class="t blank"></span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">Opened VISION.md in the viewer. Goal: give Amplifier users a visual cockpit.</span>
+            <span class="t-response">Three principles: respect attention, stay organized, never slower than the CLI.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+
+        <!-- Right panel &mdash; opens for FIRST TIME -->
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary active">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary">SUMMARY</span>
+          </div>
+          <div class="tab-row-secondary">
+            <button class="browse-btn" title="Browse">&#x25A6;</button>
+            <div class="file-tab active"><span class="activity-dot read"></span>VISION.md <span class="file-tab-close">&times;</span></div>
+          </div>
+          <div class="panel-content">
+            <div class="doc-h2">Amplifier-Canvas Vision</div>
+            <p class="doc-p">Amplifier is a powerful engine with no cockpit. Canvas is the cockpit.</p>
+            <div class="doc-h3">Goal</div>
+            <p class="doc-p">Give Amplifier users a visual layer that makes sessions more legible, files more accessible, and projects more coherent.</p>
+            <div class="doc-h3">Core Principles</div>
+            <ul class="doc-ul">
+              <li>Respect attention &mdash; nothing opens unless it earns its place</li>
+              <li>Stay organized across projects and sessions</li>
+              <li>Never slower than the CLI</li>
+            </ul>
+          </div>
+        </div>
+
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Right panel visible for the first time &mdash; it was hidden in Scene 2.1</li>
+      <li>Three primary tabs visible: FILES (active), APP, SUMMARY</li>
+      <li>NO ANALYSIS or CHANGES tabs &mdash; those are Act 3</li>
+      <li>Secondary row: browse button (inactive) + &ldquo;VISION.md&rdquo; file tab (active, with &times;)</li>
+      <li>Green activity dot on VISION.md tab (read operation)</li>
+      <li>NO provenance label (&ldquo;Opened by Amplifier&rdquo;) &mdash; activity dot replaces it</li>
+      <li>Panel content: rendered markdown (vision statement, goal, core principles)</li>
+      <li>Terminal shows &ldquo;Opening VISION.md in viewer &rarr;&rdquo; dim message</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 2.3 &mdash; WORKING WITH FILES
+     ==================================================================== -->
+<section class="scene" data-scene="2.3" data-status="done">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 2.3 &mdash; Working with Files</h3>
+    <p class="beat">OUTCOMES.md is now open alongside VISION.md. Two file tabs in the secondary row, each with a green activity dot (read). You can switch between them. The file browser has closed &mdash; it gets out of the way once you&rsquo;ve made your selection.</p>
+    <p class="why">The multi-file experience is established with zero explanation. Tabs work like tabs. Activity badges update in real time as Amplifier reads and writes &mdash; green dots for reads, orange for writes, blue for edits. The color tells you what happened without hovering or clicking.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active">
+              <div class="session-dot amber"></div>
+              <span class="session-name bold">Explore codebase</span>
+              <span class="session-age amber">active</span>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone -->
+        <div class="terminal-zone">
+          <div class="pane-title">Explore codebase &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> help me understand this codebase</span>
+            <span class="t-tool">read_file VISION.md</span>
+            <span class="t-tool">read_file OUTCOMES.md</span>
+            <span class="t-tool">read_file src/App.tsx</span>
+            <span class="t-tool">read_file package.json</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; 4 files read</span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">This is amplifier-canvas &mdash; a React + TypeScript companion UI for Amplifier sessions.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> let&rsquo;s review the vision together</span>
+            <span class="t-tool">read_file VISION.md</span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">Opened VISION.md in the viewer.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+
+        <!-- Right panel &mdash; two file tabs, OUTCOMES.md active -->
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary active">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary">SUMMARY</span>
+          </div>
+          <div class="tab-row-secondary">
+            <button class="browse-btn" title="Browse">&#x25A6;</button>
+            <div class="file-tab"><span class="activity-dot read"></span>VISION.md <span class="file-tab-close">&times;</span></div>
+            <div class="file-tab active"><span class="activity-dot read"></span>OUTCOMES.md <span class="file-tab-close">&times;</span></div>
+          </div>
+          <div class="panel-content">
+            <div class="doc-h2">Outcomes</div>
+            <p class="doc-p">What success looks like for amplifier-canvas.</p>
+            <div class="doc-h3">Success Criteria</div>
+            <ul class="doc-ul">
+              <li>Daily-driver adoption among power users within 30 days</li>
+              <li>Demonstrably faster debugging vs CLI alone</li>
+              <li>Positive internal team signal in first two weeks</li>
+            </ul>
+            <div class="doc-h3">Anti-Goals</div>
+            <ul class="doc-ul">
+              <li>Not a replacement for the terminal</li>
+              <li>Not a full IDE &mdash; stays lightweight and focused</li>
+            </ul>
+          </div>
+        </div>
+
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Two file tabs: VISION.md + OUTCOMES.md (active), each with green activity dot (read)</li>
+      <li>Panel content: OUTCOMES.md rendered markdown (success criteria, anti-goals)</li>
+      <li>Browse button inactive (not highlighted)</li>
+      <li>NO provenance labels (&ldquo;Opened by Amplifier&rdquo; / &ldquo;Opened by you&rdquo;) &mdash; activity dots only</li>
+      <li>Three primary tabs: FILES (active), APP, SUMMARY &mdash; no ANALYSIS or CHANGES</li>
+      <li>Sidebar unchanged &mdash; same expanded project, same active session with amber dot</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 2.4 &mdash; SIDE-BY-SIDE
+     ==================================================================== -->
+<section class="scene" data-scene="2.4" data-status="done">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 2.4 &mdash; Side-by-Side</h3>
+    <p class="beat">You ask Amplifier to scaffold a Dashboard component. It reads App.tsx, writes a new Dashboard.tsx, and edits App.tsx to wire it in. The terminal shows tool calls and responses. The viewer updates in real time &mdash; Dashboard.tsx appears with an orange activity dot (write), App.tsx shows a blue dot (edit). You&rsquo;re watching the AI work.</p>
+    <p class="why">This is the workflow loop that converts skeptics. You type a prompt. Amplifier works. Files appear in the viewer as they&rsquo;re created. The activity dots tell the story &mdash; green means read, orange means written, blue means edited. Terminal and viewer are two views of the same work happening in real time.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active">
+              <div class="session-dot amber"></div>
+              <span class="session-name bold">Explore codebase</span>
+              <span class="session-age amber">active</span>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone -->
+        <div class="terminal-zone">
+          <div class="pane-title">Explore codebase &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> let&rsquo;s review the vision together</span>
+            <span class="t-tool">read_file VISION.md</span>
+            <span class="t dim">&nbsp;&nbsp;Opening VISION.md in viewer &rarr;</span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">Opened VISION.md in the viewer.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> scaffold a Dashboard component with session cards</span>
+            <span class="t blank"></span>
+            <span class="t-tool">read_file src/App.tsx</span>
+            <span class="t-tool">write_file src/Dashboard.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; Created src/Dashboard.tsx (47 lines)</span>
+            <span class="t-tool">edit_file src/App.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; Updated import + render</span>
+            <span class="t blank"></span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">Created Dashboard.tsx with a session card layout showing active sessions,</span>
+            <span class="t-response">status indicators, and duration counters. Updated App.tsx to import and</span>
+            <span class="t-response">render the new component.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+
+        <!-- Right panel &mdash; write + edit badges on file tabs -->
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary active">FILES</span>
+            <span class="tab-primary">APP</span>
+            <span class="tab-primary">SUMMARY</span>
+          </div>
+          <div class="tab-row-secondary">
+            <button class="browse-btn" title="Browse">&#x25A6;</button>
+            <div class="file-tab"><span class="activity-dot edit"></span>App.tsx <span class="file-tab-close">&times;</span></div>
+            <div class="file-tab active"><span class="activity-dot write"></span>Dashboard.tsx <span class="file-tab-close">&times;</span></div>
+          </div>
+          <div class="panel-content" style="padding:0;">
+            <pre class="code-block" style="padding:14px 16px;"><span class="code-ln"> 1</span><span class="code-kw">import</span> React <span class="code-kw">from</span> <span class="code-str">'react'</span>;
+<span class="code-ln"> 2</span>
+<span class="code-ln"> 3</span><span class="code-kw">interface</span> SessionCard {
+<span class="code-ln"> 4</span>  name: <span class="code-tag">string</span>;
+<span class="code-ln"> 5</span>  status: <span class="code-str">'active'</span> | <span class="code-str">'done'</span>;
+<span class="code-ln"> 6</span>  duration: <span class="code-tag">string</span>;
+<span class="code-ln"> 7</span>}
+<span class="code-ln"> 8</span>
+<span class="code-ln"> 9</span><span class="code-kw">export function</span> Dashboard() {
+<span class="code-ln">10</span>  <span class="code-kw">const</span> sessions: SessionCard[] = [
+<span class="code-ln">11</span>    { name: <span class="code-str">'Explore codebase'</span>,
+<span class="code-ln">12</span>      status: <span class="code-str">'active'</span>,
+<span class="code-ln">13</span>      duration: <span class="code-str">'12m'</span> },
+<span class="code-ln">14</span>  ];
+<span class="code-ln">15</span>
+<span class="code-ln">16</span>  <span class="code-kw">return</span> (
+<span class="code-ln">17</span>    &lt;<span class="code-tag">div</span> className=<span class="code-str">"dashboard"</span>&gt;
+<span class="code-ln">18</span>      &lt;<span class="code-tag">h2</span>&gt;Active Sessions&lt;/<span class="code-tag">h2</span>&gt;
+<span class="code-ln">19</span>      {sessions.map(s =&gt; (
+<span class="code-ln">20</span>        &lt;<span class="code-tag">div</span> className=<span class="code-str">"session-card"</span>
+<span class="code-ln">21</span>             key={s.name}&gt;
+<span class="code-ln">22</span>          &lt;<span class="code-tag">span</span>
+<span class="code-ln">23</span>            className={<span class="code-str">`dot ${s.status}`</span>}
+<span class="code-ln">24</span>          /&gt;
+<span class="code-ln">25</span>          &lt;<span class="code-tag">span</span>&gt;{s.name}&lt;/<span class="code-tag">span</span>&gt;
+<span class="code-ln">26</span>          &lt;<span class="code-tag">span</span>&gt;{s.duration}&lt;/<span class="code-tag">span</span>&gt;
+<span class="code-ln">27</span>        &lt;/<span class="code-tag">div</span>&gt;
+<span class="code-ln">28</span>      ))}
+<span class="code-ln">29</span>    &lt;/<span class="code-tag">div</span>&gt;
+<span class="code-ln">30</span>  );
+<span class="code-ln">31</span>}</pre>
+          </div>
+        </div>
+
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Two file tabs: App.tsx (blue activity dot = edit) and Dashboard.tsx (orange activity dot = write, active)</li>
+      <li>Panel shows source code of newly created Dashboard.tsx with line numbers</li>
+      <li>Terminal shows the full workflow: read &rarr; write &rarr; edit &rarr; Amplifier summary</li>
+      <li>Activity badges tell the story: blue = edited existing file, orange = wrote new file</li>
+      <li>Three primary tabs: FILES (active), APP, SUMMARY &mdash; no ANALYSIS or CHANGES</li>
+      <li>User can click App.tsx tab to see what was edited</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 2.5 &mdash; APP PREVIEW
+     ==================================================================== -->
+<section class="scene" data-scene="2.5" data-status="drift">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 2.5 &mdash; App Preview</h3>
+    <p class="beat">You run <code>npm run dev</code>. The dev server starts: &ldquo;&#x2713; Ready in 847ms.&rdquo; The APP tab activates automatically, showing a live preview of your running application at localhost:3000 &mdash; embedded right in the panel. No browser tab. No alt-tabbing.</p>
+    <p class="why">This is the moment Canvas stops being &ldquo;nice to have&rdquo; and becomes essential. The app preview collapses an entire workflow &mdash; terminal, browser, resize windows, check output &mdash; into a single glance. You made changes in the terminal. You see them in the panel. The feedback loop is instant and contained.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row">
+              <span class="project-chevron">&#x25BE;</span>
+              <div class="project-label">CANVAS-APP</div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new active">
+              <div class="session-dot amber"></div>
+              <span class="session-name bold">Explore codebase</span>
+              <span class="session-age amber">active</span>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone -->
+        <div class="terminal-zone">
+          <div class="pane-title">Explore codebase &middot; Canvas-App</div>
+          <div class="terminal-area">
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> scaffold a Dashboard component with session cards</span>
+            <span class="t-tool">read_file src/App.tsx</span>
+            <span class="t-tool">write_file src/Dashboard.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; Created src/Dashboard.tsx</span>
+            <span class="t-tool">edit_file src/App.tsx</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; Updated import + render</span>
+            <span class="t-amplifier-label">Amplifier:</span>
+            <span class="t-response">Created Dashboard.tsx with session card layout. Updated App.tsx.</span>
+            <span class="t blank"></span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> npm run dev</span>
+            <span class="t dim">&nbsp;&nbsp;Starting development server...</span>
+            <span class="t success">&nbsp;&nbsp;&#x2713; Ready in 847ms</span>
+            <span class="t dim">&nbsp;&nbsp;Local:&nbsp;&nbsp; localhost:3000</span>
+            <span class="t dim">&nbsp;&nbsp;Opening web preview in panel &rarr;</span>
+          </div>
+        </div>
+
+        <!-- Right panel &mdash; APP tab active with live preview -->
+        <div class="right-panel">
+          <div class="tab-row-primary">
+            <span class="tab-primary">FILES</span>
+            <span class="tab-primary active">APP</span>
+            <span class="tab-primary">SUMMARY</span>
+          </div>
+          <div style="height:28px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;">
+            <span style="font:11px var(--font-mono);color:var(--text-primary);">localhost:3000</span>
+          </div>
+          <div style="flex:1;background:#FAFAF8;overflow:auto;display:flex;flex-direction:column;">
+            <!-- Mini app nav -->
+            <div style="background:#1A1816;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+              <div style="font:600 12px/1 -apple-system,sans-serif;color:#E8E0D4;">Canvas Dashboard</div>
+              <div style="margin-left:auto;display:flex;gap:12px;">
+                <span style="font:11px/1 -apple-system,sans-serif;color:#8A7E72;">Overview</span>
+                <span style="font:11px/1 -apple-system,sans-serif;color:#C4784A;border-bottom:1px solid #C4784A;padding-bottom:1px;">Sessions</span>
+                <span style="font:11px/1 -apple-system,sans-serif;color:#8A7E72;">Settings</span>
+              </div>
+            </div>
+            <!-- Content area -->
+            <div style="padding:14px;flex:1;">
+              <div style="font:600 13px/1 -apple-system,sans-serif;color:#1A1816;margin-bottom:12px;">Active Sessions</div>
+              <!-- Session card -->
+              <div style="background:white;border:1px solid #E8E0D4;border-radius:4px;padding:12px;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#C4784A;"></span>
+                  <span style="font:600 11px/1 -apple-system,sans-serif;color:#1A1816;">Explore codebase</span>
+                  <span style="font:10px/1 -apple-system,sans-serif;color:#8A7E72;margin-left:auto;">12 min ago</span>
+                </div>
+                <div style="font:11px/1.4 -apple-system,sans-serif;color:#5A5347;">Building dashboard layout with header, sidebar, and main content area</div>
+                <div style="display:flex;gap:12px;margin-top:8px;">
+                  <span style="font:10px/1 -apple-system,sans-serif;color:#8A7E72;">6 files</span>
+                  <span style="font:10px/1 -apple-system,sans-serif;color:#8A7E72;">24 turns</span>
+                  <span style="font:10px/1 -apple-system,sans-serif;color:#53965E;">12/12 tests</span>
+                </div>
+              </div>
+              <!-- Recent files -->
+              <div style="font:600 11px/1 -apple-system,sans-serif;color:#1A1816;margin:14px 0 8px;">Recent Changes</div>
+              <div style="font:11px/1.8 SFMono-Regular,monospace;color:#5A5347;">
+                <div style="display:flex;"><span style="color:#53965E;width:14px;">+</span> src/Dashboard.tsx</div>
+                <div style="display:flex;"><span style="color:#53965E;width:14px;">+</span> src/theme.ts</div>
+                <div style="display:flex;"><span style="color:#C4784A;width:14px;">~</span> src/App.tsx</div>
+                <div style="display:flex;"><span style="color:#53965E;width:14px;">+</span> tests/dashboard.test.ts</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>APP tab active (not FILES)</li>
+      <li>Panel shows URL bar (&ldquo;localhost:3000&rdquo;) and embedded web content</li>
+      <li>Terminal shows <code>npm run dev</code> output with &ldquo;Ready in 847ms&rdquo; and &ldquo;Opening web preview in panel &rarr;&rdquo;</li>
+      <li>FILES and SUMMARY tabs still accessible but not active</li>
+      <li>Three primary tabs: FILES, APP (active), SUMMARY &mdash; no ANALYSIS or CHANGES</li>
+      <li>Sidebar unchanged &mdash; same expanded project, same active session with amber dot</li>
+    </ul>
+  </div>
+
+</section>
+
+</body>
+</html>
