@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { createTerminalScanner } from '../lib/terminalScanner'
+import { useCanvasStore } from '../store'
 
 // Padding applied around the terminal
 const PAD_V = 12
@@ -44,6 +46,23 @@ function TerminalComponent({ sessionId }: TerminalProps): React.ReactElement {
     xtermRef.current = xterm
     fitAddonRef.current = fitAddon
 
+    // Terminal output scanner — detects file reads and dev server URLs
+    const scanner = createTerminalScanner({
+      onFileOpen: (filePath) => {
+        const openFile = (window as unknown as Record<string, unknown>).__canvasOpenFile as
+          | ((path: string) => void)
+          | undefined
+        openFile?.(filePath)
+        useCanvasStore.getState().openViewer()
+      },
+      onAppPreview: (url) => {
+        const setAppPreview = (window as unknown as Record<string, unknown>)
+          .__canvasSetAppPreview as ((url: string) => void) | undefined
+        setAppPreview?.(url)
+        useCanvasStore.getState().openViewer()
+      },
+    })
+
     const handleResize = (): void => {
       fitAddon.fit()
     }
@@ -77,6 +96,7 @@ function TerminalComponent({ sessionId }: TerminalProps): React.ReactElement {
       const cleanupData = window.electronAPI.onTerminalData((payload) => {
         if (payload.sessionId === sessionId) {
           xterm.write(payload.data)
+          scanner(payload.data)
         }
       })
 

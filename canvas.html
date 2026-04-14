@@ -2828,6 +2828,29 @@ body {
     <span class="screen-label-title">Start a second session</span>
     <span class="screen-label-desc">Auth module is actively running. User clicks &ldquo;+ New session.&rdquo; Canvas starts Dark mode in an isolated git worktree &mdash; both sessions work the same files independently, no conflicts. Session 1 keeps running.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>User clicks [+] on the project row. Canvas creates a git worktree and starts a new Amplifier session in it. The sidebar shows two sessions &mdash; Auth module on main (running, 28m), and the new Dark mode session on worktree/dark-mode (just started, active/selected). Terminal shows the new session ready for input.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Worktree isolation is the key insight &mdash; parallel sessions without merge conflicts. Canvas manages the complexity; the user just clicks [+].</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Sidebar shows one expanded project (CANVAS-APP) with two sessions</li>
+        <li>Auth module: amber dot, &ldquo;28m &middot; running&rdquo;, worktree badge &ldquo;main&rdquo;</li>
+        <li>Dark mode: amber dot, &ldquo;just started&rdquo;, worktree badge &ldquo;&#x219F; worktree/dark-mode&rdquo; (selected/active)</li>
+        <li>NO &ldquo;Projects&rdquo; section header &mdash; uses project-group-expanded pattern</li>
+        <li>NO startup banner in terminal &mdash; Canvas handles launch plumbing</li>
+        <li>Terminal shows ready message and cursor prompt</li>
+        <li>Pane title shows worktree badge &ldquo;&#x219F; worktree/dark-mode&rdquo;</li>
+        <li>&ldquo;Add project&rdquo; button at sidebar bottom</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -2842,46 +2865,39 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Auth module</span>
-              <span class="session-age amber">28m &middot; running</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Auth module</span>
+                <span class="session-age amber">28m &middot; running</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Dark mode</span>
+                <span class="session-age amber">just started</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold">New session</span>
-              <span class="session-age amber">just started</span>
-            </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
         <div class="pane-title">New session &middot; Canvas-App <span class="ctrl-hint">&#x219F; worktree/dark-mode</span></div>
         <div class="terminal-area">
-          <span class="t dim">Bundle &apos;foundation&apos; prepared successfully</span>
-          <span class="t dim">&#x256D;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;</span>
-          <span class="t dim">&#x2502; Amplifier Interactive Session &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Session ID: c5d4e3f2-a1b0-3456-789a-bcdef0123456 &nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; amplifier 2026.03.30 &nbsp;| core 1.3.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Worktree: worktree/dark-mode | Isolated from main &nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Commands: /help &nbsp;| Multi-line: Ctrl-J | Exit: Ctrl-D &#x2502;</span>
-          <span class="t dim">&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;</span>
-          <span class="t blank"></span>
           <span class="t success">&nbsp;&nbsp;&#x2713; Ready. Isolated from session 1 &mdash; no file conflicts.</span>
           <span class="t blank"></span>
           <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
@@ -2899,6 +2915,28 @@ body {
     <span class="screen-label-title">Session completes</span>
     <span class="screen-label-desc">An hour later. User is deep in Dark mode when a notification appears &mdash; Auth module just finished. Left nav updates: amber dot becomes green. No interruption.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>An hour later, while the user works in Dark mode, Auth module finishes. A toast notification slides in at the bottom-right. Sidebar updates: Auth module&rsquo;s amber dot becomes a green checkmark. Dark mode keeps running undisturbed. Terminal shows thinking block with model/token stats &mdash; a new terminal element.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Completion notification without interruption. The user stays in flow. The sidebar is glanceable &mdash; green checkmark means done. Toast provides actionable &ldquo;Review&rdquo; link without context switching.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Auth module sidebar row: green checkmark (session-done-badge), &ldquo;done &middot; 1h 12m&rdquo;</li>
+        <li>Dark mode sidebar row: amber dot, still running, selected</li>
+        <li>Toast notification visible at bottom-right: &ldquo;Auth module completed&rdquo; with &ldquo;Review&rdquo; action</li>
+        <li>Terminal shows thinking block (&#x1F9E0; Thinking...) with token stats line</li>
+        <li>Right panel: FILES tab active with file browser</li>
+        <li>Tabs: FILES, APP, ANALYSIS, CHANGES &mdash; ANALYSIS correct here (running session)</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen" style="position:relative;">
     <div class="app-header">
       <div class="app-header-left">
@@ -2913,33 +2951,35 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Auth module</span>
-              <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Auth module</span>
+                <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">31m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">31m</span>
-            </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
         <div class="terminal-area">
@@ -2986,6 +3026,30 @@ body {
     <span class="screen-label-title">Review completed session</span>
     <span class="screen-label-desc">User clicks Auth module in the left nav. The SUMMARY tab grounds them instantly: one-line TLDR, status + stats as a hero block, session details collapsed with a preview line, and a &ldquo;where you left off&rdquo; trail. No scrolling through chat history.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>User clicks Auth module in the sidebar. The SUMMARY tab opens &mdash; a hero block with one-line TLDR, green &ldquo;All tests passing&rdquo; status, stats row (duration, prompts, files, tokens, date). Collapsed &ldquo;Session details&rdquo; with preview. &ldquo;Where you left off&rdquo; trail shows the last 3 turns. Terminal shows the git/PR commands from the session.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>SUMMARY is the answer to &ldquo;what happened?&rdquo; &mdash; no scrolling through chat history. The trail anchors you to the exact moment. Stats give you the shape of the session at a glance.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Auth module selected (active) in sidebar with green checkmark</li>
+        <li>SUMMARY tab active in right panel (not FILES, not ANALYSIS)</li>
+        <li>Hero block: TLDR text, green status with checkmark, stats row</li>
+        <li>Collapsed &ldquo;Session details&rdquo; with preview showing &ldquo;main &middot; claude-sonnet-4 &middot; 3 agents&rdquo;</li>
+        <li>&ldquo;Where you left off&rdquo; trail with T:31, T:28, T:22 entries</li>
+        <li>Collapsed Prompts, Key moments, Next steps sections</li>
+        <li>Terminal shows git commit/push/PR commands</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in the pane title</li>
+        <li>Tab row: FILES, APP, SUMMARY, CHANGES</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3000,36 +3064,38 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold">Auth module</span>
-              <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Auth module</span>
+                <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">31m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">31m</span>
-            </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
-        <div class="pane-title">Auth module &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Auth module &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; git add -A &amp;&amp; git commit -m "feat: auth module implementation"</span>
           <span class="t dim">&nbsp;&nbsp;[main a3f2b1c] feat: auth module implementation</span>
@@ -3123,6 +3189,29 @@ body {
     <span class="screen-label-title">Triage a failed session</span>
     <span class="screen-label-desc">Variant: the session failed. Red status is visually louder &mdash; the eye goes to the failure first. The &ldquo;where you left off&rdquo; trail explains <em>why</em> it broke (Stripe version upgrade). Collapsed session details let the user check which model was used.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>Variant &mdash; the Stripe migration session failed. Red dot + &ldquo;failed &middot; 42m&rdquo; in sidebar. SUMMARY hero block shows red status &ldquo;Build broken &middot; 2 type errors.&rdquo; Trail explains WHY it failed (Stripe v14 breaking changes). Three sessions visible: Auth module (done), Stripe migration (failed, selected), Dark mode (running).</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Failed sessions need triage, not just a red dot. The trail tells you what went wrong so you can decide: resume and fix, or start over. Red status is visually louder than green &mdash; failures demand attention.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Stripe migration selected with red dot, &ldquo;failed &middot; 42m&rdquo;</li>
+        <li>Auth module: green checkmark, &ldquo;done &middot; 1h 12m&rdquo;</li>
+        <li>Dark mode: amber dot, still running</li>
+        <li>SUMMARY tab active with red failed status</li>
+        <li>Trail explains the Stripe v14 breaking change</li>
+        <li>Terminal shows TypeScript errors (red colored)</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+        <li>Tab row: FILES, APP, SUMMARY, CHANGES</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3137,47 +3226,49 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Auth module</span>
-              <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Auth module</span>
+                <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot" style="margin-top:3px;flex-shrink:0;background:#D94545;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Stripe migration</span>
+                <span class="session-age" style="color:#D94545;">failed &middot; 42m</span>
+              </div>
+              <div class="worktree-badge">main</div>
+            </div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">31m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot" style="margin-top:3px;flex-shrink:0;background:#D94545;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold">Stripe migration</span>
-              <span class="session-age" style="color:#D94545;">failed &middot; 42m</span>
-            </div>
-            <div class="worktree-badge">main</div>
-          </div>
-        </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">31m</span>
-            </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
-        <div class="pane-title">Stripe migration &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Stripe migration &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; npm install @stripe/stripe-node@14</span>
           <span class="t dim">&nbsp;&nbsp;+ @stripe/stripe-node@14.12.0</span>
@@ -3274,6 +3365,28 @@ body {
     <span class="screen-label-title">Revisit a stale session</span>
     <span class="screen-label-desc">Variant: the session was paused mid-work a week ago. Amber status is neutral &mdash; not alarming, just &ldquo;hey, this is incomplete.&rdquo; The stat line shows an absolute date (Mon, Mar 31) instead of &ldquo;Today.&rdquo; The trail anchors you: filter sidebar is scaffolded but empty.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>Variant &mdash; the Frontend components session was paused a week ago. Amber dot + &ldquo;paused&rdquo; in sidebar. SUMMARY hero block shows amber status &ldquo;Incomplete &mdash; session exited before tests passed.&rdquo; Stats show absolute date (Mon, Mar 31) instead of relative time. Trail shows unfinished work.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Stale sessions are neither done nor failed &mdash; they&rsquo;re incomplete. Amber is neutral: not alarming, just &ldquo;hey, this needs attention.&rdquo; Absolute dates ground you when it&rsquo;s been days.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Frontend components selected with amber dot</li>
+        <li>Auth module: green checkmark. Stripe migration: red dot. Dark mode: amber running</li>
+        <li>SUMMARY tab active with amber/paused status</li>
+        <li>Stats row shows absolute date &ldquo;Mon, Mar 31&rdquo; (not &ldquo;Today&rdquo;)</li>
+        <li>Trail shows where the session stopped (filter sidebar scaffolded but empty)</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+        <li>Tab row: FILES, APP, SUMMARY, CHANGES</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3288,47 +3401,49 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">API endpoints</span>
-              <span class="session-age" style="color:var(--green);">done &middot; 2h 5m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">API endpoints</span>
+                <span class="session-age" style="color:var(--green);">done &middot; 2h 5m</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Database layer</span>
+                <span class="session-age" style="color:var(--green);">done &middot; 1h 34m</span>
+              </div>
+              <div class="worktree-badge">main</div>
+            </div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Frontend components</span>
+                <span class="session-age" style="color:var(--amber);">paused &middot; 34m</span>
+              </div>
+              <div class="worktree-badge">feat/dashboard-components</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Database layer</span>
-              <span class="session-age" style="color:var(--green);">done &middot; 1h 34m</span>
-            </div>
-            <div class="worktree-badge">main</div>
-          </div>
-        </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold">Frontend components</span>
-              <span class="session-age" style="color:var(--amber);">paused &middot; 34m</span>
-            </div>
-            <div class="worktree-badge">feat/dashboard-components</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
-        <div class="pane-title">Frontend components &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Frontend components &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; npx jest --verbose</span>
           <span class="t success">&nbsp;&nbsp;PASS  src/components/DataTable.test.tsx</span>
@@ -3424,6 +3539,28 @@ body {
     <span class="screen-label-title">Commit the changes</span>
     <span class="screen-label-desc">Amplifier&rsquo;s work is done. User commits from the terminal like they normally do &mdash; git add, commit, push, PR. Canvas just shows the diff in the viewer.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>User switches to the CHANGES tab for the Auth module. It shows PR status (PR #47, CI passing), file diff summary, and a GitHub link. Terminal still shows the git commands. This is the &ldquo;what did this session produce?&rdquo; view.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>CHANGES is the artifact tab &mdash; what code changed, is CI green, where&rsquo;s the PR. Developers care about the diff. This answers &ldquo;is it safe to merge?&rdquo; without leaving Canvas.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>CHANGES tab active in right panel</li>
+        <li>PR #47 shown with CI checks passing</li>
+        <li>File diff summary visible</li>
+        <li>GitHub PR link shown</li>
+        <li>Terminal shows git commit/push/PR output</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+        <li>Tab row: FILES, APP, SUMMARY (not ANALYSIS), CHANGES &mdash; Auth module is DONE</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3438,36 +3575,38 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold">Auth module</span>
-              <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-done-badge" style="margin-top:3px;flex-shrink:0;">&#x2713;</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold">Auth module</span>
+                <span class="session-age" style="color:var(--green);">done &middot; 1h 12m</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">31m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">31m</span>
-            </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
-        <div class="pane-title">Auth module &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Auth module &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; git add -A &amp;&amp; git commit -m "feat: auth module implementation"</span>
           <span class="t dim">&nbsp;&nbsp;[main a3f2b1c] feat: auth module implementation</span>
@@ -3488,7 +3627,7 @@ body {
         <div class="tab-row-primary">
           <span class="tab-primary">FILES</span>
           <span class="tab-primary">APP</span>
-          <span class="tab-primary">ANALYSIS</span>
+          <span class="tab-primary">SUMMARY</span>
           <span class="tab-primary active">CHANGES</span>
         </div>
         <div class="panel-content" style="padding:14px;overflow-y:auto;">
@@ -3557,6 +3696,27 @@ body {
     <span class="screen-label-title">Exit Session</span>
     <span class="screen-label-desc">PR created. User types <code style="font:11px var(--font-mono);background:var(--bg-sidebar-active);padding:1px 5px;border-radius:2px;">exit</code>. Amplifier exits, shell prompt returns. The worktree is preserved &mdash; &ldquo;New session&rdquo; slot shows <code style="font:11px var(--font-mono);background:var(--bg-sidebar-active);padding:1px 5px;border-radius:2px;">main</code>, ready to start fresh.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>PR created. User types &ldquo;exit.&rdquo; Shell prompt returns. Sidebar: Auth module is done (green checkmark). Dark mode session slot shows &ldquo;main&rdquo; &mdash; ready for a new session.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Clean exit. The worktree persists. &ldquo;New session&rdquo; slot on main shows Canvas is ready for the next task. Nothing is lost.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Terminal shows shell prompt returned after exit</li>
+        <li>Auth module: green checkmark, done</li>
+        <li>Sidebar shows the session ended state</li>
+        <li>Pane title: &ldquo;Canvas-App &middot; main&rdquo; (no session-specific title)</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in pane title</li>
+        <li>NO right panel (two-pane only after exit)</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3571,32 +3731,34 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot" style="background:var(--border);margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name bold" style="color:var(--text-muted);">New session</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot" style="background:var(--border);margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name bold" style="color:var(--text-muted);">New session</span>
+              </div>
+              <div class="worktree-badge">main</div>
             </div>
-            <div class="worktree-badge">main</div>
+          </div>
+          <div class="session-sep"></div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">34m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+            </div>
           </div>
         </div>
-        <div class="session-sep"></div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">34m</span>
-            </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
-          </div>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="terminal-zone">
         <div class="pane-title">Canvas-App &nbsp;&middot;&nbsp; main</div>
@@ -3627,6 +3789,28 @@ body {
     <span class="screen-label-title">Project overview</span>
     <span class="screen-label-desc">User clicks the project name in the left nav. A project view opens &mdash; default tab is Overview. Vision, outcomes, and current status are immediately visible. The project has identity.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>User clicks the project name (CANVAS-APP) in the sidebar. The main area transforms to a project-level view with OVERVIEW tab. AI assessment banner, structured outcomes from OUTCOMES.md, current status. This is the &ldquo;what is this project?&rdquo; view.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Projects have identity. The overview is the project&rsquo;s home page &mdash; what&rsquo;s the vision, what are the outcomes, what&rsquo;s the status. This answers &ldquo;what is this project about?&rdquo; for anyone looking at Canvas.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Project-level view replacing terminal zone</li>
+        <li>OVERVIEW tab active (with STATS and HISTORY tabs)</li>
+        <li>AI assessment banner with sparkle icon</li>
+        <li>Outcomes list from OUTCOMES.md</li>
+        <li>Status summary</li>
+        <li>Sidebar shows project highlighted</li>
+        <li>Pane title: &ldquo;Canvas-App &middot; Project&rdquo;</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3641,22 +3825,24 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label-link">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">34m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">34m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
             </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
           </div>
         </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="project-zone">
         <div class="project-pane-title">Canvas-App &nbsp;&middot;&nbsp; Project</div>
@@ -3737,6 +3923,26 @@ body {
     <span class="screen-label-title">Project stats</span>
     <span class="screen-label-desc">User taps the Stats tab. Aggregated numbers across all sessions &mdash; total work done, in one place. LLM-generated insights flag patterns the user might miss.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>User taps the Stats tab. 2&times;2 aggregate grid: total sessions, total time, total tokens, total files. Below: LLM-generated insights for velocity, alignment, efficiency, risk &mdash; each with sparkle icon and regenerate button.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Stats give the project shape. LLM insights catch patterns humans miss: &ldquo;velocity is declining&rdquo; or &ldquo;60% of time is going to one module.&rdquo; This is the project dashboard.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>STATS tab active</li>
+        <li>2&times;2 grid with aggregate numbers (8 sessions, 12h 34m, 847k tokens, 156 files)</li>
+        <li>Four LLM insight sections: Velocity, Alignment, Efficiency, Risk</li>
+        <li>Each insight has sparkle icon and &ldquo;Regenerate&rdquo; button</li>
+        <li>Sidebar same as Step 6</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3751,22 +3957,24 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label-link">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">34m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">34m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
             </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
           </div>
         </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="project-zone">
         <div class="project-pane-title">Canvas-App &nbsp;&middot;&nbsp; Project</div>
@@ -3820,8 +4028,11 @@ body {
             <span class="proj-session-meta">running &nbsp;&middot;&nbsp; 31 tool calls so far</span>
           </div>
           <div class="proj-session-row">
+            <span class="proj-session-name">Frontend components</span>
             <span class="proj-session-meta">running &nbsp;&middot;&nbsp; 8 tool calls so far</span>
+          </div>
           <div class="proj-session-row">
+            <span class="proj-session-name">Setup scaffold</span>
             <span class="proj-session-meta">2h 04m &nbsp;&middot;&nbsp; 89 tool calls &nbsp;&middot;&nbsp; 23 files</span>
           </div>
           <div class="proj-session-row" style="border-bottom:none;">
@@ -3841,6 +4052,26 @@ body {
     <span class="screen-label-title">Session history</span>
     <span class="screen-label-desc">User taps the History tab. Dark mode is currently open. Auth module is in history with its PR linked. Nothing is ever lost.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>User taps the History tab. All sessions listed with title, status dot, duration, relative time, and PR link where applicable. Dark mode is currently open. Auth module shows PR #47.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>History is the complete record. Nothing is ever lost. PR links connect sessions to their artifacts.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>HISTORY tab active</li>
+        <li>All sessions listed: Dark mode (running), Auth module (done, PR #47), and additional historical sessions</li>
+        <li>Each row: status dot/badge, title, duration, relative time</li>
+        <li>Done sessions show PR link</li>
+        <li>&ldquo;Resume&rdquo; button on completed/failed/paused sessions</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -3855,22 +4086,24 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
-        </div>
-        <div class="project-label-link">Canvas-App</div>
-        <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
-          <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="session-name">Dark mode</span>
-              <span class="session-age">34m</span>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+            <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="session-name">Dark mode</span>
+                <span class="session-age">34m</span>
+              </div>
+              <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
             </div>
-            <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
           </div>
         </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <div class="project-zone">
         <div class="project-pane-title">Canvas-App &nbsp;&middot;&nbsp; Project</div>

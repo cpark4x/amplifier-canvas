@@ -86,10 +86,13 @@ function Viewer(): React.ReactElement {
   }
 
   // Expose for external use (e.g. from terminal file detection)
-  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = (path: string) => openFile(path, 'amplifier')
+  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = (path: string) => openFile(resolveFilePath(path), 'amplifier')
   ;(window as unknown as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
 
-  const workDir = session?.workDir || null
+  // Fall back to the registered project's path if session.workDir is not yet populated
+  const registeredProjects = useCanvasStore((s) => s.registeredProjects)
+  const projectPath = session ? registeredProjects.find((p) => p.slug === session.projectSlug)?.path : null
+  const workDir = session?.workDir || projectPath || null
 
   function resolveFilePath(filePath: string): string {
     if (filePath.startsWith('/') || !workDir) return filePath

@@ -8,8 +8,8 @@ const api = {
   // --- PTY lifecycle ---
 
   // Spawn a new PTY for a specific session
-  spawnPty: (sessionId: string, cols: number, rows: number, cwd?: string): Promise<{ success: boolean; alreadyExists?: boolean; error?: string }> => {
-    return ipcRenderer.invoke(IPC_CHANNELS.PTY_SPAWN, { sessionId, cwd, cols, rows })
+  spawnPty: (sessionId: string, cols: number, rows: number, cwd?: string, projectSlug?: string): Promise<{ success: boolean; alreadyExists?: boolean; error?: string }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PTY_SPAWN, { sessionId, cwd, cols, rows, projectSlug })
   },
 
   // Kill a specific session's PTY

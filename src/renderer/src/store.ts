@@ -129,6 +129,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     // Add a placeholder session immediately so it appears in the sidebar
     // before the watcher IPC arrives. The placeholder uses a synthetic ID
     // prefixed with 'optimistic-' so setSessions can replace it.
+    // Look up the project path so the Viewer can browse files immediately.
+    const project = get().registeredProjects.find((p) => p.slug === projectSlug)
     const placeholder: SessionState = {
       id: `optimistic-${projectSlug}-${Date.now()}`,
       projectSlug,
@@ -139,6 +141,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       byteOffset: 0,
       recentFiles: [],
       title: 'New session',
+      workDir: project?.path,
     }
     set((state) => ({
       sessions: [...state.sessions, placeholder],

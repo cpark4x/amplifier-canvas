@@ -86,8 +86,13 @@ function App(): React.ReactElement {
             useCanvasStore.getState().selectProject(state.selectedProjectSlug)
           }
           if (state.selectedSessionId) {
-            useCanvasStore.getState().selectSession(state.selectedSessionId)
-            useCanvasStore.getState().openViewer()
+            // Only restore session + open viewer if the session still exists and is visible
+            const sessions = useCanvasStore.getState().sessions
+            const exists = sessions.some((s) => s.id === state.selectedSessionId && !s.hidden)
+            if (exists) {
+              useCanvasStore.getState().selectSession(state.selectedSessionId)
+              useCanvasStore.getState().openViewer()
+            }
           }
           if (state.expandedProjectSlugs.length > 0) {
             useCanvasStore.getState().setExpandedProjectSlugs(state.expandedProjectSlugs)
@@ -246,7 +251,7 @@ function App(): React.ReactElement {
             useCanvasStore.getState().addOptimisticSession(projectSlug, rp?.name ?? projectSlug)
             setTerminalSessionId(ptyId)
             setShowTerminal(true)
-            window.electronAPI.spawnPty(ptyId, 80, 24, projectPath).then(() => {
+            window.electronAPI.spawnPty(ptyId, 80, 24, projectPath, projectSlug).then(() => {
               setTimeout(() => {
                 window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
               }, 200)
@@ -256,8 +261,16 @@ function App(): React.ReactElement {
             // Switch terminal to this session's PTY (spawn if needed, replay buffer)
             setTerminalSessionId(sessionId)
             setShowTerminal(true)
-            // Ensure a PTY exists for this session (no-op if already spawned)
-            window.electronAPI.spawnPty(sessionId, 80, 24, workDir).catch(() => {
+            // Ensure a PTY exists for this session — if newly spawned, resume the session
+            window.electronAPI.spawnPty(sessionId, 80, 24, workDir).then((result) => {
+              if (result.success && !result.alreadyExists) {
+                // New PTY — auto-resume this Amplifier session
+                setTimeout(() => {
+                  window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
+                }, 200)
+              }
+              // If alreadyExists, the PTY is already running — just show it (buffer replay handles display)
+            }).catch(() => {
               // PTY spawn can fail in test environments — don't crash
             })
           }}
@@ -428,7 +441,7 @@ function App(): React.ReactElement {
                 setTerminalSessionId(ptyId)
                 setShowTerminal(true)
 
-                window.electronAPI.spawnPty(ptyId, 80, 24, projPath).then(() => {
+                window.electronAPI.spawnPty(ptyId, 80, 24, projPath, slug).then(() => {
                   setTimeout(() => {
                     window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
                   }, 200)
@@ -457,7 +470,7 @@ function App(): React.ReactElement {
             setTerminalSessionId(ptyId)
             setShowTerminal(true)
 
-            window.electronAPI.spawnPty(ptyId, 80, 24, project.path).then(() => {
+            window.electronAPI.spawnPty(ptyId, 80, 24, project.path, project.slug).then(() => {
               setTimeout(() => {
                 window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
               }, 200)

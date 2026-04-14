@@ -4,7 +4,7 @@ import { readdir, stat, readFile } from 'fs/promises'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
-import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer } from './pty'
+import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject } from './pty'
 import { getAmplifierHome, scanSingleProject } from './scanner'
 import {
   getSessionById,
@@ -66,7 +66,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     IPC_CHANNELS.PTY_SPAWN,
     (
       _event,
-      { sessionId, cwd, cols, rows }: { sessionId: string; cwd?: string; cols: number; rows: number },
+      { sessionId, cwd, cols, rows, projectSlug }: { sessionId: string; cwd?: string; cols: number; rows: number; projectSlug?: string },
     ): { success: boolean; alreadyExists?: boolean; error?: string } => {
       try {
         if (hasPty(sessionId)) {
@@ -74,6 +74,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         }
         const pty = spawnPty(sessionId, cols, rows, cwd)
         attachPtyListeners(sessionId, pty)
+
+        // Track which project this Canvas-spawned PTY belongs to
+        if (projectSlug) {
+          setPtyProject(sessionId, projectSlug)
+        }
+
         return { success: true }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

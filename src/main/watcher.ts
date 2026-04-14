@@ -70,13 +70,18 @@ export function addProjectWatch(slug: string): void {
     })
     dirWatcher.on('addDir', (dirPath: string) => {
       // A new session directory was created. Watch its events.jsonl.
+      // Derive slug from path (not closure) — path is: .../projects/{slug}/sessions/{sessionId}
       const sessionId = basename(dirPath)
+      const sessionsParent = dirname(dirPath)      // .../sessions
+      const projectDir = dirname(sessionsParent)    // .../{slug}
+      const derivedSlug = basename(projectDir)      // {slug}
+
       const eventsFile = join(dirPath, 'events.jsonl')
       // Poll briefly for events.jsonl to appear (Amplifier creates dir first, file second)
       const pollInterval = setInterval(() => {
         if (existsSync(eventsFile)) {
           clearInterval(pollInterval)
-          watchSessionFile(slug, sessionId)
+          watchSessionFile(derivedSlug, sessionId)
         }
       }, 200)
       // Give up after 10s

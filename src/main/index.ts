@@ -10,6 +10,7 @@ import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
 import { isSubSession } from './scanner'
 import { unhideSession } from './db'
+import { hasPty, hasCanvasPtyForProject } from './pty'
 import { getWorkspaceState } from './workspace'
 import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
 import type { SessionState } from '../shared/types'
@@ -198,8 +199,10 @@ app.whenReady().then(() => {
   // Projects appear here only when the user explicitly registers them via the UI.
   mainWindow.webContents.once('did-finish-load', () => {
     try {
-      // (1) Set allowed dirs from projectsDir
-      setAllowedDirs([projectsDir])
+      // (1) Set allowed dirs from projectsDir + all registered project paths
+      const allProjects = getRegisteredProjects()
+      const projectPaths = allProjects.map((p) => p.path).filter(Boolean)
+      setAllowedDirs([projectsDir, ...projectPaths])
 
       // (2) Load only registered projects via getRegisteredProjects()
       const registeredProjects = getRegisteredProjects()
@@ -277,7 +280,7 @@ app.whenReady().then(() => {
             startedBy: 'external',
             byteOffset: row.byteOffset || 0,
             recentFiles: [],
-            workDir: undefined,
+            workDir: project.path,
             title: row.title ?? undefined,
             endedAt: row.endedAt ?? undefined,
             exitCode: row.exitCode ?? undefined,
@@ -326,7 +329,8 @@ app.whenReady().then(() => {
 
         // Ensure session exists in DB. For brand-new sessions (not from scan),
         // this INSERT creates the row. For known sessions, it updates status/offset.
-        // hidden=false because the watcher only fires for actively-used sessions.
+        // Only unhide sessions that Canvas owns (has an active PTY for).
+        // Other sessions (delegate/child sessions Amplifier spawns) stay hidden.
         const sessionPath = join(projectsDir, data.projectSlug, 'sessions', data.sessionId)
         const existingWorkDir = liveSessions.get(data.sessionId)?.workDir
         const workDir = extractWorkDir(events, sessionPath) ?? existingWorkDir
@@ -348,19 +352,25 @@ app.whenReady().then(() => {
         const firstPrompt = extractFirstPrompt(events)
         const title = (firstPrompt ? deriveSessionTitle(firstPrompt) : undefined) ?? existingTitle
 
+        // Only unhide sessions that Canvas started (has an active PTY for).
+        // Amplifier may spawn delegate/child sessions as side effects — those stay hidden.
+        const canvasOwnsSession = hasPty(data.sessionId) || hasCanvasPtyForProject(data.projectSlug)
+
         // Persist session to DB with title on every watcher update — not just finalization.
         // COALESCE in the SQL ensures we never overwrite a good title with null.
         upsertSession({
           id: data.sessionId,
           projectSlug: data.projectSlug,
-          startedBy: 'external',
+          startedBy: canvasOwnsSession ? 'canvas' : 'external',
           startedAt,
           status,
           byteOffset: newByteOffset,
-          hidden: false,
+          hidden: !canvasOwnsSession,
           title: title ?? null,
         })
-        unhideSession(data.sessionId)
+        if (canvasOwnsSession) {
+          unhideSession(data.sessionId)
+        }
         const stats = extractSessionStats(events)
         const endEvent = events.find((e: { type: string; timestamp: string; data: Record<string, unknown> }) => e.type === 'session:end')
         const endedAt = endEvent?.timestamp

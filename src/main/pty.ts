@@ -4,6 +4,11 @@ import os from 'os'
 
 const ptyProcesses = new Map<string, IPty>()
 
+// Track which project slug each Canvas-spawned PTY belongs to.
+// Key = PTY ID (e.g. "terminal-slug-1776147353"), Value = project slug.
+// Used by the watcher to determine if a new Amplifier session was Canvas-initiated.
+const ptyProjectMap = new Map<string, string>()
+
 // Per-session output buffers for replay on terminal switch
 // Stores the last MAX_BUFFER_SIZE bytes of output per session
 const MAX_BUFFER_SIZE = 100_000  // ~100KB per session
@@ -51,6 +56,25 @@ export function getPty(sessionId: string): IPty | null {
 
 export function hasPty(sessionId: string): boolean {
   return ptyProcesses.has(sessionId)
+}
+
+/**
+ * Record that a Canvas-spawned PTY belongs to a project.
+ * Called when App.tsx creates a new terminal session.
+ */
+export function setPtyProject(ptyId: string, projectSlug: string): void {
+  ptyProjectMap.set(ptyId, projectSlug)
+}
+
+/**
+ * Check if Canvas has an active PTY for a given project slug.
+ * Used by the watcher to determine if a new Amplifier session was Canvas-initiated.
+ */
+export function hasCanvasPtyForProject(projectSlug: string): boolean {
+  for (const [ptyId, slug] of ptyProjectMap) {
+    if (slug === projectSlug && ptyProcesses.has(ptyId)) return true
+  }
+  return false
 }
 
 export function appendToBuffer(sessionId: string, data: string): void {
