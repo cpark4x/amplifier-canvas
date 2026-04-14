@@ -2252,6 +2252,7 @@ body {
   </div><!-- /screen -->
 </div><!-- /screen-wrapper -->
 
+
 <!-- ====================================================================
      ACT 2 HEADER
      ==================================================================== -->
@@ -2270,6 +2271,27 @@ body {
     <span class="screen-label-title">Reading the Codebase</span>
     <span class="screen-label-desc">You ask Amplifier to understand the project. It reads files. The viewer stays closed &mdash; there&rsquo;s nothing to show yet.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You ask Amplifier to understand the project. It reads four files. The terminal shows tool calls collapsing into a summary. The right panel stays closed &mdash; the viewer only opens when there&rsquo;s something worth viewing. This is Amplifier being useful without UI overhead.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Establishes that Canvas doesn&rsquo;t force UI on you. The terminal is the primary surface. The right panel earns its place &mdash; it doesn&rsquo;t appear by default.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Terminal shows user prompt, tool calls (read_file &times;4), success checkmark, Amplifier response summarizing the codebase</li>
+        <li>NO right panel visible</li>
+        <li>NO shell prompt or startup banner &mdash; Canvas handles the plumbing</li>
+        <li>NO &ldquo;Ctrl+C&rdquo; hint in the pane title</li>
+        <li>Sidebar shows one expanded project with one active session (amber dot + &ldquo;active&rdquo;)</li>
+        <li>Sidebar has &ldquo;Add project&rdquo; button at the bottom</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -2284,33 +2306,24 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot amber"></div>
+            <span class="session-name bold">Explore codebase</span>
+            <span class="session-age amber">active</span>
+          </div>
         </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active">
-          <div class="session-dot amber"></div>
-          <span class="session-name bold">Explore codebase</span>
-          <span class="session-age amber">running</span>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <!-- Terminal zone — full width, no right panel -->
       <div class="terminal-zone">
-        <div class="pane-title">Explore codebase &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Explore codebase &middot; Canvas-App</div>
         <div class="terminal-area">
-          <span class="t-prompt"><span class="t-path">~/Projects/canvas-app2</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
-          <span class="t-user-prompt"> amplifier</span>
-          <span class="t dim">Bundle &apos;foundation&apos; prepared successfully</span>
-          <span class="t dim">&#x256D;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;</span>
-          <span class="t dim">&#x2502; Amplifier Interactive Session &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Session ID: a3f2b1c4-d5e6-7890-ab12-ef3456789012 &nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; amplifier 2026.03.30 &nbsp;| core 1.3.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Bundle: foundation &nbsp;| Provider: Anthropic &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2502;</span>
-          <span class="t dim">&#x2502; Commands: /help &nbsp;| Multi-line: Ctrl-J | Exit: Ctrl-D &#x2502;</span>
-          <span class="t dim">&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;</span>
-          <span class="t blank"></span>
           <span class="t-user-prompt">&gt; help me understand this codebase</span>
           <span class="t blank"></span>
           <span class="t-tool">read_file VISION.md</span>
@@ -2341,6 +2354,27 @@ body {
     <span class="screen-label-title">Reviewing the Vision</span>
     <span class="screen-label-desc">You ask to review the vision together. Amplifier opens VISION.md in the viewer &mdash; the first time the right panel appears.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You ask to review the vision together. Amplifier reads VISION.md and opens it in the viewer &mdash; the right panel appears for the first time. The terminal shows the action (&ldquo;Opening VISION.md in viewer &rarr;&rdquo;). The panel opens with the FILES tab active, one file tab, and rendered markdown.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>The viewer earns its place by being opened contextually &mdash; Amplifier decided this file is worth showing, not the user hunting through a file browser. The &ldquo;Opened by Amplifier&rdquo; label distinguishes AI-initiated opens from user-initiated ones.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Right panel visible for the first time</li>
+        <li>Two primary tabs visible: FILES (active) and APP</li>
+        <li>Secondary row: browse button (inactive) + &ldquo;VISION.md&rdquo; file tab (active, with &times;)</li>
+        <li>Panel content: &ldquo;Opened by Amplifier&rdquo; label, rendered markdown</li>
+        <li>Terminal shows &ldquo;Opening VISION.md in viewer &rarr;&rdquo; message</li>
+        <li>NO ANALYSIS or CHANGES tabs &mdash; those are Act 3</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -2355,21 +2389,23 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot amber"></div>
+            <span class="session-name bold">Explore codebase</span>
+            <span class="session-age amber">active</span>
+          </div>
         </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active">
-          <div class="session-dot amber"></div>
-          <span class="session-name bold">Explore codebase</span>
-          <span class="session-age amber">running</span>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <!-- Terminal zone -->
       <div class="terminal-zone">
-        <div class="pane-title">Explore codebase &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Explore codebase &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; help me understand this codebase</span>
           <span class="t-tool">read_file VISION.md</span>
@@ -2398,8 +2434,6 @@ body {
         <div class="tab-row-primary">
           <span class="tab-primary active">FILES</span>
           <span class="tab-primary">APP</span>
-          <span class="tab-primary">ANALYSIS</span>
-          <span class="tab-primary">CHANGES</span>
         </div>
         <div class="tab-row-secondary">
           <button class="browse-btn" title="Browse">&#x25A6;</button>
@@ -2434,6 +2468,27 @@ body {
     <span class="screen-label-title">Opening a File</span>
     <span class="screen-label-desc">You click the browse button and navigate the file tree. OUTCOMES.md is highlighted &mdash; about to be opened.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You click the browse button. The panel content switches from rendered markdown to a file tree. OUTCOMES.md is highlighted (hover state). VISION.md tab stays in the secondary tab row. The file tree shows the project structure &mdash; folders first, then files.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>The browse button is a toggle &mdash; it replaces the panel content with the file tree, not a separate panel. The file tab row persists above so you don&rsquo;t lose your place. This is how you open files manually (vs Amplifier opening them for you).</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Browse button active (filled/highlighted)</li>
+        <li>Panel shows file tree: src/ and public/ folders, then OUTCOMES.md (hover highlight), VISION.md, package.json, tsconfig.json</li>
+        <li>VISION.md tab still present in secondary row</li>
+        <li>NO second file tab yet &mdash; OUTCOMES.md is about to be opened, not yet open</li>
+        <li>Only FILES and APP primary tabs (no ANALYSIS or CHANGES)</li>
+        <li>Terminal unchanged from A2</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -2448,21 +2503,23 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot amber"></div>
+            <span class="session-name bold">Explore codebase</span>
+            <span class="session-age amber">active</span>
+          </div>
         </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active">
-          <div class="session-dot amber"></div>
-          <span class="session-name bold">Explore codebase</span>
-          <span class="session-age amber">running</span>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
-      <!-- Terminal zone — same as S2 -->
+      <!-- Terminal zone — same as A2 -->
       <div class="terminal-zone">
-        <div class="pane-title">Explore codebase &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Explore codebase &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; help me understand this codebase</span>
           <span class="t-tool">read_file VISION.md</span>
@@ -2488,8 +2545,6 @@ body {
         <div class="tab-row-primary">
           <span class="tab-primary active">FILES</span>
           <span class="tab-primary">APP</span>
-          <span class="tab-primary">ANALYSIS</span>
-          <span class="tab-primary">CHANGES</span>
         </div>
         <div class="tab-row-secondary">
           <button class="browse-btn active" title="Browse">&#x25A6;</button>
@@ -2519,6 +2574,27 @@ body {
     <span class="screen-label-title">Multiple Files Open</span>
     <span class="screen-label-desc">OUTCOMES.md is now open alongside VISION.md. Two tabs, one viewer &mdash; the multi-file experience.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>OUTCOMES.md is now open. Two file tabs in the secondary row &mdash; VISION.md (inactive) and OUTCOMES.md (active, with &ldquo;Opened by you&rdquo; label). The browse button is back to inactive. The panel shows rendered markdown for OUTCOMES.md.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>Multi-file experience. Tabs distinguish what you opened vs what Amplifier opened. The viewer handles file switching without losing context. Closing a tab (&times;) doesn&rsquo;t close the panel &mdash; it closes that file.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>Two file tabs: VISION.md + OUTCOMES.md (active)</li>
+        <li>Panel content: &ldquo;Opened by you&rdquo; label + OUTCOMES.md rendered markdown</li>
+        <li>Browse button inactive (not active)</li>
+        <li>Terminal unchanged from A3</li>
+        <li>Only FILES (active) and APP primary tabs &mdash; no ANALYSIS or CHANGES</li>
+        <li>Sidebar unchanged &mdash; same expanded project, same active session</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -2533,21 +2609,23 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot amber"></div>
+            <span class="session-name bold">Explore codebase</span>
+            <span class="session-age amber">active</span>
+          </div>
         </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active">
-          <div class="session-dot amber"></div>
-          <span class="session-name bold">Explore codebase</span>
-          <span class="session-age amber">running</span>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
-      <!-- Terminal zone -->
+      <!-- Terminal zone — same as A3 -->
       <div class="terminal-zone">
-        <div class="pane-title">Explore codebase &middot; Canvas-App <span class="ctrl-hint">Ctrl+C to return to shell</span></div>
+        <div class="pane-title">Explore codebase &middot; Canvas-App</div>
         <div class="terminal-area">
           <span class="t-user-prompt">&gt; help me understand this codebase</span>
           <span class="t-tool">read_file VISION.md</span>
@@ -2572,8 +2650,6 @@ body {
         <div class="tab-row-primary">
           <span class="tab-primary active">FILES</span>
           <span class="tab-primary">APP</span>
-          <span class="tab-primary">ANALYSIS</span>
-          <span class="tab-primary">CHANGES</span>
         </div>
         <div class="tab-row-secondary">
           <button class="browse-btn" title="Browse">&#x25A6;</button>
@@ -2612,6 +2688,27 @@ body {
     <span class="screen-label-title">App Preview</span>
     <span class="screen-label-desc">You run the dev server. The app loads in the panel &mdash; no browser needed.</span>
   </div>
+  <div class="screen-spec">
+    <div class="spec-section">
+      <div class="spec-heading">The beat</div>
+      <p>You run the dev server. Canvas detects a local server starting and opens the APP tab &mdash; a live preview of your app embedded in the panel. No browser tab needed. The terminal shows the npm output. The panel shows localhost:3000 with the running app.</p>
+    </div>
+    <div class="spec-section">
+      <div class="spec-heading">Why this moment matters</div>
+      <p>App preview is the second reason the panel exists (after file viewing). Canvas watches for local dev servers and offers to embed them. This closes the &ldquo;alt-tab to browser&rdquo; loop &mdash; you see your app alongside your conversation.</p>
+    </div>
+    <div class="spec-section spec-done">
+      <div class="spec-heading">Done when you can verify</div>
+      <ul>
+        <li>APP tab active (not FILES)</li>
+        <li>Panel shows URL bar (&ldquo;localhost:3000&rdquo;) and embedded web content</li>
+        <li>Terminal shows <code>npm run dev</code> output with &ldquo;Ready in 847ms&rdquo; and &ldquo;Opening web preview in panel &rarr;&rdquo;</li>
+        <li>FILES tab still accessible but not active</li>
+        <li>Shell prompt visible for the <code>npm run dev</code> command (this IS a shell command)</li>
+        <li>Amplifier conversation above the shell command has NO shell prompt</li>
+      </ul>
+    </div>
+  </div>
   <div class="screen">
     <div class="app-header">
       <div class="app-header-left">
@@ -2626,30 +2723,38 @@ body {
     </div>
     <div class="body-row">
       <div class="sidebar">
-        <div class="sidebar-section-header">
-          <span class="sidebar-section-label">Projects</span>
-          <button class="sidebar-add-btn">+</button>
+        <div class="project-group-expanded">
+          <div class="project-row">
+            <span class="project-chevron">&#x25BE;</span>
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot amber"></div>
+            <span class="session-name bold">Explore codebase</span>
+            <span class="session-age amber">active</span>
+          </div>
         </div>
-        <div class="project-label">Canvas-App</div>
-        <div class="session-row-new active">
-          <div class="session-dot amber"></div>
-          <span class="session-name bold">Explore codebase</span>
-          <span class="session-age amber">running</span>
-        </div>
-        <div class="new-session-link">+ New session</div>
+        <div class="sidebar-add-project">Add project</div>
       </div>
       <!-- Terminal zone -->
       <div class="terminal-zone">
         <div class="pane-title">Explore codebase &middot; Canvas-App</div>
         <div class="terminal-area">
+          <!-- Amplifier conversation (no shell prompts) -->
+          <span class="t-user-prompt">&gt; let&rsquo;s review the vision together</span>
+          <span class="t-tool">read_file VISION.md</span>
+          <span class="t dim">&nbsp;&nbsp;Opening VISION.md in viewer &rarr;</span>
+          <span class="t-amplifier-label">Amplifier:</span>
+          <span class="t-response">Opened VISION.md in the viewer.</span>
           <span class="t blank"></span>
-          <span class="t-prompt"><span class="t-path">~/Projects/canvas-app2</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
+          <!-- Shell command — npm run dev IS a shell command, keep shell prompt -->
+          <span class="t-prompt"><span class="t-path">~/Projects/canvas-app</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
           <span class="t-user-prompt"> npm run dev</span>
           <span class="t dim">&nbsp;&nbsp;Starting development server...</span>
           <span class="t success">&nbsp;&nbsp;&#x2713; Ready in 847ms</span>
           <span class="t dim">&nbsp;&nbsp;Local:&nbsp;&nbsp; localhost:3000</span>
           <span class="t dim">&nbsp;&nbsp;Opening web preview in panel &rarr;</span>
-          <span class="t-user-prompt">&gt; <span class="terminal-cursor"></span></span>
         </div>
       </div>
 
@@ -2658,8 +2763,6 @@ body {
         <div class="tab-row-primary">
           <span class="tab-primary">FILES</span>
           <span class="tab-primary active">APP</span>
-          <span class="tab-primary">ANALYSIS</span>
-          <span class="tab-primary">CHANGES</span>
         </div>
         <div style="height:28px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;">
           <span style="font:11px var(--font-mono);color:var(--text-primary);">localhost:3000</span>
