@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Amplifier Canvas — Act 1: Getting Started</title>
+<link rel="stylesheet" href="system.css">
+<style>
+
+/* ============================================================
+   ACT FILE — PAGE LAYOUT
+   ============================================================ */
+body {
+  background: var(--bg-page);
+  font-family: var(--font-ui);
+  padding: 48px 0;
+  min-width: 1440px;
+}
+
+/* ============================================================
+   ACT HEADER
+   ============================================================ */
+.act-header {
+  max-width: 1440px;
+  margin: 0 auto 48px;
+  padding: 0 0 16px;
+  border-bottom: 2px solid var(--border);
+}
+.act-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.act-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.act-header .act-story {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-right);
+  border-left: 3px solid var(--amber);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.act-header .act-story strong { font-weight: 600; }
+.act-header .act-story span { color: var(--text-muted); font-size: 11.5px; }
+
+/* ============================================================
+   SCENE CONTAINER
+   ============================================================ */
+.scene {
+  max-width: 1440px;
+  margin: 0 auto 80px;
+}
+.scene[data-status]::before {
+  content: attr(data-scene) " — " attr(data-status);
+  display: inline-block;
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: 12px;
+}
+.scene[data-status="done"]::before {
+  background: rgba(76,175,116,0.12);
+  color: var(--green);
+}
+.scene[data-status="drift"]::before {
+  background: rgba(245,158,11,0.12);
+  color: var(--amber);
+}
+.scene[data-status="not-built"]::before {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-very-muted);
+}
+
+/* ============================================================
+   STORY SECTION
+   ============================================================ */
+.story {
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.story h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.story .beat {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.story .why {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   SCREEN SECTION — wrapper for mockups
+   ============================================================ */
+.screen {
+  margin-bottom: 16px;
+}
+.screen-variant {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--amber);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 12px 0 8px;
+}
+
+/* ============================================================
+   VERIFY SECTION
+   ============================================================ */
+.verify {
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.verify ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 24px;
+}
+.verify li {
+  padding: 2px 0 2px 18px;
+  position: relative;
+  break-inside: avoid;
+  color: var(--text-muted);
+}
+.verify li::before {
+  content: '\25A1';
+  position: absolute;
+  left: 0;
+  color: var(--text-very-muted);
+  font-size: 11px;
+}
+
+
+/* ============================================================
+   FRAME — the 1440×900 screen mockup container
+   (Renamed from canvas.html .screen to avoid collision)
+   ============================================================ */
+.frame {
+  width: 1440px;
+  height: 900px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+
+/* ============================================================
+   SHARED: APP HEADER
+   ============================================================ */
+.app-header {
+  height: 38px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.app-header-left { display: flex; align-items: center; gap: 8px; }
+.logo-mark { width: 22px; height: 22px; flex-shrink: 0; display: block; line-height: 1; }
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.app-header-right { display: flex; align-items: center; gap: 2px; }
+.header-icon-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text-very-muted);
+  background: none; border: none; border-radius: 3px; line-height: 1;
+}
+
+
+/* ============================================================
+   SHARED: BODY ROW
+   ============================================================ */
+.body-row {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+
+/* ============================================================
+   SHARED: SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: 200px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-empty {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  text-align: center;
+  padding: 12px 16px;
+}
+.sidebar-add-project {
+  margin-top: auto;
+  padding: 8px 14px;
+  margin: auto 10px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+}
+
+
+/* ============================================================
+   SIDEBAR — SESSION-FIRST DESIGN
+   ============================================================ */
+.project-label {
+  padding: 12px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-very-muted);
+  user-select: none;
+}
+.session-row-new {
+  height: 36px;
+  padding: 0 12px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+}
+.session-row-new.active { background: var(--bg-sidebar-active); }
+.session-row-new.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--amber);
+  border-radius: 0 1px 1px 0;
+}
+.session-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.session-dot.amber { background: var(--amber); }
+.session-dot.green { background: var(--green); }
+.session-dot.gray  { background: var(--text-very-muted); }
+.session-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-name.bold { font-weight: 600; }
+.session-age {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+.session-age.amber { color: var(--amber); }
+
+/* Project row: label + inline [+] */
+.project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 4px;
+}
+.project-row .project-label { padding: 0; }
+.project-add-session-btn {
+  font-size: 14px;
+  color: var(--text-very-muted);
+  background: none; border: none;
+  line-height: 1; padding: 0; cursor: pointer;
+}
+
+/* Expanded project group */
+.project-group-expanded {
+  background: rgba(0,0,0,0.025);
+  border-radius: 4px;
+  margin: 0 6px 6px;
+  padding: 4px 0;
+}
+.project-group-expanded .project-row { padding: 8px 8px 4px; }
+.project-group-expanded .session-row-new {
+  padding: 4px 8px 4px 28px;
+  border-left: 2px solid var(--border);
+  margin-left: 14px;
+  padding-left: 14px;
+}
+.project-chevron { font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-right: 4px; }
+.project-chevron-muted { font-size: 10px; color: var(--text-very-muted); flex-shrink: 0; margin-right: 4px; }
+
+/* Collapsed project row */
+.project-row-collapsed {
+  display: flex;
+  align-items: center;
+  padding: 7px 14px;
+  cursor: pointer;
+  gap: 6px;
+}
+.project-label-muted {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); flex: 1;
+}
+.project-meta-muted {
+  font-size: 10px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+
+
+/* ============================================================
+   SHARED: TERMINAL ZONE
+   ============================================================ */
+.terminal-zone {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+.pane-title {
+  height: 28px;
+  background: var(--bg-pane-title);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.pane-title-complete {
+  background: var(--bg-pane-title);
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font: 11px var(--font-ui);
+  color: var(--green);
+  gap: 10px;
+  flex-shrink: 0;
+}
+.pane-title-complete span { color: var(--text-very-muted); }
+.terminal-area {
+  flex: 1;
+  background: var(--bg-terminal);
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-terminal);
+  overflow: hidden;
+}
+.t { display: block; }
+.t.success { color: var(--green); }
+.t.blank   { display: block; height: 1.65em; }
+.terminal-cursor {
+  display: inline-block;
+  width: 8px; height: 13px;
+  background: var(--amber);
+  vertical-align: middle;
+  margin-left: 1px;
+  position: relative;
+  top: -1px;
+}
+
+/* Shell prompt */
+.t-prompt { color: #6A8A6A; font: 11px/1.6 var(--font-mono); display: block; padding: 0 14px; }
+.t-prompt .t-path { color: #8A9E8A; }
+.t-prompt .t-branch { color: #C4784A; }
+.t-prompt .t-dollar { color: var(--text-terminal); }
+
+/* Tool call lines */
+.t-tool { color: var(--text-very-muted); display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); }
+.t-tool::before { content: '\25C6 '; color: #5A8A9A; }
+
+/* Terminal response lines */
+.t-user-prompt { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
+.t-amplifier-label { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
+.t-response { display: block; padding: 0 14px; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
+
+
+/* ============================================================
+   WELCOME SCREEN
+   ============================================================ */
+.welcome-main {
+  flex: 1;
+  background: var(--bg-right);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.welcome-title {
+  font-size: 28px; font-weight: 700; font-style: italic;
+  color: var(--text-primary); letter-spacing: -0.02em;
+}
+.welcome-subtitle {
+  font-size: 14px; color: var(--text-muted);
+  margin-top: 8px; max-width: 340px; line-height: 1.5;
+}
+.welcome-btn {
+  margin-top: 24px; padding: 9px 18px;
+  border: 1px solid #3A3530; background: var(--bg-modal);
+  color: var(--text-primary); font-size: 13px;
+  border-radius: 4px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn-arrow { color: var(--amber); }
+
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-host {
+  flex: 1; position: relative;
+  background: var(--bg-right);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(20,16,10,0.18);
+}
+.modal {
+  width: 400px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.modal-close {
+  font-size: 16px; color: var(--text-muted);
+  background: none; border: none; line-height: 1; padding: 0;
+}
+.form-label {
+  font-size: 10px; text-transform: uppercase;
+  color: var(--text-very-muted); letter-spacing: 0.08em;
+  font-weight: 600; display: block;
+}
+.form-input {
+  width: 100%; padding: 8px 10px;
+  border: 1px solid var(--border); background: #F5F2EC;
+  border-radius: 3px; font-size: 13px;
+  font-family: var(--font-ui); color: var(--text-muted);
+  margin-top: 4px; outline: none;
+}
+.form-input::placeholder { color: var(--text-very-muted); }
+.form-input:disabled { opacity: 0.4; }
+.form-group { margin-top: 14px; }
+.radio-group { margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+.radio-option { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
+.radio-filled { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+.radio-empty { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text-very-muted); flex-shrink: 0; }
+.radio-label { color: var(--text-primary); }
+.radio-label.muted { color: var(--text-muted); }
+.modal-footer {
+  margin-top: 20px; display: flex;
+  justify-content: space-between; align-items: center;
+}
+.modal-cancel { font-size: 13px; color: var(--text-muted); background: none; border: none; }
+.modal-submit {
+  padding: 7px 14px; border: 1px solid #3A3530;
+  background: var(--bg-modal); color: var(--text-primary);
+  font-size: 13px; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+
+/* Modal tabs */
+.modal-tab-row {
+  display: flex; gap: 0;
+  margin: 14px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-tab {
+  padding: 6px 14px 8px; font-size: 13px;
+  font-family: var(--font-ui); color: var(--text-muted);
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; cursor: pointer;
+}
+.modal-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+  font-weight: 600;
+}
+
+/* Discovered project list */
+.discovered-project-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 4px; margin-bottom: 6px; cursor: pointer;
+}
+.discovered-project-row.selected {
+  border-color: var(--amber);
+  background: rgba(196,120,74,0.06);
+}
+.discovered-project-info { flex: 1; min-width: 0; }
+.discovered-project-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.discovered-project-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: flex; gap: 4px; }
+.discovered-project-path { font-size: 11px; color: var(--text-very-muted); margin-top: 2px; font-family: var(--font-mono); }
+.discovered-project-check { font-size: 14px; color: var(--amber); width: 20px; text-align: center; flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+
+<!-- ====================================================================
+     ACT 1 HEADER
+     ==================================================================== -->
+<div class="act-header">
+  <h1>Act 1 &mdash; Getting Started</h1>
+  <p>Four scenes: first launch through returning user. Sidebar + terminal only &mdash; no viewer panel.</p>
+  <div class="act-story">
+    <strong>Job to be done:</strong> Get from zero to a running Amplifier session inside Canvas with the minimum possible friction.<br>
+    <span>You&rsquo;ve heard about Canvas. Maybe you&rsquo;re skeptical &mdash; you already use Amplifier from the terminal and it works fine. You download it, open it. The window appears. It&rsquo;s warm, quiet, mostly empty. There&rsquo;s nothing to learn because there&rsquo;s almost nothing on screen. The only question is: do you create a project? The whole act takes under a minute. By the end, Amplifier is running and you haven&rsquo;t left Canvas.</span>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCENE 1.1 — WELCOME
+     ==================================================================== -->
+<section class="scene" data-scene="1.1" data-status="done">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 1.1 &mdash; Welcome</h3>
+    <p class="beat">You open Canvas for the first time. The window is clean &mdash; a narrow sidebar on the left shows &ldquo;No projects yet&rdquo; with an &ldquo;Add project&rdquo; button at the bottom. The main area is warm off-white with a centered message: &ldquo;Welcome to Canvas &mdash; Your workspace for Amplifier sessions, files, and previews.&rdquo; One button: &ldquo;Create your first project &rarr;.&rdquo;</p>
+    <p class="why">Canvas&rsquo;s personality is established before anything functional happens. Warm, not cold. Inviting, not overwhelming. The sidebar is visible but empty &mdash; foreshadowing the structure that fills in later. The single call-to-action means zero decision paralysis.</p>
+  </div>
+
+  <!-- THE SCREEN -->
+  <div class="screen">
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar — empty -->
+        <div class="sidebar">
+          <div class="sidebar-empty">No projects yet</div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Welcome main -->
+        <div class="welcome-main">
+          <div class="welcome-content">
+            <svg width="80" height="80" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+            <div class="welcome-title">Welcome to Canvas</div>
+            <div class="welcome-subtitle">Your workspace for Amplifier sessions, files, and previews.</div>
+            <button class="welcome-btn">
+              Create your first project <span class="btn-arrow">&rarr;</span>
+            </button>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame -->
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Sidebar is empty: &ldquo;No projects yet&rdquo; centered in the sidebar area</li>
+      <li>Bottom of sidebar: &ldquo;Add project&rdquo; button pinned to bottom &mdash; bordered pill, centered text, muted color</li>
+      <li>NO &ldquo;PROJECTS&rdquo; header anywhere in the sidebar</li>
+      <li>NO &ldquo;+&rdquo; button at top of sidebar &mdash; there are no projects yet, so no project row, so no [+]</li>
+      <li>NO session rows, NO history section, NO &ldquo;HISTORY&rdquo; label</li>
+      <li>The &ldquo;Add project&rdquo; button and &ldquo;Create your first project &rarr;&rdquo; both open the same modal (Scene 1.3)</li>
+      <li>Main area: centered vertically and horizontally, not left-aligned or top-aligned</li>
+      <li>Logo mark (two offset squares) centered above the welcome text</li>
+      <li>Title reads &ldquo;Welcome to Canvas&rdquo;</li>
+      <li>Subtitle reads &ldquo;Your workspace for Amplifier sessions, files, and previews.&rdquo;</li>
+      <li>ONE button: &ldquo;Create your first project &rarr;&rdquo; &mdash; nothing else</li>
+      <li>Nothing else on screen &mdash; no settings, no getting-started wizard, no tutorial, no onboarding steps</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- Scene 1.2 (Returning to Canvas) moved to Act 4 — not part of the zero-to-one "Getting Started" flow -->
+
+<!-- ====================================================================
+     SCENE 1.3 — NEW PROJECT MODAL
+     ==================================================================== -->
+<section class="scene" data-scene="1.3" data-status="done">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 1.3 &mdash; Add Project</h3>
+    <p class="beat">You click &ldquo;Add project.&rdquo; A modal appears over a subtle overlay. &ldquo;Add Project&rdquo; at the top. Two tabs: New and Existing. On the New tab: project name, location, and bundle choice. On the Existing tab: Canvas has already discovered projects on your machine that have Amplifier sessions. Select one, then choose to start a new session or resume an old one.</p>
+    <p class="why">This is the only configuration moment in the entire onboarding. The choices are few and obvious. The modal is small, centered, and feels like a quick aside &mdash; not a commitment. The &ldquo;Existing&rdquo; tab signals Canvas respects your existing workflow.</p>
+  </div>
+
+  <!-- THE SCREENS — three states -->
+  <div class="screen">
+
+    <!-- State A: New tab -->
+    <h4 class="screen-variant">New tab</h4>
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="sidebar-empty">No projects yet</div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <div class="modal-host">
+          <div class="modal-overlay"></div>
+          <div class="modal" style="width:460px;">
+            <div class="modal-header">
+              <span class="modal-title">Add Project</span>
+              <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-tab-row">
+              <button class="modal-tab active">New</button>
+              <button class="modal-tab">Existing</button>
+            </div>
+            <div class="modal-tab-content">
+              <div class="form-group">
+                <label class="form-label">Project Name</label>
+                <input class="form-input" type="text" placeholder="my-project" value="">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Location</label>
+                <input class="form-input" type="text" value="~/.amplifier/projects/" disabled style="color:var(--text-very-muted);">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bundle</label>
+                <div class="radio-group">
+                  <label class="radio-option">
+                    <div class="radio-filled"></div>
+                    <span class="radio-label">foundation</span>
+                  </label>
+                  <label class="radio-option">
+                    <div class="radio-empty"></div>
+                    <span class="radio-label muted">custom</span>
+                  </label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="modal-cancel">Cancel</button>
+                <button class="modal-submit">Create Project <span class="btn-arrow">&rarr;</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame: New tab -->
+
+
+    <!-- State B: Existing tab — browse discovered projects -->
+    <h4 class="screen-variant">Existing tab &mdash; Browse</h4>
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="sidebar-empty">No projects yet</div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <div class="modal-host">
+          <div class="modal-overlay"></div>
+          <div class="modal" style="width:460px;">
+            <div class="modal-header">
+              <span class="modal-title">Add Project</span>
+              <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-tab-row">
+              <button class="modal-tab">New</button>
+              <button class="modal-tab active">Existing</button>
+            </div>
+            <div class="modal-tab-content">
+              <input class="form-input" type="text" placeholder="Search projects&hellip;" style="margin-bottom:12px;">
+              <div style="max-height:240px;overflow-y:auto;margin-bottom:4px;">
+                <div class="discovered-project-row selected">
+                  <div class="discovered-project-info">
+                    <div class="discovered-project-name">amplifier-canvas</div>
+                    <div class="discovered-project-meta">
+                      <span>3 sessions</span>
+                      <span style="color:var(--text-very-muted);">&middot;</span>
+                      <span>last active today</span>
+                    </div>
+                    <div class="discovered-project-path">~/Projects/amplifier-canvas</div>
+                  </div>
+                  <div class="discovered-project-check">&#x2713;</div>
+                </div>
+                <div class="discovered-project-row">
+                  <div class="discovered-project-info">
+                    <div class="discovered-project-name">team-pulse</div>
+                    <div class="discovered-project-meta">
+                      <span>7 sessions</span>
+                      <span style="color:var(--text-very-muted);">&middot;</span>
+                      <span>last active 2d ago</span>
+                    </div>
+                    <div class="discovered-project-path">~/Projects/team-pulse</div>
+                  </div>
+                  <div class="discovered-project-check"></div>
+                </div>
+                <div class="discovered-project-row">
+                  <div class="discovered-project-info">
+                    <div class="discovered-project-name">budget-tracker</div>
+                    <div class="discovered-project-meta">
+                      <span>1 session</span>
+                      <span style="color:var(--text-very-muted);">&middot;</span>
+                      <span>last active 5d ago</span>
+                    </div>
+                    <div class="discovered-project-path">~/Projects/budget-tracker</div>
+                  </div>
+                  <div class="discovered-project-check"></div>
+                </div>
+                <div class="discovered-project-row">
+                  <div class="discovered-project-info">
+                    <div class="discovered-project-name">dotfiles</div>
+                    <div class="discovered-project-meta">
+                      <span>2 sessions</span>
+                      <span style="color:var(--text-very-muted);">&middot;</span>
+                      <span>last active 1w ago</span>
+                    </div>
+                    <div class="discovered-project-path">~/dotfiles</div>
+                  </div>
+                  <div class="discovered-project-check"></div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="modal-cancel">Cancel</button>
+                <button class="modal-submit">Add Project <span class="btn-arrow">&rarr;</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame: Existing tab -->
+
+
+    <!-- State C: Existing tab — choose action (after selecting project) -->
+    <h4 class="screen-variant">Existing tab &mdash; Choose action</h4>
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <div class="sidebar">
+          <div class="sidebar-empty">No projects yet</div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <div class="modal-host">
+          <div class="modal-overlay"></div>
+          <div class="modal" style="width:460px;">
+            <div class="modal-header">
+              <span class="modal-title">amplifier-canvas</span>
+              <button class="modal-close">&times;</button>
+            </div>
+            <!-- NO tabs — project is chosen, this is the session decision -->
+            <div class="modal-tab-content">
+              <div style="font-size:11px;color:var(--text-very-muted);margin-bottom:16px;">~/Projects/amplifier-canvas</div>
+
+              <!-- Start new session — always first, always prominent -->
+              <div class="discovered-project-row" style="cursor:pointer;">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name">Start new session</div>
+                  <div class="discovered-project-meta">Fresh Amplifier session in this project</div>
+                </div>
+                <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+              </div>
+
+              <!-- Resume section -->
+              <div style="padding:14px 0 6px;font-size:10px;text-transform:uppercase;color:var(--text-very-muted);letter-spacing:0.08em;font-weight:600;">Or resume</div>
+
+              <div class="discovered-project-row" style="cursor:pointer;">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name">Improve error handling</div>
+                  <div class="discovered-project-meta"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-very-muted);">e7a1b2c3</span> &middot; 2h ago</div>
+                </div>
+                <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+              </div>
+              <div class="discovered-project-row" style="cursor:pointer;">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name" style="color:var(--text-muted);">Scaffold CLI parser</div>
+                  <div class="discovered-project-meta"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-very-muted);">a3f04d91</span> &middot; yesterday</div>
+                </div>
+                <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+              </div>
+              <div class="discovered-project-row" style="cursor:pointer;">
+                <div class="discovered-project-info">
+                  <div class="discovered-project-name" style="color:var(--text-muted);">Initial setup</div>
+                  <div class="discovered-project-meta"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-very-muted);">0b8c22e7</span> &middot; 3d ago</div>
+                </div>
+                <span style="color:var(--amber);font-size:14px;flex-shrink:0;">&rarr;</span>
+              </div>
+
+              <div class="modal-footer">
+                <button class="modal-cancel">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame: Choose action -->
+
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Modal overlay dims the background &mdash; everything behind is non-interactive</li>
+      <li>Modal title: &ldquo;Add Project&rdquo; on New and Existing tabs (changes to project name only after selecting a project)</li>
+      <li>Two tabs: &ldquo;New&rdquo; and &ldquo;Existing&rdquo;</li>
+      <li>New tab fields: Project Name (text input with &ldquo;my-project&rdquo; placeholder), Location (auto-derived: <code>~/.amplifier/projects/{name}</code>, disabled, creates folder if missing), Bundle (radio: foundation/custom)</li>
+      <li>New tab footer: Cancel + &ldquo;Create Project &rarr;&rdquo;</li>
+      <li>Existing tab: search input + scrollable discovered project list, sorted most recently active first</li>
+      <li>Each discovered project: name, session count, last-active time, file path</li>
+      <li>One project selected (highlighted with amber border + checkmark)</li>
+      <li>Existing tab footer: Cancel + &ldquo;Add Project &rarr;&rdquo;</li>
+      <li>After selecting existing project: modal title changes to project name, tabs disappear</li>
+      <li>&ldquo;Start new session&rdquo; row always first, always prominent</li>
+      <li>&ldquo;Or resume&rdquo; section with past sessions sorted most recent first, each showing session ID (first 8-char block in mono) + relative time</li>
+      <li>Sidebar still shows &ldquo;No projects yet&rdquo; behind overlay</li>
+      <li>Close button (&times;) in top-right corner dismisses the modal</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 1.4 — SESSION STARTED
+     ==================================================================== -->
+<section class="scene" data-scene="1.4" data-status="done">
+
+  <!-- THE STORY -->
+  <div class="story">
+    <h3>Scene 1.4 &mdash; Session Started</h3>
+    <p class="beat">You hit create. The sidebar immediately shows your project name as a label (&ldquo;CANVAS-APP&rdquo;) with one session below it: amber dot, bold text, &ldquo;just started&rdquo; in amber. The main area is a full-width terminal. The Amplifier CLI banner appears: session ID, project name. A blinking amber cursor waits for your first prompt. Three things happen simultaneously: the project exists, a session is running, and the terminal is live.</p>
+    <p class="why">No intermediate screens, no &ldquo;setting up your workspace&rdquo; spinner. The session-first sidebar design is already visible &mdash; the project name is a label, not a destination. The session is the primary object. The pane title reads &ldquo;main &middot; canvas-app&rdquo; &mdash; session first, project second. You&rsquo;re inside Amplifier now. Canvas got out of the way.</p>
+  </div>
+
+  <!-- THE SCREENS — two paths -->
+  <div class="screen">
+
+    <!-- Path A: New project — session launched -->
+    <h4 class="screen-variant">New project path</h4>
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar — project listed, session running -->
+        <div class="sidebar">
+          <div class="project-row">
+            <div class="project-label">CANVAS-APP</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot amber"></div>
+            <span class="session-name bold">main</span>
+            <span class="session-age amber">just started</span>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone -->
+        <div class="terminal-zone">
+          <div class="pane-title">main &middot; canvas-app</div>
+          <div class="terminal-area">
+            <span class="t-prompt"><span class="t-path">~/.amplifier/projects/canvas-app</span> <span class="t-branch">(main)</span> <span class="t-dollar"> $</span></span>
+            <span class="t"> amplifier</span>
+            <br><br>
+            <span class="t" style="color:cyan;">&#x256D;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256E;</span>
+            <br>
+            <span class="t" style="color:cyan;">&#x2502;</span><span class="t" style="color:cyan;font-weight:bold;"> Amplifier Interactive Session</span><span class="t" style="color:cyan;">                              &#x2502;</span>
+            <br>
+            <span class="t" style="color:cyan;">&#x2502;</span><span class="t" style="color:var(--text-very-muted);"> Session ID: </span><span class="t" style="color:var(--amber);">e7a1b2c3-d4e5-f6a7-b8c9-0d1e2f3a4b5c</span><span class="t" style="color:cyan;">  &#x2502;</span>
+            <br>
+            <span class="t" style="color:cyan;">&#x2502;</span><span class="t" style="color:var(--text-very-muted);"> amplifier 2026.04.14 | core 1.3.3</span><span class="t" style="color:cyan;">                     &#x2502;</span>
+            <br>
+            <span class="t" style="color:cyan;">&#x2502;</span><span class="t" style="color:var(--text-very-muted);"> Bundle: foundation | Provider: Anthropic</span><span class="t" style="color:cyan;">              &#x2502;</span>
+            <br>
+            <span class="t" style="color:cyan;">&#x2502;</span><span class="t" style="color:var(--text-terminal);"> Commands: /help | Multi-line: Ctrl-J | Exit: Ctrl-D</span><span class="t" style="color:cyan;"> &#x2502;</span>
+            <br>
+            <span class="t" style="color:cyan;">&#x2570;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x256F;</span>
+            <br><br>
+            <span class="t" style="color:var(--green);font-weight:bold;">&gt;</span>
+            <span class="t">  <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame: New project -->
+
+
+    <!-- Path B: Existing project — resumed session -->
+    <h4 class="screen-variant">Existing project path &mdash; Resumed session</h4>
+    <div class="frame">
+
+      <!-- Header -->
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="body-row">
+        <!-- Sidebar — project active, resumed session -->
+        <div class="sidebar">
+          <div class="project-row">
+            <div class="project-label">AMPLIFIER-CANVAS</div>
+            <button class="project-add-session-btn" title="New session">+</button>
+          </div>
+          <div class="session-row-new active">
+            <div class="session-dot green"></div>
+            <span class="session-name bold">Improve error handling</span>
+            <span class="session-age">active</span>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Terminal zone — resumed session -->
+        <div class="terminal-zone">
+          <div class="pane-title">Improve error handling &middot; amplifier-canvas</div>
+          <div class="terminal-area" style="padding-top:18px;">
+            <!-- Prior conversation (tail end from 2h ago) -->
+            <span class="t" style="color:var(--amber);">you:</span>
+            <span class="t"> Can you improve the error handling in the API layer?</span>
+            <br><br>
+            <span class="t" style="color:var(--green);">assistant:</span>
+            <span class="t"> I&rsquo;ll analyze the current error handling patterns across</span>
+            <br>
+            <span class="t">the API routes. Let me check what we have&hellip;</span>
+            <br><br>
+            <span class="t" style="color:var(--text-very-muted);">[3 tool calls &middot; read_file, grep, read_file]</span>
+            <br><br>
+            <span class="t" style="color:var(--green);">assistant:</span>
+            <span class="t"> Found 4 routes with bare try/catch blocks. I&rsquo;ll create</span>
+            <br>
+            <span class="t">a shared error middleware and refactor each route to use it.</span>
+            <br>
+            <span class="t">Want me to proceed?</span>
+            <br><br>
+            <!-- Session restore marker -->
+            <span class="t" style="color:var(--text-very-muted);">&mdash;&mdash; session restored &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;</span>
+            <br><br>
+            <span class="t" style="color:var(--green);font-weight:bold;">&gt;</span>
+            <span class="t">  <span class="terminal-cursor"></span></span>
+          </div>
+        </div>
+      </div><!-- /body-row -->
+
+    </div><!-- /frame: Existing project resumed -->
+
+  </div>
+
+  <!-- VERIFICATION -->
+  <div class="verify">
+    <ul>
+      <li>Sidebar: project name as uppercase label with [+] button on the right (means &ldquo;new session&rdquo;)</li>
+      <li>NO &ldquo;PROJECTS&rdquo; header anywhere in the sidebar</li>
+      <li>NO &ldquo;+ New session&rdquo; text link &mdash; the [+] on the project row IS the new session action</li>
+      <li><strong>New path:</strong> ONE session row: amber dot, bold name &ldquo;main&rdquo;, badge &ldquo;just started&rdquo; in amber</li>
+      <li><strong>Existing path:</strong> ONE session row: green dot, bold name, badge &ldquo;active&rdquo;</li>
+      <li>Green dot + &ldquo;active&rdquo; = session open and waiting for input. Amber dot + &ldquo;running&rdquo; = Amplifier mid-turn.</li>
+      <li>Bottom of sidebar: &ldquo;Add project&rdquo; button pinned to bottom</li>
+      <li>Main area: full-width terminal, NO right panel, NO split view &mdash; two-pane layout (sidebar + terminal)</li>
+      <li><strong>New path:</strong> Terminal shows prompt, &ldquo;amplifier&rdquo;, then Rich Panel banner (cyan box-drawing borders) with: &ldquo;Amplifier Interactive Session&rdquo;, session ID, version, bundle/provider info, keyboard commands. Green bold &ldquo;&gt;&rdquo; prompt with blinking cursor.</li>
+      <li><strong>Existing path:</strong> Terminal shows prior conversation FIRST, then &ldquo;session restored&rdquo; separator, then cursor</li>
+      <li>Startup banner appears ONLY for new sessions &mdash; NOT for resumed sessions</li>
+      <li>No &ldquo;amplifier --resume&rdquo; command visible in resumed session &mdash; Canvas handles the plumbing</li>
+      <li>Pane title: session name first, project name second (e.g. &ldquo;main &middot; canvas-app&rdquo;)</li>
+      <li>Blinking cursor at prompt &mdash; ready for input</li>
+    </ul>
+  </div>
+
+</section>
+
+</body>
+</html>

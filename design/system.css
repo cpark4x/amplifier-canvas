@@ -1,0 +1,46 @@
+/* ============================================================
+   AMPLIFIER CANVAS — DESIGN TOKENS
+   Extracted from canvas.html. Single source of truth for
+   palette, typography, and reset rules.
+   ============================================================ */
+
+:root {
+  /* Surfaces */
+  --bg-page:           #F0EBE3;
+  --bg-header:         #E8E2D8;
+  --bg-sidebar:        #F0EBE3;
+  --bg-sidebar-active: #E8E0D4;
+  --bg-pane-title:     #DDD5C8;
+  --bg-terminal:       #0F0E0C;
+  --bg-right:          #F7F4EF;
+  --bg-modal:          #FAF8F4;
+
+  /* Borders */
+  --border:            #DDD5C8;
+
+  /* Text */
+  --text-primary:      #1C1A16;
+  --text-muted:        #8A8278;
+  --text-very-muted:   #A09888;
+  --text-terminal:     #C8C4BC;
+
+  /* Status */
+  --amber:             #F59E0B;
+  --amber-logo-bg:     #1A0F00;
+  --green:             #4CAF74;
+
+  /* Typography */
+  --font-ui:           -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  --font-mono:         'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+button { font-family: var(--font-ui); cursor: pointer; }
+ul { list-style: none; }

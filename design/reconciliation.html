@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>Storyboard vs Reality — Reconciliation Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg:          #F9F7F4;
+    --bg-warm:     #F2F0EB;
+    --bg-card:     #FFFFFF;
+    --text:        #1C1A16;
+    --text-muted:  #8A8278;
+    --text-light:  #A8A098;
+    --green:       #4CAF74;
+    --green-light: #E8F5E9;
+    --green-dark:  #166534;
+    --amber:       #F59E0B;
+    --amber-light: #FEF3C7;
+    --amber-dark:  #92400E;
+    --rose:        #E11D48;
+    --rose-light:  #FFF1F2;
+    --rose-dark:   #9F1239;
+    --blue:        #3B82F6;
+    --blue-light:  #EFF6FF;
+    --blue-dark:   #1E40AF;
+    --purple:      #7C3AED;
+    --purple-light:#EDE9FE;
+    --purple-dark: #5B21B6;
+    --border:      #E8E2D8;
+    --font-sans:   'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif:  'DM Serif Display', Georgia, serif;
+    --font-mono:   'SF Mono', 'Menlo', 'Consolas', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: var(--font-sans);
+    color: var(--text);
+    padding: 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-family: var(--font-serif);
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding: 14px 20px;
+    background: var(--bg-warm);
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot.match { background: var(--green); }
+  .dot.drift { background: var(--amber); }
+  .dot.missing { background: var(--rose); }
+  .dot.bonus { background: var(--blue); }
+
+  .act-header {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 400;
+    margin: 40px 0 6px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  .act-job {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 20px;
+  }
+
+  .scene {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .scene-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .scene-status {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .scene-id {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    min-width: 36px;
+  }
+  .scene-title {
+    font-size: 14px;
+    font-weight: 700;
+    flex: 1;
+  }
+  .scene-verdict {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .verdict-match   { background: var(--green-light); color: var(--green-dark); }
+  .verdict-drift   { background: var(--amber-light); color: var(--amber-dark); }
+  .verdict-missing { background: var(--rose-light);  color: var(--rose-dark); }
+  .verdict-bonus   { background: var(--blue-light);  color: var(--blue-dark); }
+
+  .scene-body {
+    padding: 16px 20px;
+  }
+  .col-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .col h4 {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .col.story h4 { color: var(--purple-dark); }
+  .col.reality h4 { color: var(--green-dark); }
+  .col ul {
+    list-style: none;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+  .col li {
+    padding-left: 14px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+  .col li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 7px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+  }
+  .col.story li::before { background: var(--purple); }
+  .col.reality li::before { background: var(--green); }
+
+  .gap-box {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .gap-box strong { font-weight: 700; }
+  .gap-match   { background: var(--green-light); border: 1px solid #BBF7D0; color: var(--green-dark); }
+  .gap-drift   { background: var(--amber-light); border: 1px solid #FDE68A; color: var(--amber-dark); }
+  .gap-missing { background: var(--rose-light);  border: 1px solid #FECDD3; color: var(--rose-dark); }
+  .gap-question { background: var(--blue-light); border: 1px solid #BFDBFE; color: var(--blue-dark); }
+
+  .summary-section {
+    margin-top: 48px;
+    padding: 24px 28px;
+    background: var(--bg-warm);
+    border-radius: 12px;
+    border-left: 4px solid var(--amber);
+  }
+  .summary-section h2 {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 400;
+    margin-bottom: 14px;
+  }
+  .summary-section table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .summary-section th {
+    text-align: left;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .summary-section td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+    vertical-align: top;
+  }
+
+  .footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-light);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .decision-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+  .dt-keep { background: var(--green-light); color: var(--green-dark); }
+  .dt-update { background: var(--amber-light); color: var(--amber-dark); }
+  .dt-build { background: var(--rose-light); color: var(--rose-dark); }
+</style>
+</head>
+<body>
+
+<h1>Storyboard vs Reality</h1>
+<div class="subtitle">Reconciliation Report &mdash; What the storyboard says, what the app does, where they differ</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot match"></div> Match &mdash; storyboard and app agree</div>
+  <div class="legend-item"><div class="dot drift"></div> Drift &mdash; both exist but details differ</div>
+  <div class="legend-item"><div class="dot missing"></div> Not built &mdash; in storyboard but not in app</div>
+  <div class="legend-item"><div class="dot bonus"></div> Bonus &mdash; in app or canvas.html but not in storyboard</div>
+</div>
+
+<!-- ═══════════ ACT 1 ═══════════ -->
+<div class="act-header">Act 1 &mdash; Getting Started</div>
+<div class="act-job">Get from zero to a running session with minimum friction</div>
+
+<!-- Scene 1.1 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--green);"></div>
+    <div class="scene-id">1.1</div>
+    <div class="scene-title">Welcome</div>
+    <span class="scene-verdict verdict-match">Match</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Narrow sidebar: "Projects" with + button</li>
+          <li>"No projects yet" placeholder</li>
+          <li>Warm off-white main area</li>
+          <li>Centered welcome: "Welcome to Canvas &mdash; Your workspace..."</li>
+          <li>One button: "Create your first project &rarr;"</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Sidebar with logo + "Amplifier Canvas" title + "Add project" button</li>
+          <li>"No projects yet" placeholder</li>
+          <li>Warm off-white main area with large logo</li>
+          <li>"Welcome to Canvas &mdash; Your workspace for Amplifier sessions, files, and previews."</li>
+          <li>"Create your first project &rarr;" button</li>
+          <li>Header: Layout, Notifications, Settings buttons</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-match">
+      <strong>Verdict: Match.</strong> Core elements identical. Header buttons (Layout, Notifications, Settings) exist in the app but aren't described in the storyboard &mdash; they're chrome, not story beats, so this is fine.
+    </div>
+  </div>
+</div>
+
+<!-- Scene 1.2 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--amber);"></div>
+    <div class="scene-id">1.2</div>
+    <div class="scene-title">Returning to Canvas</div>
+    <span class="scene-verdict verdict-drift">Drift</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Sidebar shows what you left &mdash; amplifier-canvas expanded</li>
+          <li>Green dot on overnight-completed session</li>
+          <li>Two collapsed projects below (team-pulse, budget-tracker)</li>
+          <li>Click + to start new session &mdash; amber dot, terminal active in ~3s</li>
+          <li>Right-click &rarr; "Remove from Canvas" to clean up</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Sidebar persists project state (workspace persistence confirmed)</li>
+          <li>Session status badges: running, done, needs_input, just started</li>
+          <li>Accordion: only one project expanded at a time</li>
+          <li>+ button per project starts a new session</li>
+          <li>Right-click context menu: "Remove from Canvas" on projects, "Stop"/"Remove from view" on sessions</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-drift">
+      <strong>Drift: Minor.</strong> Storyboard says green dot for completed sessions &mdash; app shows text badges ("done", "running") rather than colored dots. The behavior is there, the visual treatment differs. <span class="decision-tag dt-update">Decision needed: dots vs text?</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 1.3 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--green);"></div>
+    <div class="scene-id">1.3</div>
+    <div class="scene-title">New Project</div>
+    <span class="scene-verdict verdict-match">Match</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Modal: "New Project" title</li>
+          <li>New vs Existing tabs</li>
+          <li>Project name field + location (grayed until Existing)</li>
+          <li>Cancel + "Create project &rarr;"</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Modal: "Add Project" title (not "New Project")</li>
+          <li>New / Existing tabs &mdash; exact match</li>
+          <li>Project name field, auto-populating location</li>
+          <li>Bundle selector: foundation / custom</li>
+          <li>Cancel + "Create Project &rarr;" (disabled until name filled)</li>
+          <li>Existing tab: search input, project scanner</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-match">
+      <strong>Verdict: Match.</strong> Title says "Add Project" instead of "New Project" &mdash; trivial naming difference. Bundle selector is an addition not in storyboard (good addition). Existing tab has search, matching canvas.html Step 3a.
+    </div>
+  </div>
+</div>
+
+<!-- Scene 1.4 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--green);"></div>
+    <div class="scene-id">1.4</div>
+    <div class="scene-title">Session Started</div>
+    <span class="scene-verdict verdict-match">Match</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Sidebar: project name + session "main" with amber dot</li>
+          <li>Full-width terminal</li>
+          <li>Amplifier CLI banner</li>
+          <li>Pane title: "main &middot; Canvas-App"</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Sidebar: project + session with status badge</li>
+          <li>xterm.js terminal occupies main area</li>
+          <li>Session header: "[title] &middot; [project]"</li>
+          <li>PTY spawns amplifier CLI on session create</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-match">
+      <strong>Verdict: Match.</strong> Terminal, sidebar, and session flow work as described. Banner rendering depends on amplifier CLI output.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ACT 2 ═══════════ -->
+<div class="act-header">Act 2 &mdash; Your First Session</div>
+<div class="act-job">Discover that Canvas adds value on top of the CLI &mdash; the viewer earns its place</div>
+
+<!-- Scene 2.1 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--amber);"></div>
+    <div class="scene-id">2.1</div>
+    <div class="scene-title">Reading the Codebase</div>
+    <span class="scene-verdict verdict-drift">Drift</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Terminal: user types prompt, sees tool calls, gets summary</li>
+          <li><strong>No right panel</strong> &mdash; viewer stays hidden</li>
+          <li>Full-width terminal</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Terminal: works as described</li>
+          <li><strong>Viewer auto-opens when session selected</strong></li>
+          <li>Selecting a session triggers openViewer()</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-drift">
+      <strong>Drift: Significant.</strong> The storyboard's core principle is "viewer stays hidden until it earns its place." The app auto-opens the viewer on session select, violating progressive disclosure. <span class="decision-tag dt-update">Decision needed: should viewer auto-open or start hidden?</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 2.2 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--amber);"></div>
+    <div class="scene-id">2.2</div>
+    <div class="scene-title">Reviewing the Vision</div>
+    <span class="scene-verdict verdict-drift">Drift</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Viewer slides in <strong>for the first time</strong> when Amplifier opens a file</li>
+          <li>"Opened by Amplifier" provenance label</li>
+          <li>FILES tab active, one tab: VISION.md</li>
+          <li>Rendered markdown</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Viewer panel exists with FILES tab</li>
+          <li>File rendering works (code, markdown, images)</li>
+          <li>File activity badges: read (green), write (orange), etc.</li>
+          <li><strong>No "Opened by Amplifier" provenance label</strong></li>
+          <li>__canvasOpenFile() exists for programmatic file opening</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-drift">
+      <strong>Drift: Moderate.</strong> The file viewing infra exists but the provenance labeling ("Opened by Amplifier" vs "Opened by you") isn't built. File activity badges are a different approach to the same concept. <span class="decision-tag dt-update">Decision needed: provenance labels or activity badges?</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 2.3 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--green);"></div>
+    <div class="scene-id">2.3</div>
+    <div class="scene-title">Opening a File</div>
+    <span class="scene-verdict verdict-match">Match</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Browse button (grid icon) in file tab bar</li>
+          <li>File tree: src/, public/, .md files, etc.</li>
+          <li>Minimal: no icons, no sizes, no dates</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Browse button (&square;) toggles file browser</li>
+          <li>File tree via electronAPI.listDir()</li>
+          <li>Directory-first sorting, parent navigation</li>
+          <li>Click file &rarr; opens in viewer tab</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-match">
+      <strong>Verdict: Match.</strong> File browser works as described. Empty state: "Click &square; to browse files."
+    </div>
+  </div>
+</div>
+
+<!-- Scene 2.4 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--green);"></div>
+    <div class="scene-id">2.4</div>
+    <div class="scene-title">Multiple Files Open</div>
+    <span class="scene-verdict verdict-match">Match</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Multiple file tabs with close buttons</li>
+          <li>Switch between tabs</li>
+          <li>Provenance labels per file</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>File tabs with close (&times;) buttons &mdash; exact match</li>
+          <li>Tab switching works</li>
+          <li>Provenance: not labels but file activity badges (color-coded)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-match">
+      <strong>Verdict: Match.</strong> Tab mechanics work. Provenance approach differs (badges vs labels) but functionally equivalent.
+    </div>
+  </div>
+</div>
+
+<!-- Scene 2.5 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--amber);"></div>
+    <div class="scene-id">2.5</div>
+    <div class="scene-title">App Preview</div>
+    <span class="scene-verdict verdict-drift">Drift</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Run npm run dev in terminal</li>
+          <li>Canvas auto-detects localhost URL</li>
+          <li>APP tab switches on automatically</li>
+          <li>Live preview with address bar</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>APP tab exists with iframe capability</li>
+          <li>__canvasSetAppPreview(url) API exists</li>
+          <li>Empty state: "No app running. Start a dev server..."</li>
+          <li><strong>Auto-detection reverted</strong> (commit af351b2 reverted terminal scanner)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-drift">
+      <strong>Drift: Moderate.</strong> The APP tab infra exists but auto-detection of dev server URLs was built and then reverted (commit af351b2). The preview works if manually triggered via __canvasSetAppPreview(). <span class="decision-tag dt-update">Decision needed: re-implement auto-detection or manual trigger?</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ACT 3 ═══════════ -->
+<div class="act-header">Act 3 &mdash; Canvas Knows What You've Built</div>
+<div class="act-job">Parallel sessions, staying informed, project-level memory</div>
+
+<!-- Scene 3.1 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--rose);"></div>
+    <div class="scene-id">3.1</div>
+    <div class="scene-title">Start a Second Session</div>
+    <span class="scene-verdict verdict-missing">Not Built</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Start a second session on same project</li>
+          <li>Canvas creates a git worktree automatically</li>
+          <li>Worktree badge on session in sidebar</li>
+          <li>"Isolated from session 1" confirmation</li>
+          <li>Both sessions work independently, zero conflicts</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>+ button spawns a new session (single PTY)</li>
+          <li><strong>No worktree support</strong></li>
+          <li><strong>No isolation mechanism</strong></li>
+          <li>Multiple sessions possible but no conflict prevention</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-missing">
+      <strong>Not built.</strong> Worktree-based session isolation is the core feature of this scene. The + button exists but doesn't create worktrees. This is a significant architectural feature. <span class="decision-tag dt-build">Needs building</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.2 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--green);"></div>
+    <div class="scene-id">3.2</div>
+    <div class="scene-title">Session Completes</div>
+    <span class="scene-verdict verdict-match">Match</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Toast: "Auth module just finished"</li>
+          <li>Sidebar: amber dot &rarr; green checkmark</li>
+          <li>Status: "done &middot; 1h 12m"</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Toast component with auto-dismiss + "View" action button</li>
+          <li>Sidebar: session status updates to "done"</li>
+          <li>Duration tracking</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-match">
+      <strong>Verdict: Match.</strong> Toast notifications and session completion states work. Visual treatment (dots vs text badges) is a styling decision, not functional gap.
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.3 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--amber);"></div>
+    <div class="scene-id">3.3</div>
+    <div class="scene-title">Review Completed Session</div>
+    <span class="scene-verdict verdict-drift">Drift</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>ANALYSIS tab (storyboard) / SUMMARY tab (canvas.html)</li>
+          <li>Hero: one-sentence description</li>
+          <li>Test status: 14/14 passing</li>
+          <li>Stats: duration, prompts, tokens</li>
+          <li>Sections: Prompt History, Key Moments, Possible Next Steps</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>SUMMARY tab (matching canvas.html naming)</li>
+          <li>SessionAnalysis component with 7 sections</li>
+          <li>Sections: Summary, Changes, Key Moments, Next Steps, Decisions, Action Items, Open Questions</li>
+          <li>Duration + prompt count + tool call count</li>
+          <li><strong>Crashes in browser mode</strong> (no electronAPI fallback)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-drift">
+      <strong>Drift: Minor.</strong> The SUMMARY tab is built with MORE sections than the storyboard describes (7 vs 3). Naming settled on "SUMMARY" (canvas.html wins over storyboard's "ANALYSIS"). <span class="decision-tag dt-update">Update storyboard to match</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.3a -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--blue);"></div>
+    <div class="scene-id">3.3a</div>
+    <div class="scene-title">Triage a Failed Session</div>
+    <span class="scene-verdict verdict-bonus">Bonus</span>
+  </div>
+  <div class="scene-body">
+    <div class="gap-box gap-question">
+      <strong>canvas.html only.</strong> This screen exists in the design (canvas.html Step 3a) but has no storyboard scene. The SUMMARY tab could render this with a red status treatment. <span class="decision-tag dt-update">Decision needed: add to storyboard?</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.3b -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--blue);"></div>
+    <div class="scene-id">3.3b</div>
+    <div class="scene-title">Revisit a Stale Session</div>
+    <span class="scene-verdict verdict-bonus">Bonus</span>
+  </div>
+  <div class="scene-body">
+    <div class="gap-box gap-question">
+      <strong>canvas.html only.</strong> This screen exists in the design (canvas.html Step 3b) but has no storyboard scene. Shows a paused session with absolute date and incomplete work trail. <span class="decision-tag dt-update">Decision needed: add to storyboard?</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.4 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--rose);"></div>
+    <div class="scene-id">3.4</div>
+    <div class="scene-title">Commit the Changes</div>
+    <span class="scene-verdict verdict-missing">Not Built</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>CHANGES tab in viewer</li>
+          <li>PR status, CI results, file diff summary</li>
+          <li>"View PR #47 &rarr;" link</li>
+          <li>CLI does the action, Canvas shows the receipt</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li><strong>No CHANGES tab</strong></li>
+          <li>Changes data embedded in SUMMARY &rarr; ChangesSection</li>
+          <li>No PR/CI integration</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-missing">
+      <strong>Not built.</strong> The CHANGES tab doesn't exist as a standalone tab. Some changes data appears in the SUMMARY tab's ChangesSection, but PR/CI integration is missing entirely. <span class="decision-tag dt-build">Needs building</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.5 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--rose);"></div>
+    <div class="scene-id">3.5</div>
+    <div class="scene-title">Exit Session</div>
+    <span class="scene-verdict verdict-missing">Partial</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Type exit &rarr; shell prompt returns</li>
+          <li>Sidebar: completed session leaves, "New session" slot appears</li>
+          <li>Worktree preserved</li>
+          <li>Hints: amplifier to start new, amplifier session resume</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>PTY lifecycle management exists</li>
+          <li>Session status updates on exit</li>
+          <li><strong>No "New session" slot appears</strong></li>
+          <li><strong>No worktree cleanup</strong> (worktrees not built)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-missing">
+      <strong>Partially built.</strong> Session exit is detected but the post-exit UX (new session slot, hints) isn't polished. Depends on worktree support (3.1). <span class="decision-tag dt-build">Needs building</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.6 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--rose);"></div>
+    <div class="scene-id">3.6</div>
+    <div class="scene-title">Project Overview</div>
+    <span class="scene-verdict verdict-missing">Not Built</span>
+  </div>
+  <div class="scene-body">
+    <div class="col-grid">
+      <div class="col story">
+        <h4>Storyboard says</h4>
+        <ul>
+          <li>Click project name &rarr; main area transforms to project view</li>
+          <li>OVERVIEW tab: AI assessment, outcomes with status badges</li>
+          <li>"On track &mdash; 1 of 3 outcomes in progress"</li>
+        </ul>
+      </div>
+      <div class="col reality">
+        <h4>App actually has</h4>
+        <ul>
+          <li>Click project name &rarr; toggle expand/collapse only</li>
+          <li><strong>No project overview page</strong></li>
+          <li><strong>No outcomes integration</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="gap-box gap-missing">
+      <strong>Not built.</strong> No project-level views exist. Clicking project name only toggles the sidebar accordion. <span class="decision-tag dt-build">Needs building</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.7 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--rose);"></div>
+    <div class="scene-id">3.7</div>
+    <div class="scene-title">Project Stats</div>
+    <span class="scene-verdict verdict-missing">Not Built</span>
+  </div>
+  <div class="scene-body">
+    <div class="gap-box gap-missing">
+      <strong>Not built.</strong> No STATS tab, no aggregate metrics, no AI-generated insights. Depends on project overview (3.6). <span class="decision-tag dt-build">Needs building</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scene 3.8 -->
+<div class="scene">
+  <div class="scene-header">
+    <div class="scene-status" style="background:var(--rose);"></div>
+    <div class="scene-id">3.8</div>
+    <div class="scene-title">Session History</div>
+    <span class="scene-verdict verdict-missing">Not Built</span>
+  </div>
+  <div class="scene-body">
+    <div class="gap-box gap-missing">
+      <strong>Not built.</strong> No HISTORY tab. Session history is only visible inline in the sidebar (expand project &rarr; see sessions). No search, no "Resume &rarr;" action, no full list view. <span class="decision-tag dt-build">Needs building</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SUMMARY ═══════════ -->
+<div class="summary-section">
+  <h2>Summary</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Count</th>
+        <th>Scenes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="dot match" style="display:inline-block; margin-right:8px;"></span> Match</td>
+        <td><strong>7</strong></td>
+        <td>1.1, 1.3, 1.4, 2.3, 2.4, 3.2, (1.2 near-match)</td>
+      </tr>
+      <tr>
+        <td><span class="dot drift" style="display:inline-block; margin-right:8px;"></span> Drift</td>
+        <td><strong>4</strong></td>
+        <td>1.2, 2.1, 2.2, 2.5, 3.3</td>
+      </tr>
+      <tr>
+        <td><span class="dot missing" style="display:inline-block; margin-right:8px;"></span> Not built</td>
+        <td><strong>5</strong></td>
+        <td>3.1, 3.4, 3.6, 3.7, 3.8 &nbsp;(3.5 partial)</td>
+      </tr>
+      <tr>
+        <td><span class="dot bonus" style="display:inline-block; margin-right:8px;"></span> Bonus</td>
+        <td><strong>2</strong></td>
+        <td>3.3a, 3.3b (canvas.html only, no storyboard scene)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="summary-section" style="margin-top:20px; border-left-color: var(--rose);">
+  <h2>Decisions Needed From You</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Question</th>
+        <th>Context</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><strong>Viewer auto-open vs progressive disclosure?</strong></td>
+        <td>Scene 2.1: Storyboard says viewer stays hidden until it earns its place. App auto-opens viewer on session select. Which is correct?</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>Session status: colored dots or text badges?</strong></td>
+        <td>Scene 1.2: Storyboard describes green/amber dots. App uses text ("done", "running"). Which do you prefer?</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>File provenance: labels or activity badges?</strong></td>
+        <td>Scene 2.2: Storyboard says "Opened by Amplifier" / "Opened by you" labels. App has color-coded activity badges (read=green, write=orange). Keep badges, add labels, or both?</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>App preview: re-implement auto-detection?</strong></td>
+        <td>Scene 2.5: Terminal scanner was built then reverted (af351b2). Re-implement, or leave as manual trigger?</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>Add failed/stale session scenes to storyboard?</strong></td>
+        <td>Scenes 3.3a, 3.3b exist in canvas.html design but not in storyboard. Add them as official scenes?</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>Tab naming: ANALYSIS vs SUMMARY vs CHANGES?</strong></td>
+        <td>Storyboard says ANALYSIS + CHANGES tabs. App has SUMMARY tab (no separate CHANGES). canvas.html says SUMMARY. Reconcile?</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="summary-section" style="margin-top:20px; border-left-color: var(--green);">
+  <h2>Bottom Line</h2>
+  <table>
+    <thead>
+      <tr><th>Act</th><th>Readiness</th><th>What's Needed</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Act 1</strong></td>
+        <td style="color:var(--green-dark); font-weight:700;">~90% built</td>
+        <td>Answer decisions 1-2, update storyboard to match reality, convert to act file. Ready to verify.</td>
+      </tr>
+      <tr>
+        <td><strong>Act 2</strong></td>
+        <td style="color:var(--amber-dark); font-weight:700;">~70% built</td>
+        <td>Answer decisions 3-4, fix viewer auto-open behavior, convert to act file. 1-2 scenes need building.</td>
+      </tr>
+      <tr>
+        <td><strong>Act 3</strong></td>
+        <td style="color:var(--rose-dark); font-weight:700;">~25% built</td>
+        <td>Answer decisions 5-6, then this is the real test of the workflow. 5 scenes need building from scratch.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  Amplifier-Canvas &nbsp;&bull;&nbsp; Reconciliation Report &nbsp;&bull;&nbsp; April 2026
+</div>
+
+</body>
+</html>

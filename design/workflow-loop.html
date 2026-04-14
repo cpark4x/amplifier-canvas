@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>Amplifier-Canvas Development Loop</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg:          #F9F7F4;
+    --bg-warm:     #F2F0EB;
+    --bg-card:     #FFFFFF;
+    --text:        #1C1A16;
+    --text-muted:  #8A8278;
+    --text-light:  #A8A098;
+    --amber:       #F59E0B;
+    --amber-light: #FEF3C7;
+    --amber-dark:  #92400E;
+    --green:       #4CAF74;
+    --green-light: #E8F5E9;
+    --green-dark:  #166534;
+    --purple:      #7C3AED;
+    --purple-light:#EDE9FE;
+    --purple-dark: #5B21B6;
+    --rose:        #E11D48;
+    --rose-light:  #FFF1F2;
+    --rose-dark:   #9F1239;
+    --blue:        #3B82F6;
+    --blue-light:  #EFF6FF;
+    --blue-dark:   #1E40AF;
+    --cyan:        #06B6D4;
+    --cyan-light:  #ECFEFF;
+    --cyan-dark:   #155E75;
+    --slate:       #64748B;
+    --slate-light: #F1F5F9;
+    --slate-dark:  #334155;
+    --border:      #E8E2D8;
+    --font-sans:   'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif:  'DM Serif Display', Georgia, serif;
+    --font-mono:   'SF Mono', 'Menlo', 'Consolas', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: var(--font-sans);
+    color: var(--text);
+    padding: 60px 48px 80px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── Title ── */
+  .title-block { text-align: center; margin-bottom: 52px; }
+  .title-block h1 {
+    font-family: var(--font-serif);
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .title-block .subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .title-block .sub2 {
+    font-size: 12px;
+    color: var(--text-light);
+    font-style: italic;
+  }
+
+  /* ── Badges ── */
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+    display: inline-block;
+  }
+  .badge-amber { background: var(--amber-light); color: var(--amber-dark); }
+  .badge-green { background: var(--green-light); color: var(--green-dark); }
+  .badge-cyan  { background: var(--cyan-light);  color: var(--cyan-dark); }
+  .badge-slate { background: var(--slate-light); color: var(--slate-dark); }
+
+  /* ── Section Headers ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-header h2 {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 400;
+  }
+
+  /* ── Conviction Block ── */
+  .conviction {
+    background: var(--bg-warm);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 12px;
+  }
+
+  /* ── File Grid ── */
+  .file-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 14px;
+  }
+  .f-file {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .f-file::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 10px 10px 0 0;
+    background: var(--amber);
+  }
+  .f-file h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .f-file h3 .ext {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--bg-warm);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+  .f-file .job {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+  .f-file .desc {
+    font-size: 11px;
+    line-height: 1.65;
+    color: var(--text);
+  }
+  .f-file.span-full { grid-column: 1 / -1; }
+
+  .act-preview {
+    margin-top: 12px;
+    background: var(--bg-warm);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+  .act-preview .comment { color: var(--text-light); }
+  .act-preview .tag { color: var(--green-dark); }
+  .act-preview .attr { color: var(--purple-dark); }
+  .act-preview .str { color: var(--amber-dark); }
+
+  /* ── Arrows ── */
+  .section-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+  }
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .arrow-down .a-line { width: 2px; height: 16px; background: var(--border); }
+  .arrow-down .a-head {
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 7px solid var(--border);
+  }
+
+  /* ── Outer Step ── */
+  .outer-step {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 6px;
+  }
+  .outer-gutter {
+    width: 110px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 22px;
+  }
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 6px;
+  }
+  .step-owner {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+  }
+  .step-owner.ai { background: var(--green-light); color: var(--green-dark); }
+  .step-owner.pm { background: var(--amber-light); color: var(--amber-dark); }
+
+  .step-card {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 26px;
+  }
+  .step-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .step-card .scope-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    position: relative;
+    top: -1px;
+  }
+  .step-card .one-liner {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+  .step-card .body { font-size: 12px; line-height: 1.7; color: var(--text); }
+  .step-card .body li {
+    list-style: none;
+    padding-left: 16px;
+    position: relative;
+    margin-bottom: 3px;
+  }
+  .step-card .body li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 7px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+  }
+
+  .step-card.orient  { border-left: 3px solid var(--green); }
+  .step-card.orient .body li::before { background: var(--green); }
+  .step-card.align   { border-left: 3px solid var(--amber); }
+  .step-card.align .body li::before  { background: var(--amber); }
+  .step-card.experience { border-left: 3px solid var(--amber); }
+  .step-card.experience .body li::before { background: var(--amber); }
+  .step-card.capture { border-left: 3px solid var(--purple); }
+  .step-card.capture .body li::before { background: var(--purple); }
+
+  .step-num.green  { background: var(--green); }
+  .step-num.amber  { background: var(--amber); }
+  .step-num.rose   { background: var(--rose); }
+  .step-num.purple { background: var(--purple); }
+
+  .connector { display: flex; padding: 0 0 0 130px; height: 20px; }
+  .connector-line { width: 2px; height: 100%; background: var(--border); margin-left: 24px; }
+
+  /* ── Inner Loop Block ── */
+  .inner-loop-wrapper {
+    margin: 6px 0;
+    display: flex;
+    gap: 20px;
+  }
+  .inner-gutter {
+    width: 110px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 28px;
+  }
+  .inner-loop-block {
+    flex: 1;
+    border: 2px solid var(--green);
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--green-light) 0%, var(--bg-card) 100%);
+    padding: 0;
+    overflow: hidden;
+  }
+  .inner-loop-header {
+    background: var(--green);
+    color: white;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .inner-loop-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .inner-loop-header .il-meta {
+    font-size: 10px;
+    opacity: 0.85;
+    letter-spacing: 0.5px;
+  }
+  .inner-loop-body {
+    padding: 20px 24px;
+  }
+
+  /* Inner loop flow */
+  .il-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+  .il-step {
+    flex: 1;
+    text-align: center;
+    padding: 14px 10px;
+    position: relative;
+  }
+  .il-step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 6px;
+  }
+  .il-step h4 {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .il-step p {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .il-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 2px;
+    color: var(--border);
+    font-size: 18px;
+  }
+
+  /* Stop condition */
+  .stop-condition {
+    background: var(--rose-light);
+    border: 1px solid #FECDD3;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--rose-dark);
+  }
+  .stop-condition strong { font-weight: 700; }
+
+  /* Scene progress mini */
+  .scene-progress {
+    margin-top: 12px;
+    background: var(--bg-warm);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .scene-progress h4 {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .sp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  .sp-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sp-dot.done { background: var(--green); }
+  .sp-dot.active { background: var(--amber); }
+  .sp-dot.pending { background: var(--border); }
+  .sp-label { color: var(--text); }
+  .sp-status { color: var(--text-light); font-size: 10px; margin-left: auto; }
+
+  /* ── A11y detail ── */
+  .a11y-detail {
+    margin-top: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .a11y-detail h4 {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--rose-dark);
+    margin-bottom: 8px;
+  }
+  .verify-step {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .verify-step .vs-num {
+    flex-shrink: 0;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--rose);
+    color: white;
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .verify-step .vs-text { color: var(--text); }
+  .verify-step code {
+    font-size: 9px;
+    background: var(--bg-warm);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Callout ── */
+  .callout {
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .callout strong { font-weight: 700; }
+  .callout-rose  { background: var(--rose-light);  border: 1px solid #FECDD3; color: var(--rose-dark); }
+  .callout-cyan  { background: var(--cyan-light);  border: 1px solid #A5F3FC; color: var(--cyan-dark); }
+  .callout-green { background: var(--green-light); border: 1px solid #BBF7D0; color: var(--green-dark); }
+
+  /* ── Loop Banner ── */
+  .loop-banner {
+    margin-top: 12px;
+    border: 2px dashed var(--blue);
+    border-radius: 12px;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--blue-light);
+  }
+  .loop-banner .loop-icon { font-size: 28px; flex-shrink: 0; }
+  .loop-banner h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--blue-dark);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+  .loop-banner p { font-size: 12px; color: var(--text); line-height: 1.6; }
+
+  /* ── Metrics ── */
+  .metrics-row {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+  .metric-card .label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .metric-card .value {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    color: var(--text);
+  }
+  .metric-card .unit {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .metric-card .detail {
+    font-size: 10px;
+    color: var(--text-light);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  /* ── Principle ── */
+  .principle {
+    margin-top: 36px;
+    padding: 22px 26px;
+    background: var(--bg-warm);
+    border-radius: 12px;
+    border-left: 4px solid var(--amber);
+  }
+  .principle h4 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 400;
+    margin-bottom: 6px;
+  }
+  .principle p { font-size: 12px; line-height: 1.7; color: var(--text); }
+
+  .footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-light);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TITLE ═══════════ -->
+<div class="title-block">
+  <h1>The Development Loop</h1>
+  <div class="subtitle">Orient &rarr; Align &rarr; Build All Scenes &rarr; Experience &rarr; Capture</div>
+  <div class="sub2">Outer loop per act &middot; Inner loop per scene (AI-autonomous)</div>
+</div>
+
+<!-- ═══════════ CONVICTION ═══════════ -->
+<div class="conviction">
+  <div class="section-header">
+    <h2>Your Conviction</h2>
+    <span class="badge badge-amber">PM-owned &middot; source of truth</span>
+  </div>
+  <div class="file-grid">
+    <div class="f-file">
+      <h3>VISION <span class="ext">.md</span></h3>
+      <div class="job">Why this exists</div>
+      <div class="desc">Problem, principles, audience, non-goals. The constitution. Changes rarely.</div>
+    </div>
+    <div class="f-file">
+      <h3>Act Files <span class="ext">.html</span></h3>
+      <div class="job">The user walkthrough &mdash; story + design in one file</div>
+      <div class="desc">One file per act. Each scene: <strong>narrative</strong> (what the user does) above the <strong>screen</strong> (semantic HTML with aria-labels). Status is inline. The AI builds and verifies against this file.</div>
+      <div class="act-preview">
+        <span class="comment">&lt;!-- Scene 3.1: Multiple Projects --&gt;</span><br>
+        <span class="tag">&lt;section</span> <span class="attr">class=</span><span class="str">"scene"</span> <span class="attr">data-status=</span><span class="str">"ready"</span><span class="tag">&gt;</span><br>
+        &nbsp;&nbsp;<span class="tag">&lt;div</span> <span class="attr">class=</span><span class="str">"narrative"</span><span class="tag">&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;You open Canvas. Three projects in the sidebar.<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Click a different one. Everything switches instantly.<br>
+        &nbsp;&nbsp;<span class="tag">&lt;/div&gt;</span><br>
+        &nbsp;&nbsp;<span class="tag">&lt;div</span> <span class="attr">class=</span><span class="str">"screen"</span><span class="tag">&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="tag">&lt;nav</span> <span class="attr">aria-label=</span><span class="str">"Sidebar"</span><span class="tag">&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tag">&lt;li</span> <span class="attr">aria-current=</span><span class="str">"true"</span><span class="tag">&gt;</span>amplifier-canvas<span class="tag">&lt;/li&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="tag">&lt;/nav&gt;</span><br>
+        &nbsp;&nbsp;<span class="tag">&lt;/div&gt;</span><br>
+        <span class="tag">&lt;/section&gt;</span>
+      </div>
+    </div>
+    <div class="f-file span-full" style="border-left: 3px solid var(--text-light); padding-left: 24px; background: transparent; border-top: none; border-right: none; border-bottom: none; border-radius: 0;">
+      <h3 style="font-size: 12px; font-weight: 600; color: var(--text-muted);">system.css &nbsp;<span class="ext" style="font-size:8px;">.css</span></h3>
+      <div class="desc">Design tokens only &mdash; palette, typography, spacing. Each act file imports it. ~60 lines.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-arrow"><div class="arrow-down"><div class="a-line"></div><div class="a-head"></div></div></div>
+
+<!-- ═══════════ STEP 1: ORIENT (full act) ═══════════ -->
+<div class="outer-step">
+  <div class="outer-gutter">
+    <div class="step-num green">1</div>
+    <span class="step-owner ai">AI</span>
+  </div>
+  <div class="step-card orient">
+    <h3>Orient <span class="scope-tag" style="background:var(--green-light); color:var(--green-dark);">full act</span></h3>
+    <div class="one-liner">Read every scene in the act, explore the codebase, plan the whole build</div>
+    <ul class="body">
+      <li>Read all scenes in the act file &mdash; understand the complete arc</li>
+      <li>Read the &ldquo;Previously&rdquo; header &mdash; what was built in prior acts</li>
+      <li>Explore src/ &mdash; trace components, state, IPC, data model</li>
+      <li>Read LESSONS.md &mdash; load constraints from prior sessions</li>
+      <li>Map scene dependencies &mdash; determine build order</li>
+      <li><strong>Output:</strong> per-scene approach summary + build order + risks</li>
+    </ul>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div></div>
+
+<!-- ═══════════ STEP 2: ALIGN (full act) ═══════════ -->
+<div class="outer-step">
+  <div class="outer-gutter">
+    <div class="step-num amber">2</div>
+    <span class="step-owner pm">PM</span>
+  </div>
+  <div class="step-card align">
+    <h3>Align <span class="scope-tag" style="background:var(--amber-light); color:var(--amber-dark);">full act</span></h3>
+    <div class="one-liner">Review the AI&rsquo;s plan for the entire act &mdash; does it match your vision?</div>
+    <ul class="body">
+      <li>Read per-scene summaries + build order (~5 min)</li>
+      <li><strong>Yes</strong> &mdash; AI proceeds to build all scenes autonomously</li>
+      <li><strong>Adjust</strong> &mdash; correct priorities, reorder, deprioritize scenes</li>
+      <li><strong>Wrong arc</strong> &mdash; the act&rsquo;s story needs rethinking</li>
+    </ul>
+    <div class="callout callout-cyan">
+      <strong>This is your last touch before the AI builds everything.</strong> After you approve, the AI works autonomously through all scenes. You come back when the entire act is ready to experience.
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div></div>
+
+<!-- ═══════════ INNER LOOP: BUILD + VERIFY per scene ═══════════ -->
+<div class="inner-loop-wrapper">
+  <div class="inner-gutter">
+    <div class="step-num green" style="width:40px; height:40px; font-size:10px; line-height:1.1; text-align:center;">3+4</div>
+    <span class="step-owner ai">AI</span>
+  </div>
+  <div class="inner-loop-block">
+    <div class="inner-loop-header">
+      <h3>Inner Loop &mdash; Build + Verify Each Scene</h3>
+      <div class="il-meta">AI-autonomous &middot; no PM involvement &middot; 1.5&ndash;3 hours</div>
+    </div>
+    <div class="inner-loop-body">
+
+      <!-- Flow diagram -->
+      <div class="il-flow">
+        <div class="il-step">
+          <div class="il-step-num" style="background:var(--slate);">a</div>
+          <h4>Read Scene</h4>
+          <p>Narrative + screen from act file</p>
+        </div>
+        <div class="il-arrow">&rarr;</div>
+        <div class="il-step">
+          <div class="il-step-num" style="background:var(--green);">b</div>
+          <h4>Build</h4>
+          <p>Tests &rarr; implement &rarr; build gate &rarr; commit</p>
+        </div>
+        <div class="il-arrow">&rarr;</div>
+        <div class="il-step">
+          <div class="il-step-num" style="background:var(--rose);">c</div>
+          <h4>Verify</h4>
+          <p>A11y walkthrough against act file</p>
+        </div>
+        <div class="il-arrow">&rarr;</div>
+        <div class="il-step">
+          <div class="il-step-num" style="background:var(--purple);">d</div>
+          <h4>Mark Done</h4>
+          <p>Update status + STATE.yaml</p>
+        </div>
+        <div class="il-arrow">&rarr;</div>
+        <div class="il-step" style="border:1px dashed var(--blue); border-radius:8px; background:var(--blue-light);">
+          <div class="il-step-num" style="background:var(--blue);">&#8634;</div>
+          <h4 style="color:var(--blue-dark);">Next Scene</h4>
+          <p style="color:var(--blue-dark);">Repeat until act complete</p>
+        </div>
+      </div>
+
+      <!-- A11y walkthrough detail -->
+      <div class="a11y-detail">
+        <h4>Verify: the a11y walkthrough (~30 sec per scene)</h4>
+        <div class="verify-step">
+          <div class="vs-num">1</div>
+          <div class="vs-text"><code>agent-browser open http://localhost:5173</code> &mdash; connect to running Electron app</div>
+        </div>
+        <div class="verify-step">
+          <div class="vs-num">2</div>
+          <div class="vs-text">For each beat in the narrative: <code>snapshot -ic</code> &rarr; check elements match act file&rsquo;s screen</div>
+        </div>
+        <div class="verify-step">
+          <div class="vs-num">3</div>
+          <div class="vs-text">Perform user action (<code>click @e1</code>, <code>fill @e3</code>) &rarr; <code>snapshot -ic</code> &rarr; verify result</div>
+        </div>
+        <div class="verify-step">
+          <div class="vs-num">4</div>
+          <div class="vs-text">~200 tokens per beat &middot; ~1k tokens per scene &middot; screenshot only on failure</div>
+        </div>
+      </div>
+
+      <!-- Scene progress visualization -->
+      <div class="scene-progress">
+        <h4>Progress as it runs (STATE.yaml)</h4>
+        <div class="sp-row">
+          <div class="sp-dot done"></div>
+          <span class="sp-label">Scene 3.1 &mdash; Multiple Projects</span>
+          <span class="sp-status">4/4 beats &check; &nbsp; f8a2b1c</span>
+        </div>
+        <div class="sp-row">
+          <div class="sp-dot done"></div>
+          <span class="sp-label">Scene 3.2 &mdash; Parallel Sessions</span>
+          <span class="sp-status">5/5 beats &check; &nbsp; b3c4d5e</span>
+        </div>
+        <div class="sp-row">
+          <div class="sp-dot active"></div>
+          <span class="sp-label">Scene 3.3 &mdash; Viewer Analysis</span>
+          <span class="sp-status">building&hellip;</span>
+        </div>
+        <div class="sp-row">
+          <div class="sp-dot pending"></div>
+          <span class="sp-label">Scene 3.5 &mdash; Session Crash Recovery</span>
+          <span class="sp-status">pending</span>
+        </div>
+        <div class="sp-row">
+          <div class="sp-dot pending"></div>
+          <span class="sp-label">Scene 3.4 &mdash; Keyboard Shortcuts</span>
+          <span class="sp-status">pending</span>
+        </div>
+      </div>
+
+      <!-- Stop condition -->
+      <div class="stop-condition" style="margin-top:12px;">
+        <strong>Stop condition:</strong> If a scene&rsquo;s a11y walkthrough fails after 2 fix attempts, the inner loop halts. AI reports what&rsquo;s stuck, what&rsquo;s built so far, and asks the PM for direction. The PM never receives a &ldquo;finished&rdquo; act with a broken scene underneath.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div></div>
+
+<!-- ═══════════ STEP 5: EXPERIENCE (full act) ═══════════ -->
+<div class="outer-step">
+  <div class="outer-gutter">
+    <div class="step-num amber">5</div>
+    <span class="step-owner pm">PM</span>
+  </div>
+  <div class="step-card experience">
+    <h3>Experience <span class="scope-tag" style="background:var(--amber-light); color:var(--amber-dark);">full act</span></h3>
+    <div class="one-liner">Walk the entire act&rsquo;s user journey &mdash; does the arc land?</div>
+    <ul class="body">
+      <li>AI provides: per-scene verification report (beats passed, commits, any notes)</li>
+      <li>Run the app and walk the act&rsquo;s story start to finish</li>
+      <li>You&rsquo;re judging the arc, not individual features</li>
+      <li><strong>Ship it</strong> &mdash; the act lands, move to the next act</li>
+      <li><strong>Adjust scenes</strong> &mdash; &ldquo;3.1 and 3.2 are great, 3.4 shortcuts feel wrong&rdquo; &mdash; AI fixes specific scenes (bounded inner loop)</li>
+      <li><strong>Rethink</strong> &mdash; the story itself needs updating, back to the act file</li>
+    </ul>
+    <div class="callout callout-green">
+      <strong>Visual gaps caught here.</strong> The a11y walkthrough catches functional and structural issues (~80%). Color, spacing, animation, and feel are caught by you. Those are CSS tweaks, not architecture rewrites.
+    </div>
+  </div>
+</div>
+
+<div class="connector"><div class="connector-line"></div></div>
+
+<!-- ═══════════ STEP 6: CAPTURE ═══════════ -->
+<div class="outer-step">
+  <div class="outer-gutter">
+    <div class="step-num purple">6</div>
+    <span class="step-owner ai">AI</span>
+  </div>
+  <div class="step-card capture">
+    <h3>Capture <span class="scope-tag" style="background:var(--purple-light); color:var(--purple-dark);">full act</span></h3>
+    <div class="one-liner">Persist progress and learnings for the next act</div>
+    <ul class="body">
+      <li>All scenes in act file marked <code style="font-size:10px; background:var(--bg-warm); padding:2px 5px; border-radius:3px;">data-status="done"</code></li>
+      <li>STATE.yaml &mdash; act complete, all commits, scene summaries</li>
+      <li>LESSONS.md &mdash; every revert or multi-attempt fix = mandatory entry</li>
+      <li>ARCHITECTURE.md &mdash; system structure changes from this act</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════ LOOP ═══════════ -->
+<div class="loop-banner">
+  <div class="loop-icon">&#8634;</div>
+  <div>
+    <h4>Next Act</h4>
+    <p>Open the next act file. Return to <strong>Orient</strong>. Each iteration delivers a complete chapter of the user&rsquo;s story &mdash; not a feature, not a scene, but an entire arc.</p>
+  </div>
+</div>
+
+<!-- ═══════════ METRICS ═══════════ -->
+<div class="metrics-row">
+  <div class="metric-card">
+    <div class="label" style="color:var(--amber-dark);">PM per act</div>
+    <div class="value">~15 min</div>
+    <div class="unit">two touch points</div>
+    <div class="detail">Align (5 min) + Experience (10 min)</div>
+  </div>
+  <div class="metric-card">
+    <div class="label" style="color:var(--green-dark);">AI per act</div>
+    <div class="value">1.5&ndash;3 hrs</div>
+    <div class="unit">autonomous, scene by scene</div>
+    <div class="detail">Orient (10 min) + Inner loop (1&ndash;2.5 hrs) + Capture (5 min)</div>
+  </div>
+  <div class="metric-card">
+    <div class="label" style="color:var(--rose-dark);">Alignment confidence</div>
+    <div class="value">~85%</div>
+    <div class="unit">with a11y verification</div>
+    <div class="detail">vs ~35% today &middot; remaining 15% = visual (caught in Experience)</div>
+  </div>
+</div>
+
+<!-- ═══════════ PRINCIPLE ═══════════ -->
+<div class="principle">
+  <h4>The contract</h4>
+  <p>You describe the experience, one act at a time. The AI plans the full act, you approve once. The AI builds every scene autonomously &mdash; verifying each against the act file using the accessibility tree before moving to the next. You come back to walk the complete arc. Same file, same standard. When the arc lands, it ships.</p>
+</div>
+
+<div class="footer">
+  Amplifier-Canvas &nbsp;&bull;&nbsp; The Development Loop &nbsp;&bull;&nbsp; April 2026
+</div>
+
+</body>
+</html>
