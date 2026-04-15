@@ -10,6 +10,7 @@ import type { SessionState, FileEntry, WorkspaceState, CanvasSettings, FileActiv
 import type { SessionAnalysisData, AnalysisResult } from '../../shared/analysisTypes'
 
 // ---------------------------------------------------------------------------
+const MOCK_FIRST_TIME = true;
 // Fixture data — realistic enough to render every UI state
 // ---------------------------------------------------------------------------
 
@@ -126,12 +127,12 @@ const mockAPI = {
 
   onSessionsChanged: (cb: (sessions: SessionState[]) => void): (() => void) => {
     // Simulate sessions arriving after 100ms (like real IPC push)
-    setTimeout(() => cb(MOCK_SESSIONS), 100)
+    setTimeout(() => cb(MOCK_FIRST_TIME ? [] : MOCK_SESSIONS), 100)
     return noop
   },
 
   onProjectsChanged: (cb: (projects: Array<{ slug: string; name: string; path: string }>) => void): (() => void) => {
-    setTimeout(() => cb(MOCK_PROJECTS), 80)
+    setTimeout(() => cb(MOCK_FIRST_TIME ? [] : MOCK_PROJECTS), 80)
     return noop
   },
 
@@ -143,12 +144,12 @@ const mockAPI = {
   // Invoke/handle — return fixture data
   getWorkspaceState: async (): Promise<{ state: WorkspaceState; isFirstTime: boolean }> => ({
     state: {
-      selectedProjectSlug: 'amplifier-canvas',
-      expandedProjectSlugs: ['amplifier-canvas'],
-      selectedSessionId: 'session-001',
+      selectedProjectSlug: MOCK_FIRST_TIME ? null : 'amplifier-canvas',
+      expandedProjectSlugs: MOCK_FIRST_TIME ? [] : ['amplifier-canvas'],
+      selectedSessionId: MOCK_FIRST_TIME ? null : 'session-001',
       sidebarCollapsed: false,
     },
-    isFirstTime: false,
+    isFirstTime: MOCK_FIRST_TIME,
   }),
 
   saveWorkspaceState: async (): Promise<{ success: boolean }> => ({ success: true }),

@@ -25,3 +25,4 @@ playwright-report/
 # E2E test fixtures — Electron cache artifacts
 e2e/fixtures/amplifier-home/cache/
 e2e/fixtures/amplifier-home/registry.json
+*.png

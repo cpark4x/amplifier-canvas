@@ -159,7 +159,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
           <div
             style={{
               display: 'flex',
-              gap: 16,
+              gap: 0,
               marginTop: 16,
               borderBottom: '1px solid var(--border)',
             }}
@@ -171,8 +171,8 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                 background: 'none',
                 border: 'none',
                 borderBottom:
-                  activeTab === 'new' ? '2px solid var(--text-primary)' : '2px solid transparent',
-                paddingBottom: 8,
+                  activeTab === 'new' ? '2px solid var(--amber)' : '2px solid transparent',
+                padding: '6px 14px 8px',
                 fontSize: 13,
                 fontWeight: activeTab === 'new' ? 600 : 400,
                 color: activeTab === 'new' ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -190,9 +190,9 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                 border: 'none',
                 borderBottom:
                   activeTab === 'existing'
-                    ? '2px solid var(--text-primary)'
+                    ? '2px solid var(--amber)'
                     : '2px solid transparent',
-                paddingBottom: 8,
+                padding: '6px 14px 8px',
                 fontSize: 13,
                 fontWeight: activeTab === 'existing' ? 600 : 400,
                 color: activeTab === 'existing' ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -217,13 +217,13 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
             <>
               {/* Project Name */}
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-very-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Project Name
                 </label>
                 <input
                   data-testid="project-name-input"
                   type="text"
-                  placeholder="canvas-app"
+                  placeholder="my-project"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoFocus
@@ -244,7 +244,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
 
               {/* Location — derived from project name, disabled */}
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-very-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Location
                 </label>
                 <input
@@ -269,18 +269,16 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
 
               {/* Bundle — radio buttons */}
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-very-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Bundle
                 </label>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-primary)' }} />
-                    </div>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--amber)' }} />
                     <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>foundation</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', opacity: 0.5 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px solid var(--text-very-muted)' }} />
                     <span style={{ fontSize: 13, color: 'var(--text-very-muted)' }}>custom</span>
                   </label>
                 </div>
@@ -291,8 +289,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                 style={{
                   marginTop: 16,
                   display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 12,
+                  justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
@@ -420,13 +417,13 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                       cursor: 'pointer',
                       backgroundColor:
                         selectedExisting?.slug === project.slug
-                          ? 'rgba(0,0,0,0.06)'
+                          ? 'rgba(196,120,74,0.06)'
                           : hoveredSlug === project.slug
                             ? 'rgba(0,0,0,0.03)'
                             : 'transparent',
                       border:
                         selectedExisting?.slug === project.slug
-                          ? '1px solid var(--border)'
+                          ? '1px solid var(--amber)'
                           : '1px solid transparent',
                     }}
                   >
@@ -452,8 +449,7 @@ function AddProjectModal({ onClose, onCreateNew, onAddExisting, onResumeSession,
                 style={{
                   marginTop: 16,
                   display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 12,
+                  justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >

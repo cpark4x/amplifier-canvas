@@ -392,7 +392,7 @@ function App(): React.ReactElement {
                 <TerminalComponent key={terminalSessionId} sessionId={terminalSessionId} />
               )}
             </div>
-            <Viewer />
+            {viewerOpen && <Viewer />}
           </>
         )}
       </div>

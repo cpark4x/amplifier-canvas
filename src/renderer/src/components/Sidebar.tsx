@@ -195,7 +195,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
         flexDirection: 'column',
         overflow: 'hidden',
         transition: 'width 0.15s ease, min-width 0.15s ease',
-        padding: collapsed ? 0 : '8px 0 0',
+        padding: collapsed ? 0 : '12px 0',
         visibility: hidden ? 'hidden' : 'visible',
       }}
     >
@@ -230,7 +230,8 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
       {/* Expanded sidebar — NO "PROJECTS" header, NO "HISTORY" label */}
       {!collapsed && (
         <>
-          {/* Collapse toggle — small chevron at top right */}
+          {/* Collapse toggle — small chevron at top right (only when projects exist) */}
+          {projects.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 8px 4px' }}>
             <button
               data-testid="sidebar-toggle"
@@ -257,6 +258,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
               </svg>
             </button>
           </div>
+          )}
 
           {/* Project list */}
           <div style={{ flex: 1, overflow: 'auto' }}>
@@ -371,7 +373,6 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                           isSelected={selectedSessionId === session.id}
                           onSelect={() => {
                             selectSession(session.id)
-                            openViewer()
                             onSessionSelect?.(session.id, session.workDir ?? '')
                           }}
                         />
@@ -532,7 +533,7 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
         padding: '0 8px 0 0',
         marginLeft: 14,
         paddingLeft: 12,
-        borderLeft: '2px solid var(--border)',
+        borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid var(--border)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
