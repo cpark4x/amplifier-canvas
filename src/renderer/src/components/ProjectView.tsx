@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useCanvasStore } from '../store'
+import ProjectOverviewTab from './ProjectOverviewTab'
+import ProjectStatsTab from './ProjectStatsTab'
+import ProjectHistoryTab from './ProjectHistoryTab'
 
 type TabId = 'overview' | 'stats' | 'history'
 
@@ -115,20 +118,14 @@ function ProjectView(): React.ReactElement {
           overflowY: 'auto',
         }}
       >
-        {activeTab === 'overview' && (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-            Project overview will appear here — assessment, key outcomes, and active sessions.
-          </div>
+        {activeTab === 'overview' && selectedProjectSlug && (
+          <ProjectOverviewTab projectSlug={selectedProjectSlug} />
         )}
-        {activeTab === 'stats' && (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-            Project statistics will appear here — prompts, tool calls, files changed, session timeline.
-          </div>
+        {activeTab === 'stats' && selectedProjectSlug && (
+          <ProjectStatsTab projectSlug={selectedProjectSlug} />
         )}
-        {activeTab === 'history' && (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-            Session history will appear here — full list of past sessions with details.
-          </div>
+        {activeTab === 'history' && selectedProjectSlug && (
+          <ProjectHistoryTab projectSlug={selectedProjectSlug} />
         )}
       </div>
     </div>

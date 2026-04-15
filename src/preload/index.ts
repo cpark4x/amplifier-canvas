@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry, WorkspaceState, CanvasSettings } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, WorkspaceState, CanvasSettings, ProjectOverview } from '../shared/types'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
@@ -192,6 +192,12 @@ const api = {
   // Settings: save settings
   saveSettings: (settings: CanvasSettings): Promise<{ success: boolean }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SAVE, settings) as Promise<{ success: boolean }>
+  },
+
+  // Project overview: get aggregated project data
+  getProjectOverview: async (slug: string): Promise<ProjectOverview | null> => {
+    // TODO: wire to real IPC when main-process handler is ready
+    return null
   },
 }
 
