@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Amplifier Canvas &mdash; Act 4: Project Intelligence</title>
+<link rel="stylesheet" href="system.css">
+<style>
+
+/* ============================================================
+   ACT FILE — PAGE LAYOUT
+   ============================================================ */
+body {
+  background: var(--bg-page);
+  font-family: var(--font-ui);
+  padding: 48px 0;
+  min-width: 1440px;
+}
+
+/* ============================================================
+   ACT HEADER
+   ============================================================ */
+.act-header {
+  max-width: 1440px;
+  margin: 0 auto 48px;
+  padding: 0 0 16px;
+  border-bottom: 2px solid var(--border);
+}
+.act-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.act-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.act-header .act-story {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-right);
+  border-left: 3px solid var(--amber);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.act-header .act-story strong { font-weight: 600; }
+.act-header .act-story span { color: var(--text-muted); font-size: 11.5px; }
+
+/* ============================================================
+   SCENE CONTAINER
+   ============================================================ */
+.scene {
+  max-width: 1440px;
+  margin: 0 auto 80px;
+}
+.scene[data-status]::before {
+  content: attr(data-scene) " \2014 " attr(data-status);
+  display: inline-block;
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: 12px;
+}
+.scene[data-status="done"]::before {
+  background: rgba(76,175,116,0.12);
+  color: var(--green);
+}
+.scene[data-status="drift"]::before {
+  background: rgba(245,158,11,0.12);
+  color: var(--amber);
+}
+.scene[data-status="not-built"]::before {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-very-muted);
+}
+
+/* ============================================================
+   STORY SECTION
+   ============================================================ */
+.story {
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.story h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.story .beat {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.story .why {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   SCREEN SECTION
+   ============================================================ */
+.screen {
+  margin-bottom: 16px;
+}
+
+/* ============================================================
+   VERIFY SECTION
+   ============================================================ */
+.verify {
+  padding: 14px 18px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.verify ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 24px;
+}
+.verify li {
+  padding: 2px 0 2px 18px;
+  position: relative;
+  break-inside: avoid;
+  color: var(--text-muted);
+}
+.verify li::before {
+  content: '\25A1';
+  position: absolute;
+  left: 0;
+  color: var(--text-very-muted);
+  font-size: 11px;
+}
+
+
+/* ============================================================
+   FRAME — the 1440×900 screen mockup container
+   ============================================================ */
+.frame {
+  width: 1440px;
+  height: 900px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  position: relative;
+}
+
+
+/* ============================================================
+   SHARED: APP HEADER
+   ============================================================ */
+.app-header {
+  height: 38px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.app-header-left { display: flex; align-items: center; gap: 8px; }
+.logo-mark { width: 22px; height: 22px; flex-shrink: 0; display: block; line-height: 1; }
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.app-header-right { display: flex; align-items: center; gap: 2px; }
+.header-icon-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text-very-muted);
+  background: none; border: none; border-radius: 3px; line-height: 1;
+}
+
+
+/* ============================================================
+   SHARED: BODY ROW
+   ============================================================ */
+.body-row {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+
+/* ============================================================
+   SHARED: SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: 200px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-add-project {
+  padding: 8px 14px;
+  margin: auto 10px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+}
+
+
+/* ============================================================
+   SIDEBAR — SESSION DESIGN
+   ============================================================ */
+.project-label {
+  padding: 12px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-very-muted);
+  user-select: none;
+}
+.session-row-new {
+  height: 36px;
+  padding: 0 12px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+}
+.session-row-new.active { background: var(--bg-sidebar-active); }
+.session-row-new.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--amber);
+  border-radius: 0 1px 1px 0;
+}
+.session-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.session-dot.amber { background: var(--amber); }
+.session-dot.green { background: var(--green); }
+.session-dot.gray  { background: var(--text-very-muted); }
+.session-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-name.bold { font-weight: 600; }
+.session-age {
+  font-size: 11px;
+  color: var(--text-very-muted);
+  flex-shrink: 0;
+}
+
+/* Project row */
+.project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 4px;
+}
+.project-row .project-label { padding: 0; }
+.project-add-session-btn {
+  font-size: 14px;
+  color: var(--text-very-muted);
+  background: none; border: none;
+  line-height: 1; padding: 0; cursor: pointer;
+}
+
+/* Expanded project group */
+.project-group-expanded {
+  background: rgba(0,0,0,0.025);
+  border-radius: 4px;
+  margin: 0 6px 6px;
+  padding: 4px 0;
+}
+.project-group-expanded .project-row { padding: 8px 8px 4px; }
+.project-group-expanded .session-row-new {
+  padding: 4px 8px 4px 28px;
+  border-left: 2px solid var(--border);
+  margin-left: 14px;
+  padding-left: 14px;
+}
+.project-chevron { font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-right: 4px; }
+
+/* Session separator */
+.session-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 0 12px;
+}
+
+/* Worktree badge */
+.worktree-badge { font: 9px/1.3 var(--font-mono); color: var(--text-very-muted); padding-left: 14px; margin-top: 1px; letter-spacing: 0.02em; }
+
+/* Session done badge */
+.session-done-badge {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 8px; font-weight: 700; line-height: 1;
+}
+
+
+/* ============================================================
+   SHARED: TERMINAL ZONE
+   ============================================================ */
+.terminal-zone {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+.pane-title {
+  height: 28px;
+  background: var(--bg-pane-title);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.terminal-area {
+  flex: 1;
+  background: var(--bg-terminal);
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-terminal);
+  overflow: hidden;
+}
+.t { display: block; }
+.t.dim { opacity: 0.65; }
+.t.success { color: var(--green); }
+.t.blank   { display: block; height: 1.65em; }
+.terminal-cursor {
+  display: inline-block;
+  width: 8px; height: 13px;
+  background: var(--amber);
+  vertical-align: middle;
+  margin-left: 1px;
+  position: relative;
+  top: -1px;
+}
+
+/* Green prompt */
+.t-gp { color: var(--green); font-weight: 600; }
+
+/* Shell prompt */
+.t-prompt { color: #6A8A6A; font: 11px/1.6 var(--font-mono); display: block; }
+.t-prompt .t-path { color: #8A9E8A; }
+.t-prompt .t-branch { color: #C4784A; }
+.t-prompt .t-dollar { color: var(--text-terminal); }
+
+/* Tool call lines */
+.t-tool { color: var(--text-very-muted); display: block; font: 11px/1.6 var(--font-mono); }
+.t-tool::before { content: '\25C6 '; color: #5A8A9A; }
+
+/* Terminal user prompt & response lines */
+.t-user-prompt { display: block; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
+.t-amplifier-label { display: block; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
+.t-response { display: block; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
+
+
+/* ============================================================
+   SHARED: RIGHT PANEL
+   ============================================================ */
+.right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--bg-right);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tab-row-primary {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.tab-primary {
+  font-size: 12px;
+  font-weight: 500;
+  padding-bottom: 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.tab-primary.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+}
+.panel-content {
+  flex: 1;
+  padding: 16px;
+  overflow: hidden;
+}
+
+
+/* ============================================================
+   SUMMARY PANEL
+   ============================================================ */
+.summary-hero { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.summary-tldr { font: 13px/1.6 var(--font-ui); color: var(--text-primary); margin-bottom: 8px; }
+.summary-status { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.summary-status-icon { font-size: 11px; flex-shrink: 0; }
+.summary-status-text { font: 11px/1.3 var(--font-ui); }
+.summary-status.done .summary-status-icon,
+.summary-status.done .summary-status-text { color: var(--green); }
+.summary-stats { display: flex; gap: 6px; font: 10px var(--font-mono); color: var(--text-very-muted); flex-wrap: wrap; }
+.summary-stats span:not(:last-child)::after { content: '\00b7'; margin-left: 6px; }
+
+.summary-details-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.summary-details-toggle { display: flex; align-items: center; gap: 5px; }
+.summary-details-chevron { font-size: 8px; color: var(--text-very-muted); }
+.summary-details-label { font: 11px var(--font-ui); font-weight: 600; color: var(--text-primary); }
+.summary-details-preview { font: 10px var(--font-mono); color: var(--text-very-muted); }
+
+.analysis-section { margin-bottom: 14px; }
+.analysis-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--border);
+}
+.analysis-section-label {
+  font: 10px/1 var(--font-ui); text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-very-muted); font-weight: 600;
+}
+.analysis-section-toggle { font-size: 9px; color: var(--text-very-muted); }
+.analysis-section-body { padding-top: 8px; }
+
+.summary-trail-row { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.summary-trail-row:last-child { border-bottom: none; }
+.summary-trail-turn { font: 10px/1.4 var(--font-mono); color: var(--text-very-muted); flex-shrink: 0; width: 28px; }
+.summary-trail-text { font: 11px/1.4 var(--font-ui); color: var(--text-muted); }
+
+.summary-collapsed-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 0; font: 10px var(--font-ui); color: var(--text-very-muted); cursor: pointer;
+}
+.summary-collapsed-chevron { font-size: 8px; }
+.summary-collapsed-count { margin-left: auto; font: 10px var(--font-mono); }
+
+
+/* ============================================================
+   TOAST NOTIFICATION
+   ============================================================ */
+.toast {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1C1A16;
+  border: 1px solid #3A3530;
+  border-radius: 6px;
+  padding: 12px 16px;
+  min-width: 380px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+.toast-title { font: 12px/1 var(--font-ui); color: #E8E4DC; font-weight: 600; margin-bottom: 6px; }
+.toast-stats { font: 11px/1 var(--font-mono); color: #9A9590; }
+
+
+/* ============================================================
+   PROJECT ZONE (replaces terminal for project views)
+   ============================================================ */
+.project-zone { display:flex; flex-direction:column; flex:1; overflow:hidden; min-width:0; background:var(--bg-right); }
+.project-pane-title { height:28px; background:var(--bg-pane-title); padding:0 16px; font-size:11px; color:var(--text-muted); display:flex; align-items:center; flex-shrink:0; gap:8px; }
+.project-tab-bar { height:36px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; padding:0 24px; gap:28px; flex-shrink:0; background:var(--bg-right); }
+.project-tab { font-size:12px; font-weight:500; padding-bottom:8px; color:var(--text-very-muted); border-bottom:2px solid transparent; margin-bottom:-1px; cursor:pointer; }
+.project-tab.active { color:var(--text-primary); border-bottom-color:var(--amber); }
+.project-content { flex:1; padding:32px 40px; overflow-y:auto; }
+.project-heading { font-size:22px; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px; margin-bottom:4px; }
+.project-field-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-very-muted); font-weight:600; margin-bottom:6px; margin-top:20px; display:block; }
+.project-field-text { font-size:13px; color:var(--text-primary); line-height:1.6; }
+
+
+/* ============================================================
+   PROJECT OVERVIEW — AI assessment + outcomes
+   ============================================================ */
+.on-track-banner { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--bg-sidebar-active); border-radius:4px; margin-bottom:20px; }
+.outcome-row { padding:12px 0; border-bottom:1px solid var(--border); }
+.outcome-row:last-child { border-bottom:none; }
+.outcome-header { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.outcome-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.outcome-text { font:500 13px/1.4 var(--font-ui); color:var(--text-primary); flex:1; }
+.outcome-badge { font:10px/1 var(--font-ui); text-transform:uppercase; letter-spacing:.06em; padding:2px 7px; border-radius:3px; flex-shrink:0; }
+.outcome-evidence { font:11px/1.5 var(--font-ui); color:var(--text-muted); padding-left:16px; }
+
+
+/* ============================================================
+   LLM-GENERATED CONTENT
+   ============================================================ */
+.llm-header { display:flex; align-items:center; gap:5px; margin-bottom:6px; }
+.llm-spark { color:var(--amber); font-size:11px; }
+.llm-label { font:600 10px/1 var(--font-ui); text-transform:uppercase; letter-spacing:.08em; color:var(--amber); }
+.llm-section { background:rgba(245,158,11,0.04); border:1px solid rgba(245,158,11,0.14); border-radius:4px; padding:12px 14px; margin-bottom:14px; }
+.llm-insight { font:12px/1.6 var(--font-ui); color:var(--text-primary); margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.llm-insight:last-of-type { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+.llm-insight-label { font:10px/1 var(--font-ui); text-transform:uppercase; letter-spacing:.06em; color:var(--text-very-muted); margin-bottom:4px; }
+.llm-footer { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); font:10px var(--font-ui); color:var(--text-very-muted); }
+.llm-regen { color:var(--amber); cursor:pointer; }
+
+
+/* ============================================================
+   PROJECT STATS
+   ============================================================ */
+.proj-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:24px; }
+.proj-stat-cell { background:var(--bg-right); padding:16px; }
+.proj-stat-value { font-size:22px; font-weight:700; color:var(--text-primary); margin-bottom:3px; line-height:1; }
+.proj-stat-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-very-muted); }
+
+
+/* ============================================================
+   PROJECT SESSION ROWS
+   ============================================================ */
+.proj-session-row { display:flex; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--border); gap:12px; }
+.proj-session-name { font-size:13px; font-weight:600; color:var(--text-primary); flex:1; }
+.proj-session-meta { font-size:11px; color:var(--text-very-muted); font-family:var(--font-mono); }
+.proj-session-resume { font-size:11px; color:var(--amber); cursor:pointer; flex-shrink:0; }
+
+
+/* ============================================================
+   CLICKABLE PROJECT NAME ROW (Act 4 addition)
+   ============================================================ */
+.project-row-clickable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  position: relative;
+  transition: background 0.12s ease;
+}
+.project-row-clickable:hover {
+  background: var(--bg-sidebar-active);
+}
+.project-row-clickable.active {
+  background: var(--bg-sidebar-active);
+}
+.project-row-clickable.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 2px;
+  background: var(--amber);
+  border-radius: 0 1px 1px 0;
+}
+.project-row-clickable .project-label {
+  padding: 0;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ====================================================================
+     ACT 4 HEADER
+     ==================================================================== -->
+<div class="act-header">
+  <h1>Act 4 &mdash; Project Intelligence</h1>
+  <p>Canvas understands your project &mdash; surfacing insights, tracking progress, keeping history.</p>
+  <div class="act-story">
+    <strong>Job to be done:</strong> Step back from individual sessions to see the big picture. Canvas synthesizes everything into project-level understanding &mdash; where things stand, what patterns are emerging, what happened when.
+    <br><br>
+    <span>You&rsquo;ve been through multiple sessions now. Auth module is committed and merged. Dark mode is running in a worktree. You&rsquo;ve explored the codebase, built scaffolding, shipped features. But there&rsquo;s no place where all of that comes together into a coherent picture. The CLI gives you <code style="font:11px var(--font-mono);">amplifier session list</code> &mdash; a flat dump of IDs and timestamps. Canvas gives you <em>project intelligence</em>: an AI-synthesized overview, aggregate stats with LLM-generated insights, and a complete session history where every piece of work has a name, a summary, and a way back in.</span>
+    <br><br>
+    <span>This act has three scenes: <strong>Project overview</strong> &mdash; the AI assessment of where you are. <strong>Stats</strong> &mdash; numbers and patterns the model can see but you can&rsquo;t. <strong>History</strong> &mdash; the complete record, proving nothing is ever lost.</span>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCENE 4.1 — PROJECT OVERVIEW
+     ==================================================================== -->
+<section class="scene" data-scene="4.1" data-status="not-built">
+
+  <div class="story">
+    <h3>Scene 4.1 &mdash; Project Overview</h3>
+    <p class="beat"><strong>Primary path (natural):</strong> You just exited your last session at the end of Act 3. The shell prompt returned, but instead of staring at an idle terminal, the main area naturally transitions to the project overview. When you&rsquo;re between sessions &mdash; no active session selected &mdash; the project view is the default. It appears without you asking for it. The overview replaces the empty terminal because <em>between sessions</em> is when the project-level view matters most.</p>
+    <p class="beat"><strong>Secondary path (intentional):</strong> The project name row (&ldquo;CANVAS-APP&rdquo;) in the sidebar is not a static label. It has a subtle background highlight on hover, a pointer cursor &mdash; it&rsquo;s obviously clickable. At any point &mdash; even mid-session &mdash; you can click the project name to jump to this view. The sidebar shows the project row in an active state with a left-accent border, mirroring how active sessions look.</p>
+    <p class="beat">The view itself: default tab is OVERVIEW. At the top, an AI assessment banner &mdash; &ldquo;&#x2736; AI assessment: On track &mdash; 1 of 3 outcomes in progress &middot; 3 sessions completed &middot; last activity today.&rdquo; Below: the project heading (&ldquo;Amplifier-Canvas&rdquo;), its one-line vision, and a structured outcomes list from OUTCOMES.md with status badges and AI-generated evidence.</p>
+    <p class="why">Discoverability is solved two ways. First, you <em>stumble into it naturally</em> &mdash; when no session is active, the project overview fills the void. This means every user sees it eventually, without documentation or onboarding. Second, you can <em>get there intentionally</em> &mdash; the project name row is a real interactive element, not a category header. Between these two paths, no user should ever wonder &ldquo;how do I see my project?&rdquo; This is project memory made visible. Canvas isn&rsquo;t just tracking sessions &mdash; it&rsquo;s tracking <em>the project</em>. The AI assessment synthesizes across all sessions. The outcomes list connects daily work back to the goals that matter.</p>
+  </div>
+
+  <div class="screen">
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+
+        <!-- Sidebar — project name row is clickable with active state -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row-clickable active">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span class="project-chevron">&#x25BE;</span>
+                <div class="project-label">CANVAS-APP</div>
+              </div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">1h 15m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Project zone -->
+        <div class="project-zone">
+          <div class="project-pane-title">canvas-app &nbsp;&middot;&nbsp; Project</div>
+          <div class="project-tab-bar">
+            <span class="project-tab active">OVERVIEW</span>
+            <span class="project-tab">STATS</span>
+            <span class="project-tab">HISTORY</span>
+          </div>
+          <div class="project-content">
+
+            <!-- AI assessment banner -->
+            <div class="on-track-banner" style="flex-direction:column;align-items:flex-start;gap:6px;">
+              <div class="llm-header">
+                <span class="llm-spark">&#x2736;</span>
+                <span class="llm-label">AI assessment</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;display:inline-block;"></span>
+                <span style="font:600 12px var(--font-ui);color:var(--text-primary);">On track</span>
+                <span style="font:11px var(--font-ui);color:var(--text-muted);">1 of 3 outcomes in progress &nbsp;&middot;&nbsp; 3 sessions completed &nbsp;&middot;&nbsp; last activity today</span>
+              </div>
+              <div style="font:10px var(--font-ui);color:var(--text-very-muted);display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end;">
+                Generated 2 min ago &nbsp;<span class="llm-regen">&#x21BA; Regenerate</span>
+              </div>
+            </div>
+
+            <!-- Project heading -->
+            <div class="project-heading">Amplifier-Canvas</div>
+            <div style="font:13px/1.5 var(--font-ui);color:var(--text-muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">Amplifier is a powerful framework with no cockpit. Canvas is the cockpit.</div>
+
+            <span class="project-field-label">Vision</span>
+            <div class="project-field-text" style="margin-bottom:16px;">Give Amplifier users a visual layer that makes sessions more legible, files more accessible, and projects more coherent. Never slower than the CLI.</div>
+
+            <span class="project-field-label">Outcomes</span>
+            <div class="outcome-row">
+              <div class="outcome-header">
+                <span class="outcome-dot" style="background:var(--amber);"></span>
+                <span class="outcome-text">Daily driver adoption &mdash; power users within 30 days</span>
+                <span class="outcome-badge" style="background:rgba(245,158,11,0.12);color:var(--amber);">In progress</span>
+              </div>
+              <div class="outcome-evidence"><span class="llm-spark" style="font-size:9px;">&#x2736;</span> &#x2713; Session panel built &nbsp;&middot;&nbsp; File viewer in progress &nbsp;&middot;&nbsp; App preview pending</div>
+            </div>
+            <div class="outcome-row">
+              <div class="outcome-header">
+                <span class="outcome-dot" style="background:var(--border);"></span>
+                <span class="outcome-text">Demonstrably faster debugging vs CLI alone</span>
+                <span class="outcome-badge" style="background:var(--bg-sidebar-active);color:var(--text-very-muted);">Not started</span>
+              </div>
+              <div class="outcome-evidence" style="color:var(--text-very-muted);"><span class="llm-spark" style="font-size:9px;">&#x2736;</span> No sessions have addressed this yet</div>
+            </div>
+            <div class="outcome-row">
+              <div class="outcome-header">
+                <span class="outcome-dot" style="background:var(--border);"></span>
+                <span class="outcome-text">Positive internal team signal &mdash; first two weeks</span>
+                <span class="outcome-badge" style="background:var(--bg-sidebar-active);color:var(--text-very-muted);">Too early</span>
+              </div>
+              <div class="outcome-evidence" style="color:var(--text-very-muted);"><span class="llm-spark" style="font-size:9px;">&#x2736;</span> Demo needed before this can be evaluated</div>
+            </div>
+
+            <span class="project-field-label" style="margin-top:20px;">Status</span>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;display:inline-block;"></span>
+              <span style="font:12px var(--font-ui);color:var(--text-primary);">PR #47 open &nbsp;&middot;&nbsp; 1 session running &nbsp;&middot;&nbsp; last commit today</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="verify">
+    <ul>
+      <li><strong>Natural entry path:</strong> Project overview appears automatically when no session is active (between-sessions default)</li>
+      <li><strong>Intentional entry path:</strong> Project name row (&ldquo;CANVAS-APP&rdquo;) is visually clickable with hover state and cursor pointer</li>
+      <li>Sidebar project row shows active state: background highlight + amber left-accent border (mirrors session active state)</li>
+      <li>Project-level view replacing terminal zone</li>
+      <li>OVERVIEW tab active (with STATS and HISTORY tabs visible)</li>
+      <li>AI assessment banner with sparkle icon and &ldquo;On track&rdquo;</li>
+      <li>Three outcomes from OUTCOMES.md with status badges</li>
+      <li>Status line: &ldquo;PR #47 open &middot; 1 session running &middot; last commit today&rdquo;</li>
+      <li>Sidebar shows only Dark mode session (Auth module exited)</li>
+      <li>Pane title: &ldquo;canvas-app &middot; Project&rdquo;</li>
+      <li>&ldquo;Regenerate&rdquo; action on AI assessment</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 4.2 — PROJECT STATS
+     ==================================================================== -->
+<section class="scene" data-scene="4.2" data-status="not-built">
+
+  <div class="story">
+    <h3>Scene 4.2 &mdash; Project Stats</h3>
+    <p class="beat">You tap the STATS tab. A 2&times;2 grid shows aggregate numbers: 8 sessions, 12h 34m total time, 847k tokens, 156 files touched. Below: an LLM-generated insights section &mdash; four observations the AI extracted from session patterns. &ldquo;Velocity: Sessions are getting shorter &mdash; avg 1h 45m early, now 28m. You&rsquo;re in a refinement phase.&rdquo; &ldquo;Alignment: Outcome 2 (faster debugging) has never been addressed across 8 sessions. This may become a gap.&rdquo; &ldquo;Efficiency: Token efficiency improving &mdash; 18k tokens per file change early, now 12k.&rdquo; &ldquo;Risk: File viewer has been in progress for 3 sessions without completing.&rdquo; Below the insights: per-session breakdowns.</p>
+    <p class="why">The stats tab turns invisible work into visible patterns. No developer tracks their token efficiency across sessions. No one notices that an outcome hasn&rsquo;t been touched in 8 sessions. Canvas sees what you can&rsquo;t, because it has the data and the model to interpret it. The LLM-generated insights are clearly labeled (&#x2736; spark icon, &ldquo;LLM-generated&rdquo; badge, &ldquo;Regenerate&rdquo; action) &mdash; Canvas never pretends AI conclusions are facts.</p>
+  </div>
+
+  <div class="screen">
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row-clickable active">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span class="project-chevron">&#x25BE;</span>
+                <div class="project-label">CANVAS-APP</div>
+              </div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">1h 18m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Project zone — STATS -->
+        <div class="project-zone">
+          <div class="project-pane-title">canvas-app &nbsp;&middot;&nbsp; Project</div>
+          <div class="project-tab-bar">
+            <span class="project-tab">OVERVIEW</span>
+            <span class="project-tab active">STATS</span>
+            <span class="project-tab">HISTORY</span>
+          </div>
+          <div class="project-content">
+
+            <!-- Stats grid -->
+            <div class="proj-stats-grid">
+              <div class="proj-stat-cell"><div class="proj-stat-value">8</div><div class="proj-stat-label">Sessions</div></div>
+              <div class="proj-stat-cell"><div class="proj-stat-value">12h 34m</div><div class="proj-stat-label">Total time</div></div>
+              <div class="proj-stat-cell"><div class="proj-stat-value">847k</div><div class="proj-stat-label">Tokens</div></div>
+              <div class="proj-stat-cell"><div class="proj-stat-value">156</div><div class="proj-stat-label">Files touched</div></div>
+            </div>
+
+            <!-- LLM insights -->
+            <div class="llm-section">
+              <div class="llm-header">
+                <span class="llm-spark">&#x2736;</span>
+                <span class="llm-label">LLM-generated</span>
+                <span style="font:10px var(--font-ui);color:var(--text-very-muted);margin-left:4px;">Insights</span>
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Velocity</div>
+                Sessions are getting shorter &mdash; avg 1h 45m early, now 28m. You&rsquo;re in a refinement phase.
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Alignment</div>
+                Outcome 2 (faster debugging) has never been addressed across 8 sessions. This may become a gap.
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Efficiency</div>
+                Token efficiency improving &mdash; 18k tokens per file change early, now 12k.
+              </div>
+              <div class="llm-insight">
+                <div class="llm-insight-label">Risk</div>
+                File viewer has been in progress for 3 sessions without completing. May need focused attention.
+              </div>
+              <div class="llm-footer">
+                Generated 4 min ago &nbsp;<span class="llm-regen">&#x21BA; Regenerate</span>
+              </div>
+            </div>
+
+            <!-- Per-session breakdown -->
+            <div style="font:10px var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--text-very-muted);margin-bottom:10px;">Per session</div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Auth module</span>
+              <span class="proj-session-meta">1h 12m &nbsp;&middot;&nbsp; 47 tool calls &nbsp;&middot;&nbsp; 12 files</span>
+            </div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Dark mode</span>
+              <span class="proj-session-meta" style="color:var(--amber);">running &nbsp;&middot;&nbsp; 31 tool calls so far</span>
+            </div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Explore codebase</span>
+              <span class="proj-session-meta">28m &nbsp;&middot;&nbsp; 12 tool calls &nbsp;&middot;&nbsp; 0 files</span>
+            </div>
+            <div class="proj-session-row">
+              <span class="proj-session-name">Setup scaffold</span>
+              <span class="proj-session-meta">2h 04m &nbsp;&middot;&nbsp; 89 tool calls &nbsp;&middot;&nbsp; 23 files</span>
+            </div>
+            <div class="proj-session-row" style="border-bottom:none;">
+              <span class="proj-session-name" style="color:var(--text-muted);">+ 4 more sessions</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="verify">
+    <ul>
+      <li>STATS tab active</li>
+      <li>4-column grid: 8 sessions, 12h 34m, 847k tokens, 156 files</li>
+      <li>Four LLM insight sections: Velocity, Alignment, Efficiency, Risk</li>
+      <li>Sparkle icon and &ldquo;Regenerate&rdquo; button on insights</li>
+      <li>Per-session breakdown below insights</li>
+      <li>&ldquo;Explore codebase&rdquo; from Act 2 appears in per-session list (story continuity)</li>
+      <li>Sidebar project row clickable with active state (amber left-accent border)</li>
+      <li>Pane title: &ldquo;canvas-app &middot; Project&rdquo;</li>
+    </ul>
+  </div>
+
+</section>
+
+
+<!-- ====================================================================
+     SCENE 4.3 — SESSION HISTORY
+     ==================================================================== -->
+<section class="scene" data-scene="4.3" data-status="not-built">
+
+  <div class="story">
+    <h3>Scene 4.3 &mdash; Session History</h3>
+    <p class="beat">You tap the HISTORY tab. At the top: the currently running session (Dark mode, amber dot, 1h 22m, &ldquo;View &rarr;&rdquo;). Below a &ldquo;History&rdquo; label: every completed session &mdash; Auth module (today, 1h 12m, &ldquo;Built session panel with live status indicators,&rdquo; PR #47 linked), Explore codebase (today, 28m), then older sessions going back days. Each has a title auto-derived from its first prompt, a one-line summary, duration, and a &ldquo;Resume &rarr;&rdquo; action. At the bottom: &ldquo;+ 3 more sessions.&rdquo;</p>
+    <p class="why">This is the final scene because it delivers the thesis: <em>nothing is ever lost</em>. Every session you&rsquo;ve run lives here with a meaningful name, a summary, and a way back in. &ldquo;Auth module&rdquo; isn&rsquo;t <code>session_a3f2b1c</code> &mdash; it&rsquo;s a piece of work you can describe, find, and resume. This is the project memory that the CLI never had. The story ends with accumulation &mdash; your project is richer for having used Canvas.</p>
+  </div>
+
+  <div class="screen">
+    <div class="frame">
+      <div class="app-header">
+        <div class="app-header-left">
+          <svg class="logo-mark" width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="116" y="116" width="240" height="240" rx="28" stroke="#1C1A16" stroke-width="18" fill="none"/><rect x="156" y="156" width="240" height="240" rx="28" stroke="#C4784A" stroke-width="18" fill="none"/></svg>
+          <span class="app-name">Amplifier Canvas</span>
+        </div>
+        <div class="app-header-right">
+          <button class="header-icon-btn" title="Layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+          <button class="header-icon-btn" title="Notifications"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="header-icon-btn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+      <div class="body-row">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="project-group-expanded">
+            <div class="project-row-clickable active">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span class="project-chevron">&#x25BE;</span>
+                <div class="project-label">CANVAS-APP</div>
+              </div>
+              <button class="project-add-session-btn" title="New session">+</button>
+            </div>
+            <div class="session-row-new" style="align-items:flex-start;padding-top:6px;padding-bottom:6px;margin-top:4px;">
+              <div class="session-dot amber" style="margin-top:3px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span class="session-name">Dark mode</span>
+                  <span class="session-age">1h 22m</span>
+                </div>
+                <div class="worktree-badge">&#x219F; worktree/dark-mode</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-add-project">Add project</div>
+        </div>
+
+        <!-- Project zone — HISTORY -->
+        <div class="project-zone">
+          <div class="project-pane-title">canvas-app &nbsp;&middot;&nbsp; Project</div>
+          <div class="project-tab-bar">
+            <span class="project-tab">OVERVIEW</span>
+            <span class="project-tab">STATS</span>
+            <span class="project-tab active">HISTORY</span>
+          </div>
+          <div class="project-content">
+
+            <!-- Currently open -->
+            <div style="font:10px var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--amber);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--amber);display:inline-block;"></span>
+              Currently open
+            </div>
+            <div class="proj-session-row" style="background:rgba(245,158,11,0.04);margin:0 -2px;padding:9px 2px;">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name">Dark mode</div>
+                <div class="proj-session-meta" style="color:var(--amber);">running &nbsp;&middot;&nbsp; 1h 22m &nbsp;&middot;&nbsp; &#x219F; worktree/dark-mode</div>
+              </div>
+              <span class="proj-session-resume">View &rarr;</span>
+            </div>
+
+            <!-- History -->
+            <div style="font:10px var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--text-very-muted);font-weight:600;margin:14px 0 6px;">History</div>
+            <div class="proj-session-row">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name">Auth module</div>
+                <div class="proj-session-meta">today &nbsp;&middot;&nbsp; 1h 12m &nbsp;&middot;&nbsp; Built session panel with live status indicators</div>
+                <div style="font:11px var(--font-ui);color:var(--amber);margin-top:3px;cursor:pointer;">PR #47 &rarr;</div>
+              </div>
+              <span class="proj-session-resume">Resume &rarr;</span>
+            </div>
+            <div class="proj-session-row">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name">Explore codebase</div>
+                <div class="proj-session-meta">today &nbsp;&middot;&nbsp; 28m &nbsp;&middot;&nbsp; Read VISION.md and OUTCOMES.md, reviewed project structure</div>
+              </div>
+              <span class="proj-session-resume">Resume &rarr;</span>
+            </div>
+            <div class="proj-session-row">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name">Build sidebar navigation</div>
+                <div class="proj-session-meta">yesterday &nbsp;&middot;&nbsp; 48m &nbsp;&middot;&nbsp; Collapsible sidebar with project and session hierarchy</div>
+              </div>
+              <span class="proj-session-resume">Resume &rarr;</span>
+            </div>
+            <div class="proj-session-row">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name">Update CI pipeline</div>
+                <div class="proj-session-meta">Mar 28 &nbsp;&middot;&nbsp; 34m &nbsp;&middot;&nbsp; Migrated GitHub Actions to matrix testing strategy</div>
+              </div>
+              <span class="proj-session-resume">Resume &rarr;</span>
+            </div>
+            <div class="proj-session-row">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name">Schema migration</div>
+                <div class="proj-session-meta">Mar 27 &nbsp;&middot;&nbsp; 1h 22m &nbsp;&middot;&nbsp; Added soft delete columns across all user tables</div>
+              </div>
+              <span class="proj-session-resume">Resume &rarr;</span>
+            </div>
+            <div class="proj-session-row" style="border-bottom:none;">
+              <div style="flex:1;min-width:0;">
+                <div class="proj-session-name" style="color:var(--text-muted);">+ 3 more sessions</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="verify">
+    <ul>
+      <li>HISTORY tab active</li>
+      <li>&ldquo;Currently open&rdquo; section: Dark mode (running, 1h 22m, &ldquo;View &rarr;&rdquo;)</li>
+      <li>Auth module in history: today, 1h 12m, summary, PR #47 link</li>
+      <li>&ldquo;Explore codebase&rdquo; from Act 2 appears in history (story continuity)</li>
+      <li>Each completed session: title, relative time, duration, summary, &ldquo;Resume &rarr;&rdquo;</li>
+      <li>Older sessions with absolute dates (Mar 28, Mar 27)</li>
+      <li>&ldquo;+ 3 more sessions&rdquo; at bottom</li>
+      <li>Sidebar project row clickable with active state (amber left-accent border)</li>
+      <li>Pane title: &ldquo;canvas-app &middot; Project&rdquo;</li>
+    </ul>
+  </div>
+
+</section>
+
+
+</body>
+</html>
