@@ -343,7 +343,7 @@ body {
 .t { display: block; }
 .t.success { color: var(--green); }
 .t.blank   { display: block; height: 1.65em; }
-.t.dim     { color: var(--text-very-muted); }
+.t.dim     { opacity: 0.65; }
 .terminal-cursor {
   display: inline-block;
   width: 8px; height: 13px;
@@ -355,13 +355,13 @@ body {
 }
 
 /* Tool call lines */
-.t-tool { color: var(--text-very-muted); display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); }
+.t-tool { color: var(--text-very-muted); display: block; font: 11px/1.6 var(--font-mono); }
 .t-tool::before { content: '\25C6 '; color: #5A8A9A; }
 
 /* Terminal text lines */
-.t-user-prompt { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
-.t-amplifier-label { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
-.t-response { display: block; padding: 0 14px; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
+.t-user-prompt { display: block; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
+.t-amplifier-label { display: block; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
+.t-response { display: block; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
 
 /* Green bold prompt character (matching real Amplifier CLI) */
 .t-gp { color: var(--green); font-weight: 600; }

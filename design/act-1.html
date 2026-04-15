@@ -401,19 +401,19 @@ body {
 }
 
 /* Shell prompt */
-.t-prompt { color: #6A8A6A; font: 11px/1.6 var(--font-mono); display: block; padding: 0 14px; }
+.t-prompt { color: #6A8A6A; font: 11px/1.6 var(--font-mono); display: block; }
 .t-prompt .t-path { color: #8A9E8A; }
 .t-prompt .t-branch { color: #C4784A; }
 .t-prompt .t-dollar { color: var(--text-terminal); }
 
 /* Tool call lines */
-.t-tool { color: var(--text-very-muted); display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); }
+.t-tool { color: var(--text-very-muted); display: block; font: 11px/1.6 var(--font-mono); }
 .t-tool::before { content: '\25C6 '; color: #5A8A9A; }
 
 /* Terminal response lines */
-.t-user-prompt { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
-.t-amplifier-label { display: block; padding: 0 14px; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
-.t-response { display: block; padding: 0 14px; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
+.t-user-prompt { display: block; font: 11px/1.6 var(--font-mono); color: var(--text-terminal); }
+.t-amplifier-label { display: block; font: 11px/1.6 var(--font-mono); color: var(--green); font-weight: 600; }
+.t-response { display: block; font: 11px/1.55 var(--font-ui); color: var(--text-terminal); }
 
 
 /* ============================================================
@@ -557,7 +557,7 @@ body {
      ==================================================================== -->
 <div class="act-header">
   <h1>Act 1 &mdash; Getting Started</h1>
-  <p>Four scenes: first launch through returning user. Sidebar + terminal only &mdash; no viewer panel.</p>
+  <p>Three scenes: first launch through first session. Sidebar + terminal only &mdash; no viewer panel.</p>
   <div class="act-story">
     <strong>Job to be done:</strong> Get from zero to a running Amplifier session inside Canvas with the minimum possible friction.<br>
     <span>You&rsquo;ve heard about Canvas. Maybe you&rsquo;re skeptical &mdash; you already use Amplifier from the terminal and it works fine. You download it, open it. The window appears. It&rsquo;s warm, quiet, mostly empty. There&rsquo;s nothing to learn because there&rsquo;s almost nothing on screen. The only question is: do you create a project? The whole act takes under a minute. By the end, Amplifier is running and you haven&rsquo;t left Canvas.</span>
@@ -626,7 +626,7 @@ body {
       <li>NO &ldquo;PROJECTS&rdquo; header anywhere in the sidebar</li>
       <li>NO &ldquo;+&rdquo; button at top of sidebar &mdash; there are no projects yet, so no project row, so no [+]</li>
       <li>NO session rows, NO history section, NO &ldquo;HISTORY&rdquo; label</li>
-      <li>The &ldquo;Add project&rdquo; button and &ldquo;Create your first project &rarr;&rdquo; both open the same modal (Scene 1.3)</li>
+      <li>The &ldquo;Add project&rdquo; button and &ldquo;Create your first project &rarr;&rdquo; both open the same modal (Scene 1.2)</li>
       <li>Main area: centered vertically and horizontally, not left-aligned or top-aligned</li>
       <li>Logo mark (two offset squares) centered above the welcome text</li>
       <li>Title reads &ldquo;Welcome to Canvas&rdquo;</li>
@@ -639,16 +639,16 @@ body {
 </section>
 
 
-<!-- Scene 1.2 (Returning to Canvas) moved to Act 4 — not part of the zero-to-one "Getting Started" flow -->
+<!-- Scene 1.2 (Returning to Canvas) removed — not part of the zero-to-one flow -->
 
 <!-- ====================================================================
      SCENE 1.3 — NEW PROJECT MODAL
      ==================================================================== -->
-<section class="scene" data-scene="1.3" data-status="done">
+<section class="scene" data-scene="1.2" data-status="done">
 
   <!-- THE STORY -->
   <div class="story">
-    <h3>Scene 1.3 &mdash; Add Project</h3>
+    <h3>Scene 1.2 &mdash; Add Project</h3>
     <p class="beat">You click &ldquo;Add project.&rdquo; A modal appears over a subtle overlay. &ldquo;Add Project&rdquo; at the top. Two tabs: New and Existing. On the New tab: project name, location, and bundle choice. On the Existing tab: Canvas has already discovered projects on your machine that have Amplifier sessions. Select one, then choose to start a new session or resume an old one.</p>
     <p class="why">This is the only configuration moment in the entire onboarding. The choices are few and obvious. The modal is small, centered, and feels like a quick aside &mdash; not a commitment. The &ldquo;Existing&rdquo; tab signals Canvas respects your existing workflow.</p>
   </div>
@@ -931,11 +931,11 @@ body {
 <!-- ====================================================================
      SCENE 1.4 — SESSION STARTED
      ==================================================================== -->
-<section class="scene" data-scene="1.4" data-status="done">
+<section class="scene" data-scene="1.3" data-status="done">
 
   <!-- THE STORY -->
   <div class="story">
-    <h3>Scene 1.4 &mdash; Session Started</h3>
+    <h3>Scene 1.3 &mdash; Session Started</h3>
     <p class="beat">You hit create. The sidebar immediately shows your project name as a label (&ldquo;CANVAS-APP&rdquo;) with one session below it: amber dot, bold text, &ldquo;just started&rdquo; in amber. The main area is a full-width terminal. The Amplifier CLI banner appears: session ID, project name. A blinking amber cursor waits for your first prompt. Three things happen simultaneously: the project exists, a session is running, and the terminal is live.</p>
     <p class="why">No intermediate screens, no &ldquo;setting up your workspace&rdquo; spinner. The session-first sidebar design is already visible &mdash; the project name is a label, not a destination. The session is the primary object. The pane title reads &ldquo;main &middot; canvas-app&rdquo; &mdash; session first, project second. You&rsquo;re inside Amplifier now. Canvas got out of the way.</p>
   </div>

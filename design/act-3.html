@@ -570,13 +570,13 @@ body {
      ==================================================================== -->
 <div class="act-header">
   <h1>Act 3 &mdash; Canvas Knows What You&rsquo;ve Built</h1>
-  <p>Eight scenes: parallel sessions, background completion, session review, commit, exit, project overview, stats, and history.</p>
+  <p>Five scenes: parallel sessions, background completion, session review, commit, and exit.</p>
   <div class="act-story">
     <strong>Job to be done:</strong> Work across parallel sessions without conflicts, stay informed without interruption, and accumulate project-level memory that persists across sessions.
     <br><br>
     <span>You&rsquo;ve been using Canvas for a while now. The terminal is comfortable. The viewer is useful. But you&rsquo;re starting to push harder &mdash; multiple sessions on the same project, long-running tasks in the background, context you need to remember across days. This is where Canvas transitions from utility to infrastructure. The conceptual shift: sessions stop being ephemeral terminal instances and become meaningful units of work with identity, history, and memory. The CLI shows you <code style="font:11px var(--font-mono);">session_a3f2b1c &middot; 2 days ago</code>. That&rsquo;s not memory. That&rsquo;s an ID. Canvas turns IDs into stories.</span>
     <br><br>
-    <span>This act has three sub-arcs: <strong>Parallel work</strong> &mdash; running multiple sessions without conflicts. <strong>Staying informed</strong> &mdash; knowing what happened without hunting for it. <strong>Project memory</strong> &mdash; accumulating understanding that persists.</span>
+    <span>This act has two sub-arcs: <strong>Parallel work</strong> &mdash; running multiple sessions without conflicts. <strong>Staying informed</strong> &mdash; knowing what happened without hunting for it.</span>
   </div>
 </div>
 
@@ -864,7 +864,7 @@ body {
 
   <div class="story">
     <h3>Scene 3.3 &mdash; Review Completed Session</h3>
-    <p class="beat">You click &ldquo;Auth module&rdquo; in the sidebar. The terminal switches to that session&rsquo;s history. The right panel opens to the SUMMARY tab &mdash; a structured summary of everything that happened. At the top: a one-sentence description (&ldquo;Built the session panel sidebar with live status indicators, duration counters, and worktree badges&rdquo;), test status (14/14 passing), and session stats (1h 12m, 8 prompts, 142k tokens). Below: collapsible sections for Prompt History, Key Moments, and Possible Next Steps.</p>
+    <p class="beat">You click &ldquo;Auth module&rdquo; in the sidebar. The terminal switches to that session&rsquo;s history. The right panel opens to the SUMMARY tab &mdash; a structured summary of everything that happened. At the top: a one-sentence description (&ldquo;Refactored auth middleware to use JWT verification with refresh token rotation&rdquo;), test status (14/14 passing), and session stats (1h 12m, 8 prompts, 142k tokens). Below: collapsible sections for Prompt History, Key Moments, and Possible Next Steps.</p>
     <p class="why">This is session recall &mdash; the ability to understand what a session did without scrolling through terminal history. The prompt history gives you the narrative arc. The key moments give you the turning points. The next steps give you continuity. A session is no longer something that happened and vanished. It&rsquo;s a chapter you can re-read.</p>
   </div>
 
@@ -920,20 +920,20 @@ body {
         <div class="terminal-zone">
           <div class="pane-title">Auth module &middot; canvas-app</div>
           <div class="terminal-area">
-            <span class="t-user-prompt"><span class="t-gp">&gt;</span> build the session panel sidebar</span>
-            <span class="t-tool">read_file src/components/Sidebar.tsx</span>
-            <span class="t-tool">write_file src/components/SessionRow.tsx</span>
-            <span class="t-tool">write_file src/components/SessionStatus.tsx</span>
-            <span class="t-tool">edit_file src/components/Sidebar.tsx</span>
+            <span class="t-user-prompt"><span class="t-gp">&gt;</span> refactor auth middleware to use JWT verification</span>
+            <span class="t-tool">read_file src/middleware/auth.ts</span>
+            <span class="t-tool">write_file src/middleware/jwt-verify.ts</span>
+            <span class="t-tool">write_file src/middleware/refresh-token.ts</span>
+            <span class="t-tool">edit_file src/middleware/auth.ts</span>
             <span class="t success">&nbsp;&nbsp;&#x2713; 4 files updated</span>
             <span class="t-amplifier-label">Amplifier:</span>
-            <span class="t-response">Session panel built with live status indicators and worktree badges.</span>
+            <span class="t-response">Auth middleware refactored with JWT verification and refresh token rotation.</span>
             <span class="t blank"></span>
             <span class="t-user-prompt"><span class="t-gp">&gt;</span> run the tests</span>
             <span class="t success">&nbsp;&nbsp;PASS  14/14 tests passing</span>
             <span class="t blank"></span>
             <span class="t-amplifier-label">Amplifier:</span>
-            <span class="t-response">All tests passing. Session panel is complete.</span>
+            <span class="t-response">All tests passing. Auth module is complete.</span>
             <span class="t blank"></span>
             <span class="t dim">&nbsp;&nbsp;&#x2713; Session complete &middot; 1h 12m &middot; 8 prompts</span>
           </div>
@@ -950,7 +950,7 @@ body {
             <!-- Summary hero -->
             <div class="summary-hero">
               <div class="analysis-section-label" style="margin-bottom:8px;">Summary</div>
-              <div class="summary-tldr">Built the session panel sidebar with live status indicators, duration counters, and worktree badges.</div>
+              <div class="summary-tldr">Refactored auth middleware to use JWT verification with refresh token rotation.</div>
               <div class="summary-status done">
                 <span class="summary-status-icon">&#x2713;</span>
                 <span class="summary-status-text">14/14 tests passing</span>
@@ -976,9 +976,9 @@ body {
             <!-- Where you left off -->
             <div class="analysis-section">
               <div class="analysis-section-label" style="margin-bottom:8px;">Where you left off</div>
-              <div class="summary-trail-row"><span class="summary-trail-turn">T:8</span><span class="summary-trail-text">All 14 tests passing &mdash; session panel feature complete</span></div>
-              <div class="summary-trail-row"><span class="summary-trail-turn">T:6</span><span class="summary-trail-text">Added duration counter with live update interval</span></div>
-              <div class="summary-trail-row"><span class="summary-trail-turn">T:4</span><span class="summary-trail-text">SessionStatus component with amber/green/red dot states</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:8</span><span class="summary-trail-text">All 14 tests passing &mdash; auth module feature complete</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:6</span><span class="summary-trail-text">Added refresh token rotation with 7-day expiry</span></div>
+              <div class="summary-trail-row"><span class="summary-trail-turn">T:4</span><span class="summary-trail-text">JWT verification middleware with RS256 signing</span></div>
             </div>
 
             <!-- Collapsed sections -->
@@ -1112,7 +1112,7 @@ body {
 
             <!-- Session summary stays on top -->
             <div class="analysis-section">
-              <div style="font:13px/1.6 var(--font-ui);color:var(--text-primary);margin-bottom:8px;">Built the session panel sidebar with live status indicators, duration counters, and worktree badges.</div>
+              <div style="font:13px/1.6 var(--font-ui);color:var(--text-primary);margin-bottom:8px;">Refactored auth middleware to use JWT verification with refresh token rotation.</div>
 
               <!-- PR status -->
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
@@ -1126,7 +1126,7 @@ body {
 
               <!-- Commit meta -->
               <div style="display:flex;gap:10px;font:10px var(--font-mono);color:var(--text-very-muted);padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
-                <span>a3f2b1c</span><span>&middot;</span><span>feat/session-panel &rarr; main</span><span>&middot;</span><span>847 added</span><span>&middot;</span><span>23 removed</span>
+                <span>a3f2b1c</span><span>&middot;</span><span>feat/auth-module &rarr; main</span><span>&middot;</span><span>847 added</span><span>&middot;</span><span>23 removed</span>
               </div>
 
               <!-- GitHub link -->
@@ -1145,19 +1145,19 @@ body {
               </div>
               <div class="analysis-section-body">
                 <div style="font:11px var(--font-mono);color:var(--text-muted);">
-                  <div style="font:10px var(--font-mono);color:var(--text-very-muted);padding:6px 0 3px;">src/components/</div>
+                  <div style="font:10px var(--font-mono);color:var(--text-very-muted);padding:6px 0 3px;">src/middleware/</div>
                   <div style="display:flex;justify-content:space-between;padding:3px 0;">
-                    <span>SessionRow.tsx</span><span style="color:var(--amber);">+312</span>
+                    <span>jwt-verify.ts</span><span style="color:var(--amber);">+312</span>
                   </div>
                   <div style="display:flex;justify-content:space-between;padding:3px 0;">
-                    <span>SessionStatus.tsx</span><span style="color:var(--amber);">+198</span>
+                    <span>refresh-token.ts</span><span style="color:var(--amber);">+198</span>
                   </div>
                   <div style="display:flex;justify-content:space-between;padding:3px 0;">
-                    <span>SessionPanel.tsx</span><span style="color:var(--green);">+84 &minus;23</span>
+                    <span>auth.ts</span><span style="color:var(--green);">+84 &minus;23</span>
                   </div>
                   <div style="font:10px var(--font-mono);color:var(--text-very-muted);padding:6px 0 3px;">src/tests/</div>
                   <div style="display:flex;justify-content:space-between;padding:3px 0;">
-                    <span>SessionPanel.test.tsx</span><span style="color:var(--amber);">+214</span>
+                    <span>auth.test.tsx</span><span style="color:var(--amber);">+214</span>
                   </div>
                   <div style="display:flex;justify-content:space-between;padding:3px 0;color:var(--text-very-muted);">
                     <span>+ 8 more files</span><span style="color:var(--amber);">&#x2192;</span>
