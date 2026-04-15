@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useCanvasStore } from '../store'
 import ContextMenu from './ContextMenu'
 import type { ContextMenuItem } from './ContextMenu'
 import type { SessionState, SessionStatus } from '../../../shared/types'
-import { useState } from 'react'
+import WorktreePopover from './WorktreePopover'
+import type { WorktreeChoice } from './WorktreePopover'
 
 /** Returns true if a session started less than 30 seconds ago */
 function isJustStarted(startedAt?: string): boolean {
@@ -37,7 +38,7 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',
   active: '#F59E0B',
   needs_input: '#F59E0B',
-  done: '#3ECF8E',
+  done: '#9CA3AF',
   failed: '#EF4444',
   loading: '#6B7280',
   stopped: '#6B7280',
@@ -93,6 +94,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
+  const setViewMode = useCanvasStore((s) => s.setViewMode)
   const openViewer = useCanvasStore((s) => s.openViewer)
   const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
   const setExpandedProjectSlugs = useCanvasStore((s) => s.setExpandedProjectSlugs)
@@ -102,6 +104,27 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
     y: number
     items: ContextMenuItem[]
   } | null>(null)
+
+  // Worktree popover state (Task A — Scene 3.1)
+  const [popoverState, setPopoverState] = useState<{
+    anchorRect: DOMRect
+    projectSlug: string
+    projectPath: string
+  } | null>(null)
+
+  const handleNewSessionClick = useCallback((e: React.MouseEvent, projectSlug: string, projectPath: string) => {
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setPopoverState({ anchorRect: rect, projectSlug, projectPath })
+  }, [])
+
+  const handlePopoverSelect = useCallback((choice: WorktreeChoice) => {
+    if (!popoverState) return
+    // Pass worktree info — for now we just call onNewSession.
+    // The worktree field will be set in the session state by the main process.
+    onNewSession?.(popoverState.projectSlug, popoverState.projectPath)
+    setPopoverState(null)
+  }, [popoverState, onNewSession])
 
   const handleProjectContextMenu = (e: React.MouseEvent, projectSlug: string) => {
     e.preventDefault()
@@ -327,6 +350,11 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                       </span>
                       <span
                         data-testid="project-name"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          selectProject(project.slug)
+                          setViewMode('project')
+                        }}
                         style={{
                           fontSize: 10,
                           fontWeight: 600,
@@ -337,16 +365,20 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-primary)'
+                        }}
+                        onMouseLeave={(e) => {
+                          ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-muted)'
                         }}
                       >
                         {project.name}
                       </span>
                       <button
                         data-testid="new-session-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onNewSession?.(project.slug, project.path)
-                        }}
+                        onClick={(e) => handleNewSessionClick(e, project.slug, project.path)}
                         style={{
                           fontSize: 14,
                           color: 'var(--text-very-muted)',
@@ -371,12 +403,16 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                           isSelected={selectedSessionId === session.id}
                           onSelect={() => {
                             selectSession(session.id)
+                            setViewMode('session')
                             openViewer()
                             onSessionSelect?.(session.id, session.workDir ?? '')
                           }}
                         />
                       </div>
                     ))}
+
+                    {/* "New session" idle slot — always at the bottom */}
+                    <NewSessionSlot onClick={(e) => handleNewSessionClick(e, project.slug, project.path)} />
                   </div>
                 )
               } else {
@@ -409,6 +445,13 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                     </span>
                     <span
                       data-testid="project-name"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        selectProject(project.slug)
+                        setViewMode('project')
+                        // Also expand the project
+                        setExpandedProjectSlugs([project.slug])
+                      }}
                       style={{
                         fontSize: 10,
                         fontWeight: 600,
@@ -419,6 +462,13 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-muted)'
+                      }}
+                      onMouseLeave={(e) => {
+                        ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-very-muted)'
                       }}
                     >
                       {project.name}
@@ -471,6 +521,14 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      {popoverState && (
+        <WorktreePopover
+          anchorRect={popoverState.anchorRect}
+          onSelect={handlePopoverSelect}
+          onClose={() => setPopoverState(null)}
+        />
+      )}
     </div>
   )
 }
@@ -485,12 +543,14 @@ interface SessionRowProps {
 
 /**
  * Unified session row — used for ALL sessions (active + completed).
- * Shows: dot + name + status label
+ * Two-line layout: top = dot/badge + name + status label, bottom = worktree badge.
  * Indented under expanded project with left border.
  */
 function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
   const isActive = ACTIVE_STATUSES.has(session.status)
   const isDone = session.status === 'done'
+  const isCompleted = COMPLETED_STATUSES.has(session.status)
+  const hasCommit = !!session.commitHash
 
   // Build the status label
   let statusLabel = ''
@@ -506,7 +566,6 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
     statusLabel = 'loading\u2026'
     statusColor = 'var(--text-very-muted)'
   } else if (isDone) {
-    // "done · 2h 14m"
     const duration = session.startedAt && session.endedAt
       ? formatDuration(session.startedAt, session.endedAt)
       : ''
@@ -520,6 +579,11 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
     statusColor = 'var(--text-very-muted)'
   }
 
+  // Worktree badge text
+  const worktreeLabel = session.worktree
+    ? (session.worktree === 'main' ? 'main' : `\u219F ${session.worktree}`)
+    : null
+
   return (
     <div
       data-testid="session-item"
@@ -528,17 +592,17 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
       data-selected={isSelected ? 'true' : 'false'}
       onClick={onSelect}
       style={{
-        height: 32,
-        padding: '0 8px 0 0',
+        padding: '6px 8px 6px 0',
         marginLeft: 14,
         paddingLeft: 12,
-        borderLeft: '2px solid var(--border)',
+        borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid var(--border)',
         cursor: 'pointer',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 8,
         backgroundColor: isSelected ? 'var(--bg-sidebar-active)' : 'transparent',
         transition: 'background 0.12s ease',
+        opacity: isCompleted ? 0.7 : 1,
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
@@ -549,48 +613,165 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
         ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? 'var(--bg-sidebar-active)' : 'transparent'
       }}
     >
-      {/* Status dot */}
+      {/* Status indicator: green checkmark badge for committed done sessions, dot for others */}
+      {isDone && hasCommit ? (
+        <span
+          data-testid="commit-badge"
+          style={{
+            width: 14,
+            height: 14,
+            minWidth: 14,
+            borderRadius: '50%',
+            backgroundColor: 'var(--green)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 8,
+            fontWeight: 700,
+            lineHeight: 1,
+            flexShrink: 0,
+            marginTop: 1,
+          }}
+        >
+          {'\u2713'}
+        </span>
+      ) : (
+        <span
+          data-testid="status-dot"
+          data-status={session.status}
+          style={{
+            width: 6,
+            height: 6,
+            minWidth: 6,
+            borderRadius: '50%',
+            backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
+            display: 'inline-block',
+            flexShrink: 0,
+            marginTop: 5,
+          }}
+        />
+      )}
+
+      {/* Right side: name + status on first line, worktree badge on second line */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Session name */}
+          <span
+            data-testid="session-name"
+            style={{
+              fontSize: 12,
+              fontWeight: isSelected || isActive ? 600 : 400,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}
+          >
+            {session.title ?? session.id}
+          </span>
+
+          {/* Status label */}
+          <span
+            style={{
+              fontSize: 10,
+              flexShrink: 0,
+              color: statusColor,
+              whiteSpace: 'nowrap',
+              marginLeft: 4,
+            }}
+          >
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Worktree badge */}
+        {worktreeLabel && (
+          <div
+            data-testid="worktree-badge"
+            style={{
+              fontSize: 9,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-very-muted)',
+              lineHeight: 1.3,
+              marginTop: 1,
+              letterSpacing: '0.02em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {worktreeLabel}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "New session" idle slot — ghost row shown after all sessions in an expanded project.
+ * Gray dot, "New session" in muted text, "main" worktree badge.
+ */
+function NewSessionSlot({ onClick }: { onClick: (e: React.MouseEvent) => void }): React.ReactElement {
+  return (
+    <div
+      data-testid="new-session-slot"
+      onClick={onClick}
+      style={{
+        padding: '6px 8px 6px 0',
+        marginLeft: 14,
+        paddingLeft: 12,
+        borderLeft: '2px solid var(--border)',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 8,
+        transition: 'background 0.12s ease',
+        opacity: 0.6,
+      }}
+      onMouseEnter={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
+        ;(e.currentTarget as HTMLDivElement).style.opacity = '0.85'
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+        ;(e.currentTarget as HTMLDivElement).style.opacity = '0.6'
+      }}
+    >
+      {/* Gray dot */}
       <span
-        data-testid="status-dot"
-        data-status={session.status}
         style={{
           width: 6,
           height: 6,
           minWidth: 6,
           borderRadius: '50%',
-          backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
+          backgroundColor: 'var(--border)',
           display: 'inline-block',
           flexShrink: 0,
+          marginTop: 5,
         }}
       />
 
-      {/* Session name */}
-      <span
-        data-testid="session-name"
-        style={{
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
           fontSize: 12,
-          fontWeight: isActive ? 600 : 400,
-          color: 'var(--text-primary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          flex: 1,
-        }}
-      >
-        {session.title ?? session.id}
-      </span>
-
-      {/* Status label */}
-      <span
-        style={{
-          fontSize: 10,
-          flexShrink: 0,
-          color: statusColor,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {statusLabel}
-      </span>
+          color: 'var(--text-muted)',
+        }}>
+          New session
+        </div>
+        <div style={{
+          fontSize: 9,
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--text-very-muted)',
+          lineHeight: 1.3,
+          marginTop: 1,
+          letterSpacing: '0.02em',
+        }}>
+          main
+        </div>
+      </div>
     </div>
   )
 }

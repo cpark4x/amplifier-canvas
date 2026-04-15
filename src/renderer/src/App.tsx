@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
+import ProjectView from './components/ProjectView'
 import AddProjectModal from './components/AddProjectModal'
 import SettingsModal from './components/SettingsModal'
 import { ToastContainer } from './components/Toast'
@@ -64,6 +65,7 @@ function App(): React.ReactElement {
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectedProjectSlug = useCanvasStore((s) => s.selectedProjectSlug)
   const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
+  const viewMode = useCanvasStore((s) => s.viewMode)
   const viewerOpen = useCanvasStore((s) => s.viewerOpen)
   const openViewer = useCanvasStore((s) => s.openViewer)
   const closeViewer = useCanvasStore((s) => s.closeViewer)
@@ -276,8 +278,11 @@ function App(): React.ReactElement {
           }}
         />
 
-        {/* Center zone: welcome screen OR terminal depending on state */}
-        {!hasSession ? (
+        {/* Center zone: welcome screen, project view, OR terminal depending on state */}
+        {viewMode === 'project' && selectedProjectSlug ? (
+          /* Project intelligence view */
+          <ProjectView />
+        ) : !hasSession ? (
           /* Screen 1 + 2: Welcome with optional modal overlay */
           <div
             data-testid="welcome-main"
@@ -392,7 +397,7 @@ function App(): React.ReactElement {
                 <TerminalComponent key={terminalSessionId} sessionId={terminalSessionId} />
               )}
             </div>
-            <Viewer />
+            {viewerOpen && <Viewer />}
           </>
         )}
       </div>

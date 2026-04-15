@@ -9,7 +9,7 @@ type PrimaryTab = 'FILES' | 'APP' | 'SUMMARY'
 interface OpenFile {
   path: string
   name: string
-  openedBy: 'amplifier' | 'user'
+  operation: 'read' | 'write' | 'edit'
 }
 
 const OPERATION_BADGE_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -47,22 +47,32 @@ function Viewer(): React.ReactElement {
   }, [viewerOpen])
 
   // Reset open files when session changes (different session = fresh file view)
+  // Also: auto-activate SUMMARY tab when selecting a 'done' session
   useEffect(() => {
     setOpenFiles([])
     setActiveFileIdx(0)
     setShowBrowser(false)
-  }, [selectedSessionId])
+    if (session?.status === 'done') {
+      setPrimaryTab('SUMMARY')
+    }
+  }, [selectedSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'SUMMARY']
   const activeFile = openFiles[activeFileIdx] || null
 
-  function openFile(path: string, openedBy: 'amplifier' | 'user'): void {
+  function openFile(path: string, operation: 'read' | 'write' | 'edit'): void {
     const name = path.split('/').pop() || path
     const existingIdx = openFiles.findIndex((f) => f.path === path)
     if (existingIdx >= 0) {
+      // Update operation if it changed (e.g., read → edit)
+      if (openFiles[existingIdx].operation !== operation) {
+        const updated = [...openFiles]
+        updated[existingIdx] = { ...updated[existingIdx], operation }
+        setOpenFiles(updated)
+      }
       setActiveFileIdx(existingIdx)
     } else {
-      const newFiles = [...openFiles, { path, name, openedBy }]
+      const newFiles = [...openFiles, { path, name, operation }]
       setOpenFiles(newFiles)
       setActiveFileIdx(newFiles.length - 1)
     }
@@ -86,7 +96,7 @@ function Viewer(): React.ReactElement {
   }
 
   // Expose for external use (e.g. from terminal file detection)
-  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = (path: string) => openFile(resolveFilePath(path), 'amplifier')
+  ;(window as unknown as Record<string, unknown>).__canvasOpenFile = (path: string, operation: 'read' | 'write' | 'edit' = 'read') => openFile(resolveFilePath(path), operation)
   ;(window as unknown as Record<string, unknown>).__canvasSetAppPreview = setAppPreview
 
   // Fall back to the registered project's path if session.workDir is not yet populated
@@ -190,6 +200,15 @@ function Viewer(): React.ReactElement {
                 onClick={() => { setActiveFileIdx(idx); setShowBrowser(false) }}
                 style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, color: idx === activeFileIdx && !showBrowser ? 'var(--text-primary)' : 'var(--text-very-muted)', fontWeight: idx === activeFileIdx && !showBrowser ? 500 : 400, borderBottom: idx === activeFileIdx && !showBrowser ? '2px solid var(--amber)' : '2px solid transparent', marginBottom: -1 }}
               >
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: '50%',
+                    backgroundColor: file.operation === 'read' ? '#4CAF74' : file.operation === 'write' ? '#F59E0B' : '#3B82F6',
+                    flexShrink: 0,
+                  }}
+                />
                 {file.name}
                 <span
                   data-testid="file-tab-close"
@@ -215,7 +234,7 @@ function Viewer(): React.ReactElement {
             {showBrowser && workDir ? (
               <FileBrowser
                 rootPath={workDir}
-                onSelectFile={(filePath) => openFile(filePath, 'user')}
+                onSelectFile={(filePath) => openFile(filePath, 'read')}
               />
             ) : (
               <>
@@ -240,7 +259,7 @@ function Viewer(): React.ReactElement {
                         <div
                           key={idx}
                           data-testid="recent-file-item"
-                          onClick={() => openFile(resolveFilePath(file.path), 'amplifier')}
+                          onClick={() => openFile(resolveFilePath(file.path), (file.operation === 'create' || file.operation === 'delete' ? 'write' : file.operation) as 'read' | 'write' | 'edit')}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -280,19 +299,7 @@ function Viewer(): React.ReactElement {
 
                 {/* File content or browse hint */}
                 {activeFile ? (
-                  <>
-                    <div
-                      data-testid="provenance-label"
-                      style={{
-                        fontSize: '10px',
-                        color: 'var(--text-very-muted)',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      {activeFile.openedBy === 'amplifier' ? 'Opened by Amplifier' : 'Opened by you'}
-                    </div>
-                    <FileRenderer filePath={activeFile.path} />
-                  </>
+                  <FileRenderer filePath={activeFile.path} />
                 ) : (
                   <div
                     style={{

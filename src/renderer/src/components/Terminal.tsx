@@ -48,11 +48,11 @@ function TerminalComponent({ sessionId }: TerminalProps): React.ReactElement {
 
     // Terminal output scanner — detects file reads and dev server URLs
     const scanner = createTerminalScanner({
-      onFileOpen: (filePath) => {
+      onFileOpen: (filePath, operation) => {
         const openFile = (window as unknown as Record<string, unknown>).__canvasOpenFile as
-          | ((path: string) => void)
+          | ((path: string, operation: 'read' | 'write' | 'edit') => void)
           | undefined
-        openFile?.(filePath)
+        openFile?.(filePath, operation)
         useCanvasStore.getState().openViewer()
       },
       onAppPreview: (url) => {

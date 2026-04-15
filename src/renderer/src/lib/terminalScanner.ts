@@ -19,8 +19,23 @@ const SKIP_EXTENSIONS =
   /\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot|otf|lock|node_modules)/i
 
 interface ScannerCallbacks {
-  onFileOpen: (filePath: string) => void
+  onFileOpen: (filePath: string, operation: 'read' | 'write' | 'edit') => void
   onAppPreview: (url: string) => void
+}
+
+function toolNameToOperation(toolName: string): 'read' | 'write' | 'edit' {
+  switch (toolName) {
+    case 'read_file':
+      return 'read'
+    case 'write_file':
+    case 'create_file':
+      return 'write'
+    case 'edit_file':
+    case 'apply_patch':
+      return 'edit'
+    default:
+      return 'read'
+  }
 }
 
 export function createTerminalScanner(
@@ -53,7 +68,7 @@ export function createTerminalScanner(
         if (pathMatch) {
           const filePath = pathMatch[1].trim()
           if (!SKIP_EXTENSIONS.test(filePath)) {
-            callbacks.onFileOpen(filePath)
+            callbacks.onFileOpen(filePath, toolNameToOperation(pendingToolName))
           }
           pendingToolName = null
           continue
