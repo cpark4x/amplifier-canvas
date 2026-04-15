@@ -265,8 +265,8 @@ function App(): React.ReactElement {
             setShowTerminal(true)
             // Ensure a PTY exists for this session — if newly spawned, resume the session
             window.electronAPI.spawnPty(sessionId, 80, 24, workDir).then((result) => {
-              if (result.success && !result.alreadyExists) {
-                // New PTY — auto-resume this Amplifier session
+              if (result.success && !result.alreadyExists && !sessionId.startsWith('optimistic-')) {
+                // New PTY for a real Amplifier session — auto-resume it
                 setTimeout(() => {
                   window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
                 }, 200)
