@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas Product Journey — Acts &amp; Scenes</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #faf9f7; color: #2c2825; padding: 40px 48px; }
+
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #8b8b90; margin-bottom: 40px; }
+
+  /* ── Acts ── */
+  .act { margin-bottom: 48px; }
+  .act-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #8b8b90; margin-bottom: 8px;
+  }
+  .act-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .act-premise { font-size: 13px; color: #8b8b90; margin-bottom: 20px; line-height: 1.5; }
+
+  /* ── Scene row ── */
+  .scenes { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .scene {
+    flex: 1; min-width: 160px; max-width: 220px;
+    border: 1px solid #e8e5e0; border-radius: 8px;
+    padding: 14px 16px; background: #fff;
+    position: relative; transition: box-shadow 0.15s;
+  }
+  .scene:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+  .scene-num { font-size: 11px; font-weight: 700; color: #8b8b90; margin-bottom: 4px; }
+  .scene-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+  .scene-beat { font-size: 12px; color: #8b8b90; line-height: 1.5; }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 7px; border-radius: 3px; margin-bottom: 8px;
+  }
+  .badge-done { background: rgba(76,175,116,0.12); color: #4caf74; }
+  .badge-next { background: rgba(245,158,11,0.15); color: #c77d08; }
+  .badge-todo { background: rgba(0,0,0,0.05); color: #aaa; }
+
+  /* The "you are here" scene */
+  .scene.here {
+    border: 2px solid #c77d08;
+    background: #fffcf5;
+  }
+  .scene.here::after {
+    content: 'YOU ARE HERE';
+    position: absolute; top: -10px; right: 12px;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    background: #c77d08; color: #fff; padding: 2px 8px; border-radius: 3px;
+  }
+
+  /* Done scenes are slightly muted */
+  .scene.done { opacity: 0.7; }
+  .scene.done .scene-title { color: #4caf74; }
+
+  /* Connectors between acts */
+  .act-connector {
+    display: flex; align-items: center; gap: 8px;
+    margin: -16px 0 32px 0; padding-left: 24px;
+  }
+  .act-connector-line { width: 32px; height: 2px; background: #e8e5e0; }
+  .act-connector-label { font-size: 11px; color: #bbb; font-style: italic; }
+
+  /* Legend */
+  .legend { display: flex; gap: 20px; margin-top: 32px; padding-top: 20px; border-top: 1px solid #e8e5e0; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8b8b90; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .legend-dot.green { background: #4caf74; }
+  .legend-dot.amber { background: #c77d08; }
+  .legend-dot.gray { background: #ccc; }
+</style>
+</head>
+<body>
+
+<h1>Amplifier Canvas — The Product Journey</h1>
+<p class="subtitle">Each Act is a job the user is trying to do. Each Scene is a moment in that workflow.</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ACT 1 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="act">
+  <div class="act-label">Act 1</div>
+  <div class="act-title">Getting Started</div>
+  <p class="act-premise">User opens Canvas for the first time, adds a project, and starts their first session.</p>
+
+  <div class="scenes">
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">1.1</div>
+      <div class="scene-title">Welcome</div>
+      <div class="scene-beat">Empty state. Warm off-white, one CTA. Canvas's personality lands before anything functional.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">1.3</div>
+      <div class="scene-title">Add Project</div>
+      <div class="scene-beat">Modal with New/Existing tabs. Auto-discovers existing Amplifier projects on your machine.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">1.4</div>
+      <div class="scene-title">Session Started</div>
+      <div class="scene-beat">Project + session + live terminal appear simultaneously. No intermediate screens.</div>
+    </div>
+  </div>
+</div>
+
+<!-- connector -->
+<div class="act-connector">
+  <div class="act-connector-line"></div>
+  <div class="act-connector-label">user has a project and a running session</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ACT 2 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="act">
+  <div class="act-label">Act 2</div>
+  <div class="act-title">Your First Session</div>
+  <p class="act-premise">User works with Amplifier inside Canvas — terminal, file viewer, side-by-side, app preview.</p>
+
+  <div class="scenes">
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">2.1</div>
+      <div class="scene-title">First Prompt</div>
+      <div class="scene-beat">Terminal-only. No right panel yet — viewer stays hidden until it has content worth showing.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">2.2</div>
+      <div class="scene-title">Viewer Earns Its Place</div>
+      <div class="scene-beat">Amplifier opens VISION.md → right panel slides in for the first time. The panel earned it.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">2.3</div>
+      <div class="scene-title">Working with Files</div>
+      <div class="scene-beat">Multi-file tabs, activity dots (green=read, orange=write, blue=edit). Zero explanation needed.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">2.4</div>
+      <div class="scene-title">Side-by-Side</div>
+      <div class="scene-beat">Terminal + viewer, watching AI scaffold components. Files appear as they're created.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">2.5</div>
+      <div class="scene-title">App Preview</div>
+      <div class="scene-beat">Dev server starts → APP tab shows live localhost preview. No browser tab needed.</div>
+    </div>
+  </div>
+</div>
+
+<!-- connector -->
+<div class="act-connector">
+  <div class="act-connector-line"></div>
+  <div class="act-connector-label">user has completed one full working session</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ACT 3 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="act">
+  <div class="act-label">Act 3</div>
+  <div class="act-title">Managing Multiple Sessions</div>
+  <p class="act-premise">User runs parallel sessions, watches them complete, reviews results, commits, and exits. The session lifecycle.</p>
+
+  <div class="scenes">
+
+    <div class="scene here">
+      <span class="badge badge-next">Next</span>
+      <div class="scene-num">3.1</div>
+      <div class="scene-title">Start a Second Session</div>
+      <div class="scene-beat">Click "+", session starts immediately. Worktree default set once via first-time experience, not per-click.</div>
+    </div>
+
+    <div class="scene">
+      <span class="badge badge-todo">Todo</span>
+      <div class="scene-num">3.2</div>
+      <div class="scene-title">Session Completes</div>
+      <div class="scene-beat">Background session finishes. Toast notification, sidebar badge updates. Non-interruptive.</div>
+    </div>
+
+    <div class="scene done">
+      <span class="badge badge-done">Done</span>
+      <div class="scene-num">3.3</div>
+      <div class="scene-title">Review Completed Session</div>
+      <div class="scene-beat">SUMMARY tab: one-line description, test status, prompt history, key moments, next steps.</div>
+    </div>
+
+    <div class="scene">
+      <span class="badge badge-todo">Todo</span>
+      <div class="scene-num">3.4</div>
+      <div class="scene-title">Commit the Changes</div>
+      <div class="scene-beat">Git + PR from terminal. Canvas shows the receipt: PR status, CI, files changed.</div>
+    </div>
+
+    <div class="scene">
+      <span class="badge badge-todo">Todo</span>
+      <div class="scene-num">3.5</div>
+      <div class="scene-title">Exit Session</div>
+      <div class="scene-beat">Exit feels like completing, not closing. "New session" slot ready. State is durable.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- connector -->
+<div class="act-connector">
+  <div class="act-connector-line"></div>
+  <div class="act-connector-label">user has run multiple sessions and shipped work</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ACT 4 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="act">
+  <div class="act-label">Act 4</div>
+  <div class="act-title">Project Intelligence</div>
+  <p class="act-premise">Canvas understands your project as a whole — surfacing insights, tracking progress, keeping history.</p>
+
+  <div class="scenes">
+
+    <div class="scene">
+      <span class="badge badge-todo">Todo</span>
+      <div class="scene-num">4.1</div>
+      <div class="scene-title">Project Overview</div>
+      <div class="scene-beat">AI assessment banner, outcomes list with status badges. Project memory made visible.</div>
+    </div>
+
+    <div class="scene">
+      <span class="badge badge-todo">Todo</span>
+      <div class="scene-num">4.2</div>
+      <div class="scene-title">Project Stats</div>
+      <div class="scene-beat">Aggregate numbers + LLM-generated insights. Canvas sees patterns you can't.</div>
+    </div>
+
+    <div class="scene">
+      <span class="badge badge-todo">Todo</span>
+      <div class="scene-num">4.3</div>
+      <div class="scene-title">Session History</div>
+      <div class="scene-beat">Every session with name, summary, duration, resume action. Nothing is ever lost.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot green"></div> Built &amp; shipped</div>
+  <div class="legend-item"><div class="legend-dot amber"></div> You are here — next to build</div>
+  <div class="legend-item"><div class="legend-dot gray"></div> Not built yet</div>
+</div>
+
+</body>
+</html>
