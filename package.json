@@ -13,6 +13,7 @@
     "postinstall": "electron-rebuild -f -w node-pty && electron-rebuild -f -w better-sqlite3",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:mac:arm64": "electron-vite build && electron-builder --mac --arm64",
+    "dev:browser": "vite --config vite.config.browser.ts",
     "test": "npx playwright test"
   },
   "devDependencies": {
