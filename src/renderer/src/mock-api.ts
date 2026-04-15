@@ -6,7 +6,7 @@
  * No Electron required — just Vite + React.
  */
 
-import type { SessionState, FileEntry, WorkspaceState, CanvasSettings, FileActivity } from '../../shared/types'
+import type { SessionState, FileEntry, WorkspaceState, CanvasSettings, FileActivity, ProjectOverview } from '../../shared/types'
 import type { SessionAnalysisData, AnalysisResult } from '../../shared/analysisTypes'
 
 // ---------------------------------------------------------------------------
@@ -134,6 +134,61 @@ const noop = (): void => {}
 // The mock API — matches the shape of preload/index.ts `api` exactly
 // ---------------------------------------------------------------------------
 
+
+// ---------------------------------------------------------------------------
+// Project-level aggregation helpers
+// ---------------------------------------------------------------------------
+
+const ACTIVE_STATUSES = new Set(['running', 'active', 'needs_input'])
+
+function getProjectOverview(slug: string): ProjectOverview | null {
+  const project = MOCK_PROJECTS.find((p) => p.slug === slug)
+  if (!project) return null
+
+  const sessions = MOCK_SESSIONS.filter((s) => s.projectSlug === slug)
+  const activeSessions = sessions.filter((s) => ACTIVE_STATUSES.has(s.status))
+
+  let lastActivityAt = ''
+  for (const s of sessions) {
+    const ts = s.endedAt ?? s.startedAt
+    if (ts && ts > lastActivityAt) lastActivityAt = ts
+  }
+
+  const assessments: Record<string, string> = {
+    'amplifier-canvas': 'Project is healthy with active development across 3 sessions. Browser dev mode feature recently completed. Dark mode work in progress on a separate worktree.',
+    'team-pulse': 'Single active session awaiting user input. Dashboard charts feature is in progress with 2 files changed so far.',
+    'ridecast': 'Last session failed during database migration. No active sessions. Needs attention before further development.',
+  }
+
+  const outcomeMap: Record<string, string[]> = {
+    'amplifier-canvas': [
+      'Browser dev mode implemented and working',
+      'Sidebar layout issues fixed and committed (a3f2b1c)',
+      'Dark mode feature branch in progress',
+    ],
+    'team-pulse': [
+      'Dashboard charts feature started',
+    ],
+    'ridecast': [
+      'Database migration attempted but failed',
+    ],
+  }
+
+  return {
+    slug: project.slug,
+    name: project.name,
+    path: project.path,
+    sessionCount: sessions.length,
+    totalPrompts: sessions.reduce((sum, s) => sum + (s.promptCount ?? 0), 0),
+    totalToolCalls: sessions.reduce((sum, s) => sum + (s.toolCallCount ?? 0), 0),
+    totalFilesChanged: sessions.reduce((sum, s) => sum + (s.filesChangedCount ?? 0), 0),
+    activeSessionCount: activeSessions.length,
+    lastActivityAt: lastActivityAt || new Date().toISOString(),
+    assessment: assessments[slug],
+    outcomes: outcomeMap[slug],
+  }
+}
+
 const mockAPI = {
   // PTY lifecycle (no-ops in browser)
   spawnPty: async (): Promise<{ success: boolean }> => ({ success: true }),
@@ -214,6 +269,8 @@ const mockAPI = {
   }),
 
   saveSettings: async (): Promise<{ success: boolean }> => ({ success: true }),
+
+  getProjectOverview: async (slug: string): Promise<ProjectOverview | null> => getProjectOverview(slug),
 }
 
 // ---------------------------------------------------------------------------

@@ -28,6 +28,7 @@ interface CanvasStore {
   expandedProjectSlugs: string[]
   viewerOpen: boolean
   toasts: Toast[]
+  viewMode: 'session' | 'project'
   analysisStatusMap: Record<string, AnalysisStatus>
 
   // Actions
@@ -36,6 +37,7 @@ interface CanvasStore {
   addOptimisticSession: (projectSlug: string, projectName: string) => void
   registerProject: (slug: string, name: string, path?: string) => void
   unregisterProject: (slug: string) => void
+  setViewMode: (mode: 'session' | 'project') => void
   selectSession: (id: string | null) => void
   selectProject: (slug: string | null) => void
   toggleProjectExpanded: (slug: string) => void
@@ -61,6 +63,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedSessionId: null,
   selectedProjectSlug: null,
   expandedProjectSlugs: [],
+  viewMode: 'session' as const,
   viewerOpen: false,
   toasts: [],
   analysisStatusMap: {},
@@ -172,7 +175,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     set({ registeredProjects: get().registeredProjects.filter((p) => p.slug !== slug) })
   },
 
-  selectSession: (id) => set({ selectedSessionId: id }),
+  setViewMode: (mode) => set({ viewMode: mode }),
+
+  selectSession: (id) => set({ selectedSessionId: id, viewMode: 'session' as const }),
 
   selectProject: (slug) => set({ selectedProjectSlug: slug }),
 

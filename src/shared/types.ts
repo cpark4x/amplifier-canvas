@@ -101,6 +101,22 @@ export interface FileEntry {
   modifiedAt: string
 }
 
+// --- Project overview types ---
+
+export interface ProjectOverview {
+  slug: string
+  name: string
+  path: string
+  sessionCount: number
+  totalPrompts: number
+  totalToolCalls: number
+  totalFilesChanged: number
+  activeSessionCount: number
+  lastActivityAt: string
+  assessment?: string  // AI-generated project health summary
+  outcomes?: string[]  // key outcomes from sessions
+}
+
 // --- Settings types ---
 
 export interface CanvasSettings {

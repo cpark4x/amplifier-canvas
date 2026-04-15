@@ -94,6 +94,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
   const selectedSessionId = useCanvasStore((s) => s.selectedSessionId)
   const selectProject = useCanvasStore((s) => s.selectProject)
   const selectSession = useCanvasStore((s) => s.selectSession)
+  const setViewMode = useCanvasStore((s) => s.setViewMode)
   const openViewer = useCanvasStore((s) => s.openViewer)
   const expandedProjectSlugs = useCanvasStore((s) => s.expandedProjectSlugs)
   const setExpandedProjectSlugs = useCanvasStore((s) => s.setExpandedProjectSlugs)
@@ -349,6 +350,11 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                       </span>
                       <span
                         data-testid="project-name"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          selectProject(project.slug)
+                          setViewMode('project')
+                        }}
                         style={{
                           fontSize: 10,
                           fontWeight: 600,
@@ -359,6 +365,13 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-primary)'
+                        }}
+                        onMouseLeave={(e) => {
+                          ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-muted)'
                         }}
                       >
                         {project.name}
@@ -390,6 +403,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                           isSelected={selectedSessionId === session.id}
                           onSelect={() => {
                             selectSession(session.id)
+                            setViewMode('session')
                             openViewer()
                             onSessionSelect?.(session.id, session.workDir ?? '')
                           }}
@@ -431,6 +445,13 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                     </span>
                     <span
                       data-testid="project-name"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        selectProject(project.slug)
+                        setViewMode('project')
+                        // Also expand the project
+                        setExpandedProjectSlugs([project.slug])
+                      }}
                       style={{
                         fontSize: 10,
                         fontWeight: 600,
@@ -441,6 +462,13 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-muted)'
+                      }}
+                      onMouseLeave={(e) => {
+                        ;(e.currentTarget as HTMLSpanElement).style.color = 'var(--text-very-muted)'
                       }}
                     >
                       {project.name}
