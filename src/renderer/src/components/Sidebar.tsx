@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useCanvasStore } from '../store'
 import ContextMenu from './ContextMenu'
 import type { ContextMenuItem } from './ContextMenu'
 import type { SessionState, SessionStatus } from '../../../shared/types'
-import { useState } from 'react'
+import WorktreePopover from './WorktreePopover'
+import type { WorktreeChoice } from './WorktreePopover'
 
 /** Returns true if a session started less than 30 seconds ago */
 function isJustStarted(startedAt?: string): boolean {
@@ -37,7 +38,7 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   running: '#F59E0B',
   active: '#F59E0B',
   needs_input: '#F59E0B',
-  done: '#3ECF8E',
+  done: '#9CA3AF',
   failed: '#EF4444',
   loading: '#6B7280',
   stopped: '#6B7280',
@@ -102,6 +103,27 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
     y: number
     items: ContextMenuItem[]
   } | null>(null)
+
+  // Worktree popover state (Task A — Scene 3.1)
+  const [popoverState, setPopoverState] = useState<{
+    anchorRect: DOMRect
+    projectSlug: string
+    projectPath: string
+  } | null>(null)
+
+  const handleNewSessionClick = useCallback((e: React.MouseEvent, projectSlug: string, projectPath: string) => {
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setPopoverState({ anchorRect: rect, projectSlug, projectPath })
+  }, [])
+
+  const handlePopoverSelect = useCallback((choice: WorktreeChoice) => {
+    if (!popoverState) return
+    // Pass worktree info — for now we just call onNewSession.
+    // The worktree field will be set in the session state by the main process.
+    onNewSession?.(popoverState.projectSlug, popoverState.projectPath)
+    setPopoverState(null)
+  }, [popoverState, onNewSession])
 
   const handleProjectContextMenu = (e: React.MouseEvent, projectSlug: string) => {
     e.preventDefault()
@@ -343,10 +365,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                       </span>
                       <button
                         data-testid="new-session-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onNewSession?.(project.slug, project.path)
-                        }}
+                        onClick={(e) => handleNewSessionClick(e, project.slug, project.path)}
                         style={{
                           fontSize: 14,
                           color: 'var(--text-very-muted)',
@@ -379,7 +398,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                     ))}
 
                     {/* "New session" idle slot — always at the bottom */}
-                    <NewSessionSlot onClick={() => onNewSession?.(project.slug, project.path)} />
+                    <NewSessionSlot onClick={(e) => handleNewSessionClick(e, project.slug, project.path)} />
                   </div>
                 )
               } else {
@@ -472,6 +491,14 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {popoverState && (
+        <WorktreePopover
+          anchorRect={popoverState.anchorRect}
+          onSelect={handlePopoverSelect}
+          onClose={() => setPopoverState(null)}
         />
       )}
     </div>
@@ -659,7 +686,7 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
  * "New session" idle slot — ghost row shown after all sessions in an expanded project.
  * Gray dot, "New session" in muted text, "main" worktree badge.
  */
-function NewSessionSlot({ onClick }: { onClick: () => void }): React.ReactElement {
+function NewSessionSlot({ onClick }: { onClick: (e: React.MouseEvent) => void }): React.ReactElement {
   return (
     <div
       data-testid="new-session-slot"

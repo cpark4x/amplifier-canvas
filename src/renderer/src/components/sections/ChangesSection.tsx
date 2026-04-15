@@ -6,7 +6,7 @@ type ChangesSectionProps = {
 
 const CHANGE_INDICATORS: Record<string, { label: string; color: string }> = {
   created: { label: 'A', color: 'var(--green)' },
-  modified: { label: 'M', color: 'var(--amber)' },
+  modified: { label: 'M', color: '#3B82F6' },
   deleted: { label: 'D', color: 'var(--red)' },
 }
 
