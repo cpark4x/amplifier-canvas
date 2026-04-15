@@ -77,9 +77,21 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       const wasActive = ACTIVE_STATUSES.has(oldSession.status)
       const isCompleted = COMPLETED_STATUSES.has(newSession.status)
       if (wasActive && isCompleted) {
+        // Build subtitle with stats (duration, prompts, etc.)
+        const parts: string[] = []
+        if (newSession.startedAt && newSession.endedAt) {
+          const ms = new Date(newSession.endedAt).getTime() - new Date(newSession.startedAt).getTime()
+          const mins = Math.floor(ms / 60_000)
+          if (mins < 60) parts.push(`${mins}m`)
+          else { const h = Math.floor(mins / 60); const r = mins % 60; parts.push(r > 0 ? `${h}h ${r}m` : `${h}h`) }
+        }
+        if (newSession.promptCount) parts.push(`${newSession.promptCount} prompts`)
+
         get().addToast({
           sessionId: newSession.id,
-          message: `${newSession.title || newSession.id} completed`,
+          message: `\u2713 ${newSession.title || newSession.id} just finished`,
+          subtitle: parts.length > 0 ? parts.join(' \u00B7 ') : undefined,
+          projectName: newSession.projectName,
           action: {
             label: 'Review',
             onClick: () => {

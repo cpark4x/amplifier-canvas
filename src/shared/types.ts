@@ -62,6 +62,10 @@ export interface SessionState {
   promptCount?: number
   toolCallCount?: number
   filesChangedCount?: number
+  // Act 3 — worktree/branch/commit fields
+  worktree?: string       // e.g. "main" or "worktree/dark-mode"
+  branch?: string         // git branch name
+  commitHash?: string     // short SHA when session has committed
 }
 
 // --- Toast types ---
@@ -70,6 +74,8 @@ export interface Toast {
   id: string
   sessionId: string
   message: string
+  subtitle?: string          // e.g. "1h 12m · 8 prompts · 14/14 tests passing"
+  projectName?: string       // for "[title] · [project]" format
   action?: {
     label: string
     onClick: () => void

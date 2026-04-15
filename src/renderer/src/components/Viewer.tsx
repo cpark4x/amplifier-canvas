@@ -47,11 +47,15 @@ function Viewer(): React.ReactElement {
   }, [viewerOpen])
 
   // Reset open files when session changes (different session = fresh file view)
+  // Also: auto-activate SUMMARY tab when selecting a 'done' session
   useEffect(() => {
     setOpenFiles([])
     setActiveFileIdx(0)
     setShowBrowser(false)
-  }, [selectedSessionId])
+    if (session?.status === 'done') {
+      setPrimaryTab('SUMMARY')
+    }
+  }, [selectedSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const primaryTabs: PrimaryTab[] = ['FILES', 'APP', 'SUMMARY']
   const activeFile = openFiles[activeFileIdx] || null

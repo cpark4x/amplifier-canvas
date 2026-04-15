@@ -10,7 +10,6 @@ import type { SessionState, FileEntry, WorkspaceState, CanvasSettings, FileActiv
 import type { SessionAnalysisData, AnalysisResult } from '../../shared/analysisTypes'
 
 // ---------------------------------------------------------------------------
-const MOCK_FIRST_TIME = true;
 // Fixture data — realistic enough to render every UI state
 // ---------------------------------------------------------------------------
 
@@ -37,6 +36,8 @@ const MOCK_SESSIONS: SessionState[] = [
     promptCount: 12,
     toolCallCount: 47,
     filesChangedCount: 6,
+    worktree: 'main',
+    branch: 'main',
   },
   {
     id: 'session-002',
@@ -52,6 +53,28 @@ const MOCK_SESSIONS: SessionState[] = [
     promptCount: 5,
     toolCallCount: 18,
     filesChangedCount: 3,
+    worktree: 'main',
+    branch: 'main',
+    commitHash: 'a3f2b1c',
+  },
+  {
+    id: 'session-005',
+    projectSlug: 'amplifier-canvas',
+    projectName: 'Amplifier Canvas',
+    status: 'running',
+    startedAt: new Date(Date.now() - 1000 * 60 * 64).toISOString(),
+    startedBy: 'canvas',
+    byteOffset: 9200,
+    recentFiles: [
+      { path: 'src/styles/dark-tokens.ts', operation: 'create', timestamp: new Date().toISOString() },
+      { path: 'src/styles/theme.ts', operation: 'edit', timestamp: new Date().toISOString() },
+    ],
+    title: 'Dark mode',
+    promptCount: 6,
+    toolCallCount: 22,
+    filesChangedCount: 4,
+    worktree: 'worktree/dark-mode',
+    branch: 'feat/dark-mode',
   },
   {
     id: 'session-003',
@@ -127,12 +150,12 @@ const mockAPI = {
 
   onSessionsChanged: (cb: (sessions: SessionState[]) => void): (() => void) => {
     // Simulate sessions arriving after 100ms (like real IPC push)
-    setTimeout(() => cb(MOCK_FIRST_TIME ? [] : MOCK_SESSIONS), 100)
+    setTimeout(() => cb(MOCK_SESSIONS), 100)
     return noop
   },
 
   onProjectsChanged: (cb: (projects: Array<{ slug: string; name: string; path: string }>) => void): (() => void) => {
-    setTimeout(() => cb(MOCK_FIRST_TIME ? [] : MOCK_PROJECTS), 80)
+    setTimeout(() => cb(MOCK_PROJECTS), 80)
     return noop
   },
 
@@ -144,12 +167,12 @@ const mockAPI = {
   // Invoke/handle — return fixture data
   getWorkspaceState: async (): Promise<{ state: WorkspaceState; isFirstTime: boolean }> => ({
     state: {
-      selectedProjectSlug: MOCK_FIRST_TIME ? null : 'amplifier-canvas',
-      expandedProjectSlugs: MOCK_FIRST_TIME ? [] : ['amplifier-canvas'],
-      selectedSessionId: MOCK_FIRST_TIME ? null : 'session-001',
+      selectedProjectSlug: 'amplifier-canvas',
+      expandedProjectSlugs: ['amplifier-canvas'],
+      selectedSessionId: 'session-001',
       sidebarCollapsed: false,
     },
-    isFirstTime: MOCK_FIRST_TIME,
+    isFirstTime: false,
   }),
 
   saveWorkspaceState: async (): Promise<{ success: boolean }> => ({ success: true }),

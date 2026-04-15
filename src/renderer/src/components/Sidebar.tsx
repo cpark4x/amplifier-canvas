@@ -195,7 +195,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
         flexDirection: 'column',
         overflow: 'hidden',
         transition: 'width 0.15s ease, min-width 0.15s ease',
-        padding: collapsed ? 0 : '12px 0',
+        padding: collapsed ? 0 : '8px 0 0',
         visibility: hidden ? 'hidden' : 'visible',
       }}
     >
@@ -230,8 +230,7 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
       {/* Expanded sidebar — NO "PROJECTS" header, NO "HISTORY" label */}
       {!collapsed && (
         <>
-          {/* Collapse toggle — small chevron at top right (only when projects exist) */}
-          {projects.length > 0 && (
+          {/* Collapse toggle — small chevron at top right */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 8px 4px' }}>
             <button
               data-testid="sidebar-toggle"
@@ -258,7 +257,6 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
               </svg>
             </button>
           </div>
-          )}
 
           {/* Project list */}
           <div style={{ flex: 1, overflow: 'auto' }}>
@@ -373,11 +371,15 @@ function Sidebar({ collapsed, hidden, onToggle, onNewProject, onNewSession, onSe
                           isSelected={selectedSessionId === session.id}
                           onSelect={() => {
                             selectSession(session.id)
+                            openViewer()
                             onSessionSelect?.(session.id, session.workDir ?? '')
                           }}
                         />
                       </div>
                     ))}
+
+                    {/* "New session" idle slot — always at the bottom */}
+                    <NewSessionSlot onClick={() => onNewSession?.(project.slug, project.path)} />
                   </div>
                 )
               } else {
@@ -486,12 +488,14 @@ interface SessionRowProps {
 
 /**
  * Unified session row — used for ALL sessions (active + completed).
- * Shows: dot + name + status label
+ * Two-line layout: top = dot/badge + name + status label, bottom = worktree badge.
  * Indented under expanded project with left border.
  */
 function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): React.ReactElement {
   const isActive = ACTIVE_STATUSES.has(session.status)
   const isDone = session.status === 'done'
+  const isCompleted = COMPLETED_STATUSES.has(session.status)
+  const hasCommit = !!session.commitHash
 
   // Build the status label
   let statusLabel = ''
@@ -507,7 +511,6 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
     statusLabel = 'loading\u2026'
     statusColor = 'var(--text-very-muted)'
   } else if (isDone) {
-    // "done · 2h 14m"
     const duration = session.startedAt && session.endedAt
       ? formatDuration(session.startedAt, session.endedAt)
       : ''
@@ -521,6 +524,11 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
     statusColor = 'var(--text-very-muted)'
   }
 
+  // Worktree badge text
+  const worktreeLabel = session.worktree
+    ? (session.worktree === 'main' ? 'main' : `\u219F ${session.worktree}`)
+    : null
+
   return (
     <div
       data-testid="session-item"
@@ -529,17 +537,17 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
       data-selected={isSelected ? 'true' : 'false'}
       onClick={onSelect}
       style={{
-        height: 32,
-        padding: '0 8px 0 0',
+        padding: '6px 8px 6px 0',
         marginLeft: 14,
         paddingLeft: 12,
         borderLeft: isSelected ? '2px solid var(--amber)' : '2px solid var(--border)',
         cursor: 'pointer',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 8,
         backgroundColor: isSelected ? 'var(--bg-sidebar-active)' : 'transparent',
         transition: 'background 0.12s ease',
+        opacity: isCompleted ? 0.7 : 1,
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
@@ -550,48 +558,165 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
         ;(e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? 'var(--bg-sidebar-active)' : 'transparent'
       }}
     >
-      {/* Status dot */}
+      {/* Status indicator: green checkmark badge for committed done sessions, dot for others */}
+      {isDone && hasCommit ? (
+        <span
+          data-testid="commit-badge"
+          style={{
+            width: 14,
+            height: 14,
+            minWidth: 14,
+            borderRadius: '50%',
+            backgroundColor: 'var(--green)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 8,
+            fontWeight: 700,
+            lineHeight: 1,
+            flexShrink: 0,
+            marginTop: 1,
+          }}
+        >
+          {'\u2713'}
+        </span>
+      ) : (
+        <span
+          data-testid="status-dot"
+          data-status={session.status}
+          style={{
+            width: 6,
+            height: 6,
+            minWidth: 6,
+            borderRadius: '50%',
+            backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
+            display: 'inline-block',
+            flexShrink: 0,
+            marginTop: 5,
+          }}
+        />
+      )}
+
+      {/* Right side: name + status on first line, worktree badge on second line */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Session name */}
+          <span
+            data-testid="session-name"
+            style={{
+              fontSize: 12,
+              fontWeight: isSelected || isActive ? 600 : 400,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+            }}
+          >
+            {session.title ?? session.id}
+          </span>
+
+          {/* Status label */}
+          <span
+            style={{
+              fontSize: 10,
+              flexShrink: 0,
+              color: statusColor,
+              whiteSpace: 'nowrap',
+              marginLeft: 4,
+            }}
+          >
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Worktree badge */}
+        {worktreeLabel && (
+          <div
+            data-testid="worktree-badge"
+            style={{
+              fontSize: 9,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-very-muted)',
+              lineHeight: 1.3,
+              marginTop: 1,
+              letterSpacing: '0.02em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {worktreeLabel}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "New session" idle slot — ghost row shown after all sessions in an expanded project.
+ * Gray dot, "New session" in muted text, "main" worktree badge.
+ */
+function NewSessionSlot({ onClick }: { onClick: () => void }): React.ReactElement {
+  return (
+    <div
+      data-testid="new-session-slot"
+      onClick={onClick}
+      style={{
+        padding: '6px 8px 6px 0',
+        marginLeft: 14,
+        paddingLeft: 12,
+        borderLeft: '2px solid var(--border)',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 8,
+        transition: 'background 0.12s ease',
+        opacity: 0.6,
+      }}
+      onMouseEnter={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(0,0,0,0.03)'
+        ;(e.currentTarget as HTMLDivElement).style.opacity = '0.85'
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'
+        ;(e.currentTarget as HTMLDivElement).style.opacity = '0.6'
+      }}
+    >
+      {/* Gray dot */}
       <span
-        data-testid="status-dot"
-        data-status={session.status}
         style={{
           width: 6,
           height: 6,
           minWidth: 6,
           borderRadius: '50%',
-          backgroundColor: STATUS_COLORS[session.status] ?? 'var(--text-very-muted)',
+          backgroundColor: 'var(--border)',
           display: 'inline-block',
           flexShrink: 0,
+          marginTop: 5,
         }}
       />
 
-      {/* Session name */}
-      <span
-        data-testid="session-name"
-        style={{
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
           fontSize: 12,
-          fontWeight: isActive ? 600 : 400,
-          color: 'var(--text-primary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          flex: 1,
-        }}
-      >
-        {session.title ?? session.id}
-      </span>
-
-      {/* Status label */}
-      <span
-        style={{
-          fontSize: 10,
-          flexShrink: 0,
-          color: statusColor,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {statusLabel}
-      </span>
+          color: 'var(--text-muted)',
+        }}>
+          New session
+        </div>
+        <div style={{
+          fontSize: 9,
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--text-very-muted)',
+          lineHeight: 1.3,
+          marginTop: 1,
+          letterSpacing: '0.02em',
+        }}>
+          main
+        </div>
+      </div>
     </div>
   )
 }
