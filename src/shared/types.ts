@@ -122,6 +122,10 @@ export interface ProjectOverview {
   description?: string  // from README.md
   healthRatio?: { done: number; failed: number; active: number; total: number }
   recentSessions?: { title: string; status: string; startedAt: string; promptCount: number }[]
+  rootSessionCount?: number
+  agentSessionCount?: number
+  delegationRatio?: number
+  meaningfulSuccessRate?: number
 }
 
 // --- History tab types ---
@@ -134,6 +138,16 @@ export interface ProjectHistorySession {
   endedAt: string | null
   promptCount: number
   toolCallCount: number
+  classification: SessionClassification
+  agentCount?: number  // number of sub-agent sessions spawned by this root session
+}
+
+/** Classification of a session based on its content patterns */
+export type SessionClassification = 'deep-work' | 'quick-task' | 'automated' | 'failed-auto'
+
+export interface SessionClassificationInfo {
+  classification: SessionClassification
+  label: string  // human-readable label like "Deep Work", "Quick Task", "Automated", "Failed Auto"
 }
 
 // --- Stats tab types ---
@@ -149,6 +163,15 @@ export interface ProjectStatsData {
   avgDurationMinutes: number
   dailyActivity: { date: string; total: number; done: number; failed: number; active: number }[]
   statusDistribution: { done: number; failed: number; active: number; other: number }
+  // New: root vs agent awareness
+  rootSessionCount: number
+  agentSessionCount: number
+  delegationRatio: number  // agent/root ratio
+  // New: classification breakdown
+  classificationBreakdown: { deepWork: number; quickTask: number; automated: number; failedAuto: number }
+  // New: meaningful success rate (excludes automated noise)
+  meaningfulSuccessRate: number  // success rate of non-automated sessions only
+  meaningfulSessionCount: number  // count of non-automated sessions
 }
 
 // --- Settings types ---

@@ -37,24 +37,12 @@ function statusDotColor(status: string): string {
   }
 }
 
-/* ---------- Sub-components ---------- */
-
-function StatPill({ value, label }: { value: number; label: string }): React.ReactElement {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'baseline',
-        gap: 5,
-        fontSize: 13,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{value.toLocaleString()}</span>
-      <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{label}</span>
-    </span>
-  )
+const fmtNumber = new Intl.NumberFormat()
+function formatNumber(n: number): string {
+  return fmtNumber.format(n)
 }
+
+/* ---------- Sub-components ---------- */
 
 function SectionHeader({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
@@ -79,20 +67,23 @@ function HealthBar({
   healthRatio,
   sessionCount,
   lastActivityAt,
+  agentSessionCount,
+  meaningfulSuccessRate,
 }: {
   healthRatio: NonNullable<ProjectOverview['healthRatio']>
   sessionCount: number
   lastActivityAt: string
+  agentSessionCount?: number
+  meaningfulSuccessRate?: number
 }): React.ReactElement {
-  const { done, failed, active, total } = healthRatio
+  const { done, active, failed, total } = healthRatio
   const safeTotal = total || 1
   const donePct = (done / safeTotal) * 100
   const activePct = (active / safeTotal) * 100
   const failedPct = (failed / safeTotal) * 100
-  const successRate = Math.round((done / safeTotal) * 100)
 
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div>
       {/* Bar */}
       <div
         style={{
@@ -113,18 +104,32 @@ function HealthBar({
           <div style={{ width: `${failedPct}%`, background: 'var(--red)', transition: 'width 0.3s ease' }} />
         )}
       </div>
+
       {/* Summary line */}
-      <div
-        style={{
-          fontSize: 12,
-          color: 'var(--text-muted)',
-          marginTop: 6,
-          lineHeight: 1,
-        }}
-      >
-        {successRate}% success rate{' '}
-        <span style={{ opacity: 0.5 }}>·</span> {sessionCount} session{sessionCount !== 1 ? 's' : ''}{' '}
-        <span style={{ opacity: 0.5 }}>·</span> last active {formatRelativeTime(lastActivityAt)}
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+        {meaningfulSuccessRate != null ? (
+          <>
+            {Math.round(meaningfulSuccessRate)}% success
+            <span style={{ opacity: 0.5 }}> · </span>
+            {formatNumber(sessionCount)} session{sessionCount !== 1 ? 's' : ''}
+            {agentSessionCount != null && agentSessionCount > 0 && (
+              <>
+                <span style={{ opacity: 0.5 }}> · </span>
+                <span style={{ color: 'var(--text-very-muted)' }}>
+                  {formatNumber(agentSessionCount)} agent session{agentSessionCount !== 1 ? 's' : ''} spawned
+                </span>
+              </>
+            )}
+            <span style={{ opacity: 0.5 }}> · </span>
+            last active {formatRelativeTime(lastActivityAt)}
+          </>
+        ) : (
+          <>
+            {formatNumber(sessionCount)} session{sessionCount !== 1 ? 's' : ''}
+            <span style={{ opacity: 0.5 }}> · </span>
+            last active {formatRelativeTime(lastActivityAt)}
+          </>
+        )}
       </div>
     </div>
   )
@@ -154,22 +159,10 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
           fontSize: 13,
           padding: '24px 0',
           display: 'flex',
-          alignItems: 'center',
-          gap: 8,
+          justifyContent: 'center',
         }}
       >
-        <span
-          style={{
-            display: 'inline-block',
-            width: 14,
-            height: 14,
-            border: '2px solid var(--border)',
-            borderTopColor: 'var(--text-muted)',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
-        Loading overview…
+        Loading…
       </div>
     )
   }
@@ -185,6 +178,7 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
   const hasHealthRatio = overview.healthRatio && overview.healthRatio.total > 0
   const hasRecentSessions = overview.recentSessions && overview.recentSessions.length > 0
   const hasOutcomes = overview.outcomes && overview.outcomes.length > 0
+  const hasDelegation = overview.delegationRatio != null && overview.delegationRatio > 0
 
   return (
     <div data-testid="project-overview-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -195,7 +189,7 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
             background: 'var(--bg-modal)',
             border: '1px solid var(--border)',
             borderRadius: 8,
-            padding: '12px 16px',
+            padding: 16,
           }}
         >
           <div
@@ -214,53 +208,52 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
         </div>
       )}
 
-      {/* 2. Health bar + quick stats row */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 24,
-        }}
-      >
-        {/* Left: health bar */}
-        {hasHealthRatio ? (
-          <HealthBar
-            healthRatio={overview.healthRatio!}
-            sessionCount={overview.sessionCount}
-            lastActivityAt={overview.lastActivityAt}
-          />
-        ) : (
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                height: 6,
-                borderRadius: 3,
-                background: 'var(--border)',
-              }}
-            />
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1 }}>
-              {overview.sessionCount} session{overview.sessionCount !== 1 ? 's' : ''}{' '}
-              <span style={{ opacity: 0.5 }}>·</span> last active {formatRelativeTime(overview.lastActivityAt)}
-            </div>
+      {/* 2. Health bar + stat row */}
+      {hasHealthRatio ? (
+        <HealthBar
+          healthRatio={overview.healthRatio!}
+          sessionCount={overview.sessionCount}
+          lastActivityAt={overview.lastActivityAt}
+          agentSessionCount={overview.agentSessionCount}
+          meaningfulSuccessRate={overview.meaningfulSuccessRate}
+        />
+      ) : (
+        <div>
+          <div style={{ height: 6, borderRadius: 3, background: 'var(--border)' }} />
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1 }}>
+            {formatNumber(overview.sessionCount)} session{overview.sessionCount !== 1 ? 's' : ''}
+            <span style={{ opacity: 0.5 }}> · </span>
+            last active {formatRelativeTime(overview.lastActivityAt)}
           </div>
-        )}
-
-        {/* Right: stat pills */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            flexShrink: 0,
-          }}
-        >
-          <StatPill value={overview.totalPrompts} label="prompts" />
-          <StatPill value={overview.totalToolCalls} label="tool calls" />
-          <StatPill value={overview.totalFilesChanged} label="files" />
         </div>
-      </div>
+      )}
 
-      {/* 3. Assessment card */}
+      {/* 3. Delegation ratio badge */}
+      {hasDelegation && (
+        <div>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 10px',
+              borderRadius: 12,
+              background: 'rgba(245,158,11,0.1)',
+              color: 'var(--amber)',
+              fontSize: 11,
+              fontWeight: 500,
+            }}
+          >
+            ⚡ {overview.delegationRatio!.toFixed(1)}x delegation ratio
+          </span>
+          <div style={{ fontSize: 11, color: 'var(--text-very-muted)', marginTop: 2 }}>
+            Each session spawned ~{Math.round(overview.delegationRatio!)} agent session
+            {Math.round(overview.delegationRatio!) !== 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Assessment card */}
       {overview.assessment && (
         <div
           style={{
@@ -278,32 +271,26 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
               marginBottom: 8,
             }}
           >
-            <span style={{ color: 'var(--amber)', fontSize: 11, lineHeight: 1 }}>&#x2736;</span>
+            <span style={{ color: 'var(--amber)', fontSize: 11, lineHeight: 1 }}>★</span>
             <span
               style={{
                 fontSize: 10,
                 fontWeight: 600,
                 textTransform: 'uppercase' as const,
-                letterSpacing: '0.08em',
-                color: 'var(--amber)',
+                letterSpacing: '0.06em',
+                color: 'var(--text-muted)',
               }}
             >
               Project Health
             </span>
           </div>
-          <div
-            style={{
-              fontSize: 13,
-              lineHeight: 1.6,
-              color: 'var(--text-primary)',
-            }}
-          >
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)' }}>
             {overview.assessment}
           </div>
         </div>
       )}
 
-      {/* 4. Recent Sessions */}
+      {/* 5. Recent Sessions */}
       {hasRecentSessions && (
         <div>
           <SectionHeader>Recent Activity</SectionHeader>
@@ -316,13 +303,13 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
                   alignItems: 'center',
                   gap: 10,
                   padding: '8px 0',
+                  cursor: 'default',
                   borderBottom:
                     i < Math.min(overview.recentSessions!.length, 5) - 1
                       ? '1px solid var(--border)'
                       : 'none',
                 }}
               >
-                {/* Status dot */}
                 <span
                   style={{
                     display: 'inline-block',
@@ -333,7 +320,6 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
                     flexShrink: 0,
                   }}
                 />
-                {/* Title */}
                 <span
                   style={{
                     fontSize: 13,
@@ -347,7 +333,6 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
                 >
                   {session.title || 'Untitled session'}
                 </span>
-                {/* Time ago */}
                 <span
                   style={{
                     fontSize: 12,
@@ -364,7 +349,7 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
         </div>
       )}
 
-      {/* 5. Outcomes */}
+      {/* 6. Outcomes */}
       {hasOutcomes && (
         <div>
           <SectionHeader>Key Outcomes</SectionHeader>
@@ -391,13 +376,7 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
                     top: -1,
                   }}
                 />
-                <span
-                  style={{
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    color: 'var(--text-primary)',
-                  }}
-                >
+                <span style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)' }}>
                   {outcome}
                 </span>
               </div>

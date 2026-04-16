@@ -15,13 +15,18 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-/** Map a day's total sessions to a heatmap color. */
 function heatColor(total: number): string {
-  if (total === 0) return 'var(--bg-sidebar)'
-  if (total === 1) return 'rgba(245,158,11,0.2)'
-  if (total <= 3) return 'rgba(245,158,11,0.4)'
-  if (total <= 5) return 'rgba(245,158,11,0.7)'
+  if (total === 0) return 'var(--bg-page)'
+  if (total === 1) return 'rgba(245,158,11,0.15)'
+  if (total <= 3) return 'rgba(245,158,11,0.35)'
+  if (total <= 5) return 'rgba(245,158,11,0.6)'
   return 'var(--amber)'
+}
+
+function successRateColor(rate: number): string {
+  if (rate >= 50) return 'var(--green)'
+  if (rate < 25) return 'var(--red)'
+  return 'var(--text-primary)'
 }
 
 /* ------------------------------------------------------------------ */
@@ -31,34 +36,35 @@ function heatColor(total: number): string {
 const sectionHeader: React.CSSProperties = {
   fontSize: 10,
   textTransform: 'uppercase',
-  letterSpacing: '0.06em',
+  letterSpacing: '0.08em',
   color: 'var(--text-muted)',
   fontWeight: 600,
-  marginBottom: 10,
+  marginTop: 20,
+  marginBottom: 8,
 }
 
-const cardStyle: React.CSSProperties = {
+const metricBox: React.CSSProperties = {
+  flex: 1,
   background: 'var(--bg-modal)',
   border: '1px solid var(--border)',
   borderRadius: 8,
-  padding: 16,
+  padding: '14px 16px',
 }
 
-const cardValue: React.CSSProperties = {
-  fontSize: 24,
+const metricValue: React.CSSProperties = {
+  fontSize: 22,
   fontWeight: 700,
   color: 'var(--text-primary)',
   lineHeight: 1,
-  marginBottom: 6,
   fontFamily: 'var(--font-ui)',
 }
 
-const cardLabel: React.CSSProperties = {
-  fontSize: 11,
+const metricLabel: React.CSSProperties = {
+  fontSize: 10,
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
   color: 'var(--text-muted)',
-  fontWeight: 500,
+  marginTop: 4,
 }
 
 /* ------------------------------------------------------------------ */
@@ -94,7 +100,12 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
     return (
       <div
         data-testid="project-stats-tab"
-        style={{ color: 'var(--text-muted)', fontSize: 13, padding: '24px 0' }}
+        style={{
+          color: 'var(--text-muted)',
+          fontSize: 13,
+          padding: '24px 0',
+          textAlign: 'center',
+        }}
       >
         Loading stats…
       </div>
@@ -106,25 +117,30 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
     return (
       <div
         data-testid="project-stats-tab"
-        style={{ color: 'var(--text-muted)', fontSize: 13, padding: '24px 0' }}
+        style={{
+          color: 'var(--text-muted)',
+          fontSize: 13,
+          padding: '24px 0',
+          textAlign: 'center',
+        }}
       >
         No session data available.
       </div>
     )
   }
 
-  /* ---- Build 28-day heatmap grid ---- */
+  /* ---------------------------------------------------------------- */
+  /*  Build 28-day heatmap grid                                        */
+  /* ---------------------------------------------------------------- */
   const today = new Date()
-  // Reset to start of day in local tz
   today.setHours(0, 0, 0, 0)
 
-  // Build lookup map from dailyActivity
   const activityMap = new Map<string, number>()
   for (const entry of data.dailyActivity) {
     activityMap.set(entry.date, entry.total)
   }
 
-  // Generate 28 dates (today - 27 … today)
+  // Generate 28 dates (today − 27 … today)
   const days: { date: Date; iso: string; total: number }[] = []
   for (let i = 27; i >= 0; i--) {
     const d = new Date(today)
@@ -133,18 +149,13 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
     days.push({ date: d, iso, total: activityMap.get(iso) ?? 0 })
   }
 
-  // Arrange into columns (weeks). Each column = 7 rows Mon(0)..Sun(6).
-  // We need to figure out which day-of-week each date falls on.
   // JS getDay(): 0=Sun,1=Mon..6=Sat → remap to Mon=0..Sun=6
-  const remapDay = (d: Date): number => ((d.getDay() + 6) % 7)
+  const remapDay = (d: Date): number => (d.getDay() + 6) % 7
 
-  // Build 4 columns × 7 rows. Fill with null for empty slots.
+  // Build 4 columns × 7 rows
   type Cell = { iso: string; total: number } | null
   const columns: Cell[][] = [[], [], [], []]
 
-  // First, determine the column boundaries.
-  // The 28 days span at most 5 partial weeks, but we want exactly 4 columns.
-  // Strategy: group days by their ISO week offset from the first day.
   const firstDay = days[0].date
   const firstMonday = new Date(firstDay)
   firstMonday.setDate(firstMonday.getDate() - remapDay(firstDay))
@@ -152,180 +163,238 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
   for (const day of days) {
     const dayMonday = new Date(day.date)
     dayMonday.setDate(dayMonday.getDate() - remapDay(day.date))
-    const weekIdx = Math.round((dayMonday.getTime() - firstMonday.getTime()) / (7 * 86400000))
+    const weekIdx = Math.round(
+      (dayMonday.getTime() - firstMonday.getTime()) / (7 * 86400000),
+    )
     const row = remapDay(day.date)
-    // Clamp weekIdx to 0..3
     const col = Math.min(Math.max(weekIdx, 0), 3)
     if (!columns[col]) columns[col] = []
     columns[col][row] = { iso: day.iso, total: day.total }
   }
 
-  // Fill any remaining nulls
   for (let c = 0; c < 4; c++) {
     for (let r = 0; r < 7; r++) {
       if (!columns[c][r]) columns[c][r] = null
     }
   }
 
-  /* ---- Status distribution bar ---- */
-  const dist = data.statusDistribution
-  const distTotal = dist.done + dist.failed + dist.active + dist.other
-  const pct = (v: number) => (distTotal > 0 ? (v / distTotal) * 100 : 0)
+  /* ---------------------------------------------------------------- */
+  /*  Session classification bar segments                              */
+  /* ---------------------------------------------------------------- */
+  const cb = data.classificationBreakdown
+  const classTotal = cb.deepWork + cb.quickTask + cb.automated + cb.failedAuto
+
+  const segments: { key: string; count: number; color: string }[] = [
+    { key: 'deep', count: cb.deepWork, color: 'var(--green)' },
+    { key: 'quick', count: cb.quickTask, color: 'var(--amber)' },
+    { key: 'auto', count: cb.automated, color: 'rgba(160,152,136,0.4)' },
+    { key: 'failAuto', count: cb.failedAuto, color: 'rgba(239,68,68,0.3)' },
+  ].filter((s) => s.count > 0)
+
+  /* ---------------------------------------------------------------- */
+  /*  Day labels for heatmap                                           */
+  /* ---------------------------------------------------------------- */
+  const dayLabels = ['M', '', 'W', '', 'F', '', '']
 
   return (
     <div data-testid="project-stats-tab">
-      {/* ========== 1. Stats Grid (2×2) ========== */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 12,
-          marginBottom: 28,
-        }}
-      >
-        {/* Total Sessions */}
-        <div style={cardStyle}>
-          <div style={cardValue}>{fmt(data.totalSessions)}</div>
-          <div style={cardLabel}>Total Sessions</div>
-        </div>
-
+      {/* ========== 1. Key Metrics Row ========== */}
+      <div style={{ display: 'flex', gap: 12 }}>
         {/* Success Rate */}
-        <div style={cardStyle}>
-          <div style={cardValue}>
-            {Math.round(data.successRate)}
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>%</span>
+        <div style={metricBox}>
+          <div style={{ ...metricValue, color: successRateColor(data.meaningfulSuccessRate) }}>
+            {Math.round(data.meaningfulSuccessRate)}%
           </div>
-          <div style={cardLabel}>Success Rate</div>
+          <div style={metricLabel}>Success Rate</div>
         </div>
 
-        {/* Avg Prompts/Session */}
-        <div style={cardStyle}>
-          <div style={cardValue}>{data.avgPromptsPerSession.toFixed(1)}</div>
-          <div style={cardLabel}>Avg Prompts / Session</div>
+        {/* Deep Sessions */}
+        <div style={metricBox}>
+          <div style={metricValue}>{fmt(cb.deepWork)}</div>
+          <div style={metricLabel}>Deep Sessions</div>
         </div>
 
-        {/* Avg Duration */}
-        <div style={cardStyle}>
-          <div style={cardValue}>{formatDuration(data.avgDurationMinutes)}</div>
-          <div style={cardLabel}>Avg Duration</div>
+        {/* Delegation Ratio */}
+        <div style={metricBox}>
+          <div style={metricValue}>{data.delegationRatio.toFixed(1)}x</div>
+          <div style={metricLabel}>Delegation Ratio</div>
+        </div>
+
+        {/* Total Prompts */}
+        <div style={metricBox}>
+          <div style={metricValue}>{fmt(data.totalPrompts)}</div>
+          <div style={metricLabel}>Total Prompts</div>
         </div>
       </div>
 
-      {/* ========== 2. Activity Heatmap ========== */}
-      <div style={sectionHeader}>Activity</div>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', gap: 3 }}>
-          {/* Day labels column */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 3,
-              marginRight: 4,
-              justifyContent: 'flex-start',
-            }}
-          >
-            {['M', '', 'W', '', 'F', '', ''].map((label, i) => (
+      {/* ========== 2. Session Classification Bar ========== */}
+      <div style={sectionHeader}>Session Breakdown</div>
+
+      {/* Stacked bar */}
+      {classTotal > 0 ? (
+        <div
+          style={{
+            display: 'flex',
+            height: 28,
+            borderRadius: 6,
+            overflow: 'hidden',
+          }}
+        >
+          {segments.map((seg) => {
+            const widthPx =
+              classTotal > 0 ? (seg.count / classTotal) * 100 : 0
+            // Estimate if label fits: roughly > 40px means > ~15% for typical widths
+            const showLabel = widthPx > 15
+            return (
               <div
-                key={i}
+                key={seg.key}
                 style={{
-                  width: 12,
-                  height: 20,
+                  width: `${widthPx}%`,
+                  background: seg.color,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  fontSize: 9,
-                  color: 'var(--text-very-muted)',
-                  lineHeight: 1,
+                  justifyContent: 'center',
+                  transition: 'width 0.3s',
                 }}
               >
-                {label}
+                {showLabel && (
+                  <span
+                    style={{
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {seg.count}
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div
+          style={{
+            height: 28,
+            borderRadius: 6,
+            background: 'var(--bg-page)',
+          }}
+        />
+      )}
 
-          {/* Heatmap columns */}
-          {columns.map((col, ci) => (
-            <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {col.map((cell, ri) => (
-                <div
-                  key={ri}
-                  title={cell ? `${cell.iso}: ${cell.total} session${cell.total !== 1 ? 's' : ''}` : ''}
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 4,
-                    background: cell ? heatColor(cell.total) : 'var(--bg-sidebar)',
-                  }}
-                />
-              ))}
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+        <LegendItem color="var(--green)" label="⚡ Deep Work" value={cb.deepWork} />
+        <LegendItem color="var(--amber)" label="→ Quick Task" value={cb.quickTask} />
+        <LegendItem color="rgba(160,152,136,0.4)" label="⚙ Automated" value={cb.automated} />
+        <LegendItem color="rgba(239,68,68,0.3)" label="⚙ Failed Auto" value={cb.failedAuto} />
+      </div>
+
+      {/* ========== 3. Activity Heatmap ========== */}
+      <div style={sectionHeader}>Activity · Last 4 Weeks</div>
+
+      <div style={{ display: 'flex', gap: 3 }}>
+        {/* Day labels column */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            marginRight: 4,
+          }}
+        >
+          {dayLabels.map((label, i) => (
+            <div
+              key={i}
+              style={{
+                minWidth: 16,
+                height: 20,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                fontSize: 9,
+                color: 'var(--text-very-muted)',
+                lineHeight: 1,
+              }}
+            >
+              {label}
             </div>
           ))}
         </div>
+
+        {/* Heatmap columns */}
+        {columns.map((col, ci) => (
+          <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {col.map((cell, ri) => (
+              <div
+                key={ri}
+                title={
+                  cell
+                    ? `${cell.iso}: ${cell.total} session${cell.total !== 1 ? 's' : ''}`
+                    : ''
+                }
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  background: cell ? heatColor(cell.total) : 'var(--bg-page)',
+                }}
+              />
+            ))}
+          </div>
+        ))}
       </div>
 
-      {/* ========== 3. Status Distribution ========== */}
-      <div style={sectionHeader}>Session Outcomes</div>
-      <div style={{ marginBottom: 28 }}>
-        {/* Proportional bar */}
-        {distTotal > 0 ? (
+      {/* ========== 4. Delegation Insights ========== */}
+      {data.agentSessionCount > 0 && (
+        <>
+          <div style={sectionHeader}>Delegation</div>
           <div
             style={{
-              display: 'flex',
-              height: 24,
-              borderRadius: 4,
-              overflow: 'hidden',
-              marginBottom: 10,
+              background: 'var(--bg-modal)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '12px 16px',
             }}
           >
-            {pct(dist.done) > 0 && (
-              <div style={{ width: `${pct(dist.done)}%`, background: 'var(--green)', transition: 'width 0.3s' }} />
-            )}
-            {pct(dist.active) > 0 && (
-              <div style={{ width: `${pct(dist.active)}%`, background: 'var(--amber)', transition: 'width 0.3s' }} />
-            )}
-            {pct(dist.failed) > 0 && (
-              <div style={{ width: `${pct(dist.failed)}%`, background: 'var(--red)', transition: 'width 0.3s' }} />
-            )}
-            {pct(dist.other) > 0 && (
-              <div style={{ width: `${pct(dist.other)}%`, background: 'var(--text-very-muted)', transition: 'width 0.3s' }} />
-            )}
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                lineHeight: 1.5,
+              }}
+            >
+              You initiated{' '}
+              <span style={{ fontWeight: 700 }}>{fmt(data.rootSessionCount)}</span>{' '}
+              sessions → spawned{' '}
+              <span style={{ fontWeight: 700 }}>{fmt(data.agentSessionCount)}</span>{' '}
+              agent sessions
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                marginTop: 4,
+                lineHeight: 1.5,
+              }}
+            >
+              Average delegation depth:{' '}
+              <span style={{ fontWeight: 700, color: 'var(--amber)' }}>
+                {data.delegationRatio.toFixed(1)}x
+              </span>{' '}
+              per session
+            </div>
           </div>
-        ) : (
-          <div
-            style={{
-              height: 24,
-              borderRadius: 4,
-              background: 'var(--bg-sidebar)',
-              marginBottom: 10,
-            }}
-          />
-        )}
+        </>
+      )}
 
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <LegendItem color="var(--green)" label="Completed" value={dist.done} />
-          <LegendItem color="var(--amber)" label="In Progress" value={dist.active} />
-          <LegendItem color="var(--red)" label="Failed" value={dist.failed} />
-          <LegendItem color="var(--text-very-muted)" label="Other" value={dist.other} />
-        </div>
-      </div>
-
-      {/* ========== 4. Totals Row ========== */}
-      <div style={sectionHeader}>Totals</div>
-      <div style={{ display: 'flex', gap: 24, fontSize: 13 }}>
-        <span>
-          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(data.totalPrompts)}</span>{' '}
-          <span style={{ color: 'var(--text-muted)' }}>prompts</span>
-        </span>
-        <span>
-          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(data.totalToolCalls)}</span>{' '}
-          <span style={{ color: 'var(--text-muted)' }}>tool calls</span>
-        </span>
-        <span>
-          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(data.totalFilesChanged)}</span>{' '}
-          <span style={{ color: 'var(--text-muted)' }}>files changed</span>
-        </span>
+      {/* ========== 5. Averages Row ========== */}
+      <div style={sectionHeader}>Averages</div>
+      <div style={{ display: 'flex', gap: 24 }}>
+        <AverageItem value={data.avgPromptsPerSession.toFixed(1)} label="prompts/session" />
+        <AverageItem value={data.avgToolsPerSession.toFixed(1)} label="tool calls/session" />
+        <AverageItem value={formatDuration(data.avgDurationMinutes)} label="avg duration" />
       </div>
     </div>
   )
@@ -345,7 +414,15 @@ function LegendItem({
   value: number
 }): React.ReactElement {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        fontSize: 12,
+        color: 'var(--text-muted)',
+      }}
+    >
       <span
         style={{
           display: 'inline-block',
@@ -357,6 +434,27 @@ function LegendItem({
         }}
       />
       {label} {value}
+    </span>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Average item                                                       */
+/* ------------------------------------------------------------------ */
+
+function AverageItem({
+  value,
+  label,
+}: {
+  value: string
+  label: string
+}): React.ReactElement {
+  return (
+    <span>
+      <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+        {value}
+      </span>{' '}
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span>
     </span>
   )
 }

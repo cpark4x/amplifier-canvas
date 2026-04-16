@@ -5,7 +5,7 @@ import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry, ProjectStatsData, ProjectHistorySession } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject } from './pty'
-import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk } from './scanner'
+import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk, countAgentSessionsOnDisk } from './scanner'
 import {
   getSessionById,
   getRegisteredProjects,
@@ -47,6 +47,22 @@ export function addAllowedDir(dir: string): void {
 export function isPathAllowed(requestedPath: string): boolean {
   const resolved = resolve(normalize(requestedPath))
   return allowedDirs.some((dir) => resolved.startsWith(dir))
+}
+
+function classifySession(session: { title: string | null; status: string; promptCount: number; firstPrompt: string | null }): { classification: import('../shared/types').SessionClassification; label: string } {
+  const title = session.title ?? ''
+  const isAutoTitle = title.startsWith('load_skill') || title.startsWith('Execute recipe') || title.startsWith('amplifier tool')
+  
+  if (isAutoTitle && session.status === 'failed') {
+    return { classification: 'failed-auto', label: 'Failed Auto' }
+  }
+  if (isAutoTitle) {
+    return { classification: 'automated', label: 'Automated' }
+  }
+  if (session.promptCount >= 8) {
+    return { classification: 'deep-work', label: 'Deep Work' }
+  }
+  return { classification: 'quick-task', label: 'Quick Task' }
 }
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
@@ -314,6 +330,20 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const diskSessionCount = countProjectSessionsOnDisk(getAmplifierHome(), slug)
         const totalSessions = Math.max(diskSessionCount, stats.sessionCount)
 
+        const agentSessionCount = countAgentSessionsOnDisk(getAmplifierHome(), slug)
+        const rootSessionCount = totalSessions
+        const delegationRatio = rootSessionCount > 0 ? Math.round((agentSessionCount / rootSessionCount) * 10) / 10 : 0
+        
+        // Meaningful success rate: exclude automated sessions
+        const allSessionsForRate = getAllProjectSessions(slug)
+        const nonAutoSessions = allSessionsForRate.filter(s => {
+          const c = classifySession(s)
+          return c.classification !== 'automated' && c.classification !== 'failed-auto'
+        })
+        const nonAutoDone = nonAutoSessions.filter(s => s.status === 'done').length
+        const nonAutoCompleted = nonAutoSessions.filter(s => s.status === 'done' || s.status === 'failed').length
+        const meaningfulSuccessRate = nonAutoCompleted > 0 ? Math.round((nonAutoDone / nonAutoCompleted) * 100) : 0
+
         // Generate assessment from session data
         const recentSessions = getRecentSessionSummaries(slug)
         const { assessment, outcomes } = generateProjectAssessment(recentSessions, totalSessions)
@@ -384,6 +414,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           description,
           healthRatio,
           recentSessions: meaningfulSessions,
+          rootSessionCount,
+          agentSessionCount,
+          delegationRatio,
+          meaningfulSuccessRate,
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -402,6 +436,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ): Promise<ProjectHistorySession[]> => {
       try {
         const sessions = getAllProjectSessions(slug)
+        const ampHome = getAmplifierHome()
         return sessions.map((s) => ({
           id: s.id,
           title: s.title,
@@ -410,6 +445,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           endedAt: s.endedAt,
           promptCount: s.promptCount,
           toolCallCount: s.toolCallCount,
+          classification: classifySession(s).classification,
         }))
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -467,6 +503,32 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           ? Math.round(totalDurationMs / durationCount / 60000)
           : 0
 
+        // Root vs agent counts
+        const ampHome = getAmplifierHome()
+        const agentSessionCount = countAgentSessionsOnDisk(ampHome, slug)
+        const rootSessionCount = allSessions.length
+        const delegationRatio = rootSessionCount > 0 ? Math.round((agentSessionCount / rootSessionCount) * 10) / 10 : 0
+        
+        // Classification breakdown
+        const classificationBreakdown = { deepWork: 0, quickTask: 0, automated: 0, failedAuto: 0 }
+        for (const s of allSessions) {
+          const c = classifySession(s)
+          if (c.classification === 'deep-work') classificationBreakdown.deepWork++
+          else if (c.classification === 'quick-task') classificationBreakdown.quickTask++
+          else if (c.classification === 'automated') classificationBreakdown.automated++
+          else if (c.classification === 'failed-auto') classificationBreakdown.failedAuto++
+        }
+        
+        // Meaningful success rate (excludes automated noise)
+        const meaningfulSessions = allSessions.filter(s => {
+          const c = classifySession(s)
+          return c.classification !== 'automated' && c.classification !== 'failed-auto'
+        })
+        const meaningfulDone = meaningfulSessions.filter(s => s.status === 'done').length
+        const meaningfulCompleted = meaningfulSessions.filter(s => s.status === 'done' || s.status === 'failed').length
+        const meaningfulSuccessRate = meaningfulCompleted > 0 ? Math.round((meaningfulDone / meaningfulCompleted) * 100) : 0
+        const meaningfulSessionCount = meaningfulSessions.length
+
         return {
           totalSessions: allSessions.length,
           totalPrompts: overviewStats.totalPrompts,
@@ -478,6 +540,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           avgDurationMinutes,
           dailyActivity,
           statusDistribution,
+          rootSessionCount,
+          agentSessionCount,
+          delegationRatio,
+          classificationBreakdown,
+          meaningfulSuccessRate,
+          meaningfulSessionCount,
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

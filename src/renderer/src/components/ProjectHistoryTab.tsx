@@ -1,9 +1,31 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useCanvasStore } from '../store'
-import type { ProjectHistorySession } from '../../../shared/types'
+import type { ProjectHistorySession, SessionClassification } from '../../../shared/types'
 
 interface ProjectHistoryTabProps {
   projectSlug: string
+}
+
+// ---------------------------------------------------------------------------
+// Filter types
+// ---------------------------------------------------------------------------
+
+type ClassificationFilter = 'all' | 'deep-work' | 'quick-task' | 'auto'
+
+const FILTER_CHIPS: { key: ClassificationFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'deep-work', label: 'Deep Work' },
+  { key: 'quick-task', label: 'Quick' },
+  { key: 'auto', label: 'Auto' },
+]
+
+function matchesFilter(
+  classification: SessionClassification,
+  filter: ClassificationFilter,
+): boolean {
+  if (filter === 'all') return true
+  if (filter === 'auto') return classification === 'automated' || classification === 'failed-auto'
+  return classification === filter
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +84,17 @@ function statusColor(status: string): string {
   return 'var(--text-very-muted)'
 }
 
+// Classification badge config
+const CLASSIFICATION_BADGE: Record<
+  SessionClassification,
+  { icon: string; bg: string; color: string }
+> = {
+  'deep-work': { icon: '⚡', bg: 'rgba(76,175,116,0.1)', color: 'var(--green)' },
+  'quick-task': { icon: '→', bg: 'rgba(221,213,200,0.3)', color: 'var(--text-muted)' },
+  automated: { icon: '⚙', bg: 'rgba(160,152,136,0.15)', color: 'var(--text-very-muted)' },
+  'failed-auto': { icon: '⚙', bg: 'rgba(239,68,68,0.1)', color: 'var(--red)' },
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -70,6 +103,7 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
   const [sessions, setSessions] = useState<ProjectHistorySession[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [classFilter, setClassFilter] = useState<ClassificationFilter>('all')
 
   const selectSession = useCanvasStore((s) => s.selectSession)
   const setViewMode = useCanvasStore((s) => s.setViewMode)
@@ -90,16 +124,25 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     }
   }, [projectSlug])
 
-  // Filtered list
+  // Filtered list — search (on title) AND classification filter
   const filtered = useMemo(() => {
-    if (!query.trim()) return sessions
-    const q = query.toLowerCase()
-    return sessions.filter((s) => (s.title ?? '').toLowerCase().includes(q))
-  }, [sessions, query])
+    const q = query.trim().toLowerCase()
+    return sessions.filter((s) => {
+      if (q && !(s.title ?? '').toLowerCase().includes(q)) return false
+      if (!matchesFilter(s.classification, classFilter)) return false
+      return true
+    })
+  }, [sessions, query, classFilter])
 
-  // Counts (from filtered)
-  const completedCount = filtered.filter((s) => s.status === 'done').length
-  const failedCount = filtered.filter((s) => s.status === 'failed').length
+  // Classification counts (from filtered results)
+  const counts = useMemo(() => {
+    const deepWork = filtered.filter((s) => s.classification === 'deep-work').length
+    const quick = filtered.filter((s) => s.classification === 'quick-task').length
+    const auto = filtered.filter(
+      (s) => s.classification === 'automated' || s.classification === 'failed-auto',
+    ).length
+    return { deepWork, quick, auto }
+  }, [filtered])
 
   // Group by date, sorted most-recent-first within each group
   const grouped = useMemo(() => {
@@ -118,7 +161,13 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     }))
   }, [filtered])
 
-  // Handlers
+  const hasActiveFilters = query.trim() !== '' || classFilter !== 'all'
+
+  function clearFilters(): void {
+    setQuery('')
+    setClassFilter('all')
+  }
+
   function handleClick(id: string): void {
     selectSession(id)
     setViewMode('session')
@@ -129,51 +178,116 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
   if (loading) {
     return (
       <div data-testid="project-history-tab">
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading history...</div>
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--text-muted)',
+            textAlign: 'center',
+            padding: '24px 0',
+          }}
+        >
+          Loading history...
+        </div>
       </div>
     )
   }
 
   return (
     <div data-testid="project-history-tab">
-      {/* Search bar */}
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search sessions..."
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          fontSize: 13,
-          padding: '8px 12px',
-          background: 'var(--bg-modal)',
-          border: '1px solid var(--border)',
-          borderRadius: 6,
-          color: 'var(--text-primary)',
-          fontFamily: 'var(--font-ui)',
-          outline: 'none',
-          marginBottom: 16,
-        }}
-      />
-
-      {/* Summary line */}
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-        {filtered.length} session{filtered.length !== 1 ? 's' : ''} &middot;{' '}
-        {completedCount} completed &middot; {failedCount} failed
+      {/* 1. Search + filter row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search sessions..."
+          style={{
+            flex: 1,
+            boxSizing: 'border-box',
+            fontSize: 13,
+            padding: '7px 12px',
+            background: 'var(--bg-modal)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-ui)',
+            outline: 'none',
+          }}
+        />
+        {FILTER_CHIPS.map((chip) => {
+          const isActive = classFilter === chip.key
+          return (
+            <button
+              key={chip.key}
+              onClick={() => setClassFilter(chip.key)}
+              style={{
+                fontSize: 11,
+                padding: '4px 10px',
+                borderRadius: 12,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: isActive ? 600 : 400,
+                background: isActive ? 'var(--text-primary)' : 'transparent',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                border: isActive ? '1px solid transparent' : '1px solid var(--border)',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.2,
+              }}
+            >
+              {chip.label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Empty states */}
+      {/* 2. Summary line */}
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, marginBottom: 12 }}>
+        <span style={{ fontWeight: 600 }}>{filtered.length}</span> session
+        {filtered.length !== 1 ? 's' : ''} &middot;{' '}
+        <span style={{ fontWeight: 600 }}>{counts.deepWork}</span> deep work &middot;{' '}
+        <span style={{ fontWeight: 600 }}>{counts.quick}</span> quick &middot;{' '}
+        <span style={{ fontWeight: 600 }}>{counts.auto}</span> automated
+      </div>
+
+      {/* 5. Empty states */}
       {sessions.length === 0 && (
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No sessions found.</div>
-      )}
-      {sessions.length > 0 && filtered.length === 0 && query.trim() && (
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          No sessions matching &lsquo;{query.trim()}&rsquo;.
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--text-muted)',
+            textAlign: 'center',
+            padding: '24px 0',
+          }}
+        >
+          No sessions yet.
         </div>
       )}
 
-      {/* Grouped sessions */}
+      {sessions.length > 0 && filtered.length === 0 && hasActiveFilters && (
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--text-muted)',
+            textAlign: 'center',
+            padding: '24px 0',
+          }}
+        >
+          No matching sessions.{' '}
+          <span
+            onClick={clearFilters}
+            style={{
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+            }}
+          >
+            Clear filters
+          </span>
+        </div>
+      )}
+
+      {/* 3. Sessions grouped by date */}
       {grouped.map((group, groupIdx) => (
         <div key={group.label}>
           {/* Group heading */}
@@ -191,12 +305,12 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
             {group.label}
           </div>
 
-          {/* Session rows */}
-          {group.sessions.map((session, i) => {
-            const isLast = i === group.sessions.length - 1
+          {/* 4. Session rows */}
+          {group.sessions.map((session) => {
             const duration = formatDuration(session.startedAt, session.endedAt)
             const relTime = formatRelativeTime(session.startedAt)
             const hasTitle = session.title != null && session.title.length > 0
+            const badge = CLASSIFICATION_BADGE[session.classification]
 
             return (
               <div
@@ -206,9 +320,8 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
                   display: 'flex',
                   alignItems: 'flex-start',
                   padding: '8px 4px',
-                  borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                  borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
-                  gap: 10,
                 }}
                 onMouseEnter={(e) => {
                   ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'
@@ -217,54 +330,78 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
                   ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
                 }}
               >
-                {/* Status dot */}
-                <div
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: statusColor(session.status),
-                    flexShrink: 0,
-                    marginTop: 5,
-                  }}
-                />
-
-                {/* Title + metadata */}
+                {/* Left side */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: hasTitle ? 'var(--text-primary)' : 'var(--text-very-muted)',
-                      fontStyle: hasTitle ? 'normal' : 'italic',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {hasTitle ? session.title : '(no title)'}
+                  {/* Top line: status dot + badge + title */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Status dot */}
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: statusColor(session.status),
+                        flexShrink: 0,
+                      }}
+                    />
+
+                    {/* Classification badge */}
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 500,
+                        padding: '1px 6px',
+                        borderRadius: 8,
+                        background: badge.bg,
+                        color: badge.color,
+                        flexShrink: 0,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {badge.icon}
+                    </span>
+
+                    {/* Title */}
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: hasTitle ? 'var(--text-primary)' : 'var(--text-very-muted)',
+                        fontStyle: hasTitle ? 'normal' : 'italic',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minWidth: 0,
+                      }}
+                    >
+                      {hasTitle ? session.title : '(no title)'}
+                    </span>
                   </div>
+
+                  {/* Metadata line */}
                   <div
                     style={{
                       fontSize: 11,
                       color: 'var(--text-very-muted)',
                       marginTop: 2,
+                      marginLeft: 14 + 8, // align with title (dot width + gap)
                     }}
                   >
                     {duration} &middot; {session.promptCount} prompt
                     {session.promptCount !== 1 ? 's' : ''} &middot; {session.toolCallCount} tool
-                    call{session.toolCallCount !== 1 ? 's' : ''}
+                    {' '}call{session.toolCallCount !== 1 ? 's' : ''}
                   </div>
                 </div>
 
-                {/* Relative time */}
+                {/* Right side — relative time */}
                 <div
                   style={{
-                    fontSize: 13,
+                    fontSize: 12,
                     color: 'var(--text-muted)',
                     flexShrink: 0,
                     whiteSpace: 'nowrap',
                     textAlign: 'right',
                     marginTop: 1,
+                    marginLeft: 12,
                   }}
                 >
                   {relTime}
