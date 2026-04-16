@@ -397,6 +397,7 @@ app.whenReady().then(() => {
 
         // Persist session to DB with title on every watcher update — not just finalization.
         // COALESCE in the SQL ensures we never overwrite a good title with null.
+        const stats = extractSessionStats(events)
         upsertSession({
           id: data.sessionId,
           projectSlug: data.projectSlug,
@@ -406,11 +407,16 @@ app.whenReady().then(() => {
           byteOffset: newByteOffset,
           hidden: !canvasOwnsSession,
           title: title ?? null,
+          // Update stats on every watcher tick, not just finalization.
+          // Without this, active sessions show promptCount=0 and get
+          // misclassified as automated/ghost in the History tab.
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+          filesChangedCount: stats.filesChanged.size,
         })
         if (canvasOwnsSession) {
           unhideSession(data.sessionId)
         }
-        const stats = extractSessionStats(events)
         const endEvent = events.find((e: { type: string; timestamp: string; data: Record<string, unknown> }) => e.type === 'session:end')
         const endedAt = endEvent?.timestamp
         const exitCode =
