@@ -15,7 +15,9 @@ import {
   getRegisteredProjectCount,
   getProjectBySlug,
   getProjectOverviewStats,
+  getRecentSessionSummaries,
 } from './db'
+import { generateProjectAssessment } from './project-assessment'
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
 import type { WorkspaceState } from './workspace'
 import { discoverProjects } from './discovery'
@@ -308,16 +310,24 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const stats = getProjectOverviewStats(slug)
         // Use on-disk count for real total (DB is capped at 20 most recent)
         const diskSessionCount = countProjectSessionsOnDisk(getAmplifierHome(), slug)
+        const totalSessions = Math.max(diskSessionCount, stats.sessionCount)
+
+        // Generate assessment from session data
+        const recentSessions = getRecentSessionSummaries(slug)
+        const { assessment, outcomes } = generateProjectAssessment(recentSessions, totalSessions)
+
         return {
           slug: project.slug,
           name: project.name,
           path: project.path,
-          sessionCount: Math.max(diskSessionCount, stats.sessionCount),
+          sessionCount: totalSessions,
           totalPrompts: stats.totalPrompts,
           totalToolCalls: stats.totalToolCalls,
           totalFilesChanged: stats.totalFilesChanged,
           activeSessionCount: stats.activeSessionCount,
           lastActivityAt: stats.lastActivityAt ?? new Date().toISOString(),
+          assessment,
+          outcomes,
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

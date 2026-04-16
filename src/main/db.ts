@@ -192,6 +192,31 @@ export function getSessionsWithZeroStats(projectSlug: string): { id: string }[] 
   ).all(projectSlug) as { id: string }[]
 }
 
+export function getRecentSessionSummaries(projectSlug: string, limit = 20): {
+  title: string | null
+  status: string
+  startedAt: string
+  promptCount: number
+  toolCallCount: number
+  firstPrompt: string | null
+}[] {
+  const d = getDatabase()
+  return d.prepare(`
+    SELECT title, status, startedAt, promptCount, toolCallCount, firstPrompt
+    FROM sessions
+    WHERE projectSlug = ?
+    ORDER BY startedAt DESC
+    LIMIT ?
+  `).all(projectSlug, limit) as {
+    title: string | null
+    status: string
+    startedAt: string
+    promptCount: number
+    toolCallCount: number
+    firstPrompt: string | null
+  }[]
+}
+
 export function updateSessionTitle(id: string, title: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET title = ? WHERE id = ?').run(title, id)
