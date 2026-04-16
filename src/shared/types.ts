@@ -40,6 +40,7 @@ export const IPC_CHANNELS = {
   PROJECT_CONTEXT: 'project:context',
   PROJECT_LIST_REGISTERED: 'project:list-registered',
   SESSION_LIST_INITIAL: 'session:list-initial',
+  OPEN_EXTERNAL: 'shell:open-external',
 } as const
 
 // --- Session types ---

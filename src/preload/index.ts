@@ -228,6 +228,11 @@ const api = {
   getInitialSessions: (): Promise<import('../shared/types').SessionState[]> => {
     return ipcRenderer.invoke(IPC_CHANNELS.SESSION_LIST_INITIAL)
   },
+
+  // Shell: open URL in default browser
+  openExternal: (url: string): Promise<void> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.OPEN_EXTERNAL, { url })
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

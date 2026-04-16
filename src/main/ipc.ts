@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
 import { mkdirSync, existsSync } from 'fs'
 import { readdir, stat, readFile } from 'fs/promises'
 import { join, resolve, normalize } from 'path'
@@ -73,6 +73,51 @@ function classifySession(session: { title: string | null; status: string; prompt
     return { classification: 'deep-work', label: 'Deep Work' }
   }
   return { classification: 'quick-task', label: 'Quick Task' }
+}
+
+function getGitRepoMetadata(projectPath: string): { repoUrl?: string; repoVisibility?: 'public' | 'private' | 'unknown'; repoContributorCount?: number } {
+  try {
+    // Get remote URL
+    const rawUrl = execSync(`git -C "${projectPath}" remote get-url origin 2>/dev/null`, { encoding: 'utf-8', timeout: 3000 }).trim()
+    if (!rawUrl) return {}
+
+    // Normalize SSH URLs to HTTPS for display
+    let repoUrl = rawUrl
+    const sshMatch = rawUrl.match(/^git@([^:]+):(.+?)(?:\.git)?$/)
+    if (sshMatch) {
+      repoUrl = `https://${sshMatch[1]}/${sshMatch[2]}`
+    } else if (rawUrl.endsWith('.git')) {
+      repoUrl = rawUrl.replace(/\.git$/, '')
+    }
+
+    // Try to get visibility and contributor count from GitHub API (requires gh CLI)
+    let repoVisibility: 'public' | 'private' | 'unknown' = 'unknown'
+    let repoContributorCount: number | undefined
+    try {
+      // Extract owner/repo from URL
+      const ghMatch = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/)
+      if (ghMatch) {
+        const nwo = ghMatch[1]
+        const repoJson = execSync(`gh api repos/${nwo} --jq '{"visibility": .visibility, "private": .private}' 2>/dev/null`, { encoding: 'utf-8', timeout: 5000 }).trim()
+        if (repoJson) {
+          const data = JSON.parse(repoJson)
+          repoVisibility = data.private ? 'private' : 'public'
+        }
+        // Get contributor count (unique authors in last 100 commits as fast approximation)
+        const authors = execSync(`git -C "${projectPath}" log --format="%ae" -100 2>/dev/null | sort -u | wc -l`, { encoding: 'utf-8', timeout: 3000 }).trim()
+        const count = parseInt(authors, 10)
+        if (!isNaN(count) && count > 0) {
+          repoContributorCount = count
+        }
+      }
+    } catch {
+      // gh not available or API failed — visibility stays 'unknown'
+    }
+
+    return { repoUrl, repoVisibility, repoContributorCount }
+  } catch {
+    return {}
+  }
 }
 
 function getGitCommits(projectPath: string, since?: string | null, limit = 20): { hash: string; message: string; date: string; author: string }[] {
@@ -457,6 +502,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           // No README or unreadable — description stays undefined
         }
 
+        // Repository metadata (git remote, visibility, contributors)
+        const repoMeta = getGitRepoMetadata(project.path)
+
         // Compute health ratio from all sessions
         const allSessions = getAllProjectSessions(slug)
         const healthRatio = { done: 0, failed: 0, active: 0, total: allSessions.length }
@@ -498,6 +546,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           agentSessionCount,
           delegationRatio,
           meaningfulSuccessRate,
+          repoUrl: repoMeta.repoUrl,
+          repoVisibility: repoMeta.repoVisibility,
+          repoContributorCount: repoMeta.repoContributorCount,
         }
         return result
       } catch (err) {
@@ -786,6 +837,22 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     },
   )
 
+  // --- Open external URL handler ---
+  const ALLOWED_PROTOCOLS = new Set(['https:', 'http:'])
+  ipcMain.handle(
+    IPC_CHANNELS.OPEN_EXTERNAL,
+    async (_event, { url }: { url: string }): Promise<void> => {
+      try {
+        const parsed = new URL(url)
+        if (ALLOWED_PROTOCOLS.has(parsed.protocol)) {
+          await shell.openExternal(parsed.toString())
+        }
+      } catch {
+        console.error('[ipc] OPEN_EXTERNAL blocked:', url)
+      }
+    },
+  )
+
   mainWindow.on('closed', () => {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_INPUT, onInput)
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
@@ -801,6 +868,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_REGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_UNREGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_LIST_REGISTERED)
+    ipcMain.removeHandler(IPC_CHANNELS.OPEN_EXTERNAL)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_LIST_INITIAL)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_HIDE)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_BATCH_HIDE)
