@@ -204,6 +204,46 @@ export function extractFirstPrompt(events: ParsedEvent[]): string | undefined {
   return undefined
 }
 
+// Patterns that indicate an automated/infrastructure prompt, not real user intent.
+const AUTOMATED_PROMPT_PATTERNS = [
+  /^load_skill\s*\(/i,
+  /^Execute recipe/i,
+  /^amplifier\s+tool/i,
+  /^amplifier\s+session/i,
+]
+
+function isAutomatedPrompt(text: string): boolean {
+  const trimmed = text.trim()
+  return AUTOMATED_PROMPT_PATTERNS.some((pattern) => pattern.test(trimmed))
+}
+
+/**
+ * Extract the best title from session events.
+ * Skips automated/infrastructure prompts (load_skill, Execute recipe, etc.)
+ * and finds the first substantive human prompt.
+ * Falls back to first prompt if all prompts are automated.
+ */
+export function extractBestTitle(events: ParsedEvent[]): string | undefined {
+  let firstPromptText: string | undefined
+
+  for (const event of events) {
+    if (event.type !== 'prompt:submit' && event.type !== 'user_message') continue
+
+    const data = event.data as Record<string, unknown>
+    const text = (data.prompt ?? data.text ?? data.content) as string | undefined
+    if (!text) continue
+
+    if (!firstPromptText) firstPromptText = text
+
+    if (!isAutomatedPrompt(text)) {
+      return deriveSessionTitle(text)
+    }
+  }
+
+  // All prompts were automated — fall back to first one
+  return firstPromptText ? deriveSessionTitle(firstPromptText) : undefined
+}
+
 export interface SessionStats {
   promptCount: number
   toolCallCount: number

@@ -1,10 +1,11 @@
 import { app, BrowserWindow, Menu, shell, net, protocol } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
+import { readdirSync, existsSync, statSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles, updateSessionStats, getSessionsWithZeroStats } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles, updateSessionStats, getSessionsWithZeroStats, incrementSessionStats, getKnownSessionIds, getSessionsNeedingBackfill } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
@@ -12,7 +13,7 @@ import { isSubSession } from './scanner'
 import { unhideSession } from './db'
 import { hasPty, hasCanvasPtyForProject } from './pty'
 import { getWorkspaceState } from './workspace'
-import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle, streamSessionStats } from './events-parser'
+import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle, extractBestTitle, streamSessionStats } from './events-parser'
 import type { SessionState } from '../shared/types'
 
 // Main-process session registry — watcher pushes new sessions here
@@ -310,13 +311,93 @@ app.whenReady().then(() => {
         console.log(`[startup] Watchers started for ${registeredProjects.length} projects`)
       }, 0)
 
-      // (6) Async backfill: stream-count stats for sessions with promptCount=0.
-      // Runs in background after the UI has painted. Non-blocking.
+      // (6) Background discovery: find sessions on disk not yet in the DB.
+      // The DB is the persistent index — on most launches, most sessions are
+      // already indexed and this step is fast (just a readdir + set diff).
+      // New sessions are indexed with full-file streaming stats.
+      // Also backfills sessions with wrong stats from the old broken scanner.
       setTimeout(async () => {
+        let newSessionsIndexed = 0
         let statsBackfilled = 0
+
         for (const project of registeredProjects) {
-          const zeroSessions = getSessionsWithZeroStats(project.slug)
-          for (const row of zeroSessions) {
+          const sessionsDir = join(projectsDir, project.slug, 'sessions')
+          if (!existsSync(sessionsDir)) continue
+
+          // Discover all session dirs on disk, sorted by mtime (newest first)
+          const diskEntries = readdirSync(sessionsDir, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
+            .map((entry) => {
+              let mtime = 0
+              try {
+                mtime = statSync(join(sessionsDir, entry.name)).mtimeMs
+              } catch { /* skip */ }
+              return { name: entry.name, mtime }
+            })
+            .sort((a, b) => b.mtime - a.mtime)
+
+          const knownIds = getKnownSessionIds(project.slug)
+          const newEntries = diskEntries.filter((e) => !knownIds.has(e.name))
+
+          if (newEntries.length > 0) {
+            console.log(`[discovery] ${project.slug}: ${newEntries.length} new sessions to index (of ${diskEntries.length} on disk)`)
+          }
+
+          // Index new sessions: accurate stats via streamSessionStats, title via headReadEvents
+          for (const entry of newEntries) {
+            await new Promise<void>((resolve) => setImmediate(resolve))
+
+            const eventsPath = join(sessionsDir, entry.name, 'events.jsonl')
+            if (!existsSync(eventsPath)) continue
+
+            try {
+              const headEvents = headReadEvents(eventsPath)
+              const status = deriveSessionStatus(headEvents)
+              const startEvent = headEvents.find((e: { type: string }) => e.type === 'session:start')
+              const startedAt = startEvent ? (startEvent as { timestamp: string }).timestamp : new Date(entry.mtime).toISOString()
+              const title = extractBestTitle(headEvents)
+              const firstPrompt = extractFirstPrompt(headEvents)
+              const stats = await streamSessionStats(eventsPath)
+              const fileSize = statSync(eventsPath).size
+              const endEvent = headEvents.find((e: { type: string }) => e.type === 'session:end')
+              const endedAt = endEvent ? (endEvent as { timestamp: string }).timestamp : undefined
+              const exitCode = endEvent ? ((endEvent as { data: Record<string, unknown> }).data.exitCode as number) : undefined
+
+              upsertSession({
+                id: entry.name,
+                projectSlug: project.slug,
+                startedBy: 'external',
+                startedAt,
+                status,
+                byteOffset: fileSize,
+                hidden: true,
+                title: title ?? null,
+                promptCount: stats.promptCount,
+                toolCallCount: stats.toolCallCount,
+              })
+
+              if (endedAt) {
+                finalizeSession(entry.name, {
+                  status,
+                  endedAt: endedAt ?? null,
+                  exitCode: exitCode ?? null,
+                  title: title ?? null,
+                  firstPrompt: firstPrompt ?? null,
+                  promptCount: stats.promptCount,
+                  toolCallCount: stats.toolCallCount,
+                  filesChangedCount: 0,
+                })
+              }
+
+              newSessionsIndexed++
+            } catch {
+              // Skip unreadable sessions
+            }
+          }
+
+          // Backfill: fix sessions with wrong stats from the old broken scanner
+          const needsBackfill = getSessionsNeedingBackfill(project.slug)
+          for (const row of needsBackfill) {
             const eventsPath = join(projectsDir, project.slug, 'sessions', row.id, 'events.jsonl')
             try {
               const stats = await streamSessionStats(eventsPath)
@@ -329,10 +410,10 @@ app.whenReady().then(() => {
             }
           }
         }
-        if (statsBackfilled > 0) {
-          console.log(`[startup] Back-filled stats for ${statsBackfilled} sessions`)
-          // Re-push sessions so the UI gets updated stats
-          const updatedSessions: SessionState[] = []
+
+        if (newSessionsIndexed > 0 || statsBackfilled > 0) {
+          console.log(`[discovery] Indexed ${newSessionsIndexed} new sessions, backfilled ${statsBackfilled} stats`)
+          // Re-push updated sessions to the UI
           for (const project of registeredProjects) {
             const dbSessions = getVisibleProjectSessions(project.slug)
             for (const row of dbSessions) {
@@ -388,15 +469,17 @@ app.whenReady().then(() => {
         }
 
         const existingTitle = liveSessions.get(data.sessionId)?.title
-        const firstPrompt = extractFirstPrompt(events)
-        const title = (firstPrompt ? deriveSessionTitle(firstPrompt) : undefined) ?? existingTitle
+        // Use extractBestTitle to skip automated prefixes (load_skill, Execute recipe)
+        // and find the first substantive human prompt for the title.
+        const title = extractBestTitle(events) ?? existingTitle
 
         // Only unhide sessions that Canvas started (has an active PTY for).
         // Amplifier may spawn delegate/child sessions as side effects — those stay hidden.
         const canvasOwnsSession = hasPty(data.sessionId) || hasCanvasPtyForProject(data.projectSlug)
 
-        // Persist session to DB with title on every watcher update — not just finalization.
-        // COALESCE in the SQL ensures we never overwrite a good title with null.
+        // Stats from extractSessionStats only cover the NEW chunk (byteOffset to EOF).
+        // We use incrementSessionStats (additive) instead of passing stats to upsertSession
+        // (which uses MAX and would never increase beyond the initial scan value).
         const stats = extractSessionStats(events)
         upsertSession({
           id: data.sessionId,
@@ -407,13 +490,17 @@ app.whenReady().then(() => {
           byteOffset: newByteOffset,
           hidden: !canvasOwnsSession,
           title: title ?? null,
-          // Update stats on every watcher tick, not just finalization.
-          // Without this, active sessions show promptCount=0 and get
-          // misclassified as automated/ghost in the History tab.
-          promptCount: stats.promptCount,
-          toolCallCount: stats.toolCallCount,
-          filesChangedCount: stats.filesChanged.size,
+          // Don't pass stats here — upsertSession uses MAX(old, new) which
+          // doesn't accumulate. Use incrementSessionStats below instead.
         })
+        // Additive: add this chunk's counts to the running DB totals.
+        // Safe because byteOffset tracking ensures no double-counting.
+        incrementSessionStats(
+          data.sessionId,
+          stats.promptCount,
+          stats.toolCallCount,
+          stats.filesChanged.size,
+        )
         if (canvasOwnsSession) {
           unhideSession(data.sessionId)
         }
@@ -425,6 +512,7 @@ app.whenReady().then(() => {
             : undefined
 
         if ((status === 'done' || status === 'failed') && endedAt) {
+          const firstPrompt = extractFirstPrompt(events)
           finalizeSession(data.sessionId, {
             status,
             endedAt,

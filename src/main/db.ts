@@ -205,6 +205,51 @@ export function getSessionsWithZeroStats(projectSlug: string): { id: string }[] 
   ).all(projectSlug) as { id: string }[]
 }
 
+/** Get all session IDs already indexed in the DB for a project */
+export function getKnownSessionIds(projectSlug: string): Set<string> {
+  const d = getDatabase()
+  const rows = d.prepare('SELECT id FROM sessions WHERE projectSlug = ?').all(projectSlug) as { id: string }[]
+  return new Set(rows.map((r) => r.id))
+}
+
+/** Get session IDs that are still active and need stats refresh */
+export function getActiveSessionIds(projectSlug: string): Set<string> {
+  const d = getDatabase()
+  const rows = d
+    .prepare("SELECT id FROM sessions WHERE projectSlug = ? AND status IN ('active', 'needs_input')")
+    .all(projectSlug) as { id: string }[]
+  return new Set(rows.map((r) => r.id))
+}
+
+/** Increment session stats by delta amounts (for watcher incremental updates).
+ *  This is additive — each watcher tick adds the NEW chunk's counts to the running totals.
+ *  Unlike upsertSession's MAX() semantics, this correctly accumulates counts from
+ *  successive incremental reads of the events.jsonl file. */
+export function incrementSessionStats(
+  id: string,
+  promptDelta: number,
+  toolCallDelta: number,
+  filesChangedDelta: number,
+): void {
+  const d = getDatabase()
+  d.prepare(
+    `UPDATE sessions SET
+      promptCount = promptCount + ?,
+      toolCallCount = toolCallCount + ?,
+      filesChangedCount = filesChangedCount + ?
+    WHERE id = ?`,
+  ).run(promptDelta, toolCallDelta, filesChangedDelta, id)
+}
+
+/** Sessions with low promptCount but large byteOffset likely have wrong stats
+ *  from the old broken scanner. Used for one-time backfill after upgrade. */
+export function getSessionsNeedingBackfill(projectSlug: string): { id: string }[] {
+  const d = getDatabase()
+  return d
+    .prepare('SELECT id FROM sessions WHERE projectSlug = ? AND promptCount <= 1 AND byteOffset > 100000')
+    .all(projectSlug) as { id: string }[]
+}
+
 export function getRecentSessionSummaries(projectSlug: string, limit = 20): {
   title: string | null
   status: string

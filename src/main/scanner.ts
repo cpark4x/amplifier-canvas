@@ -1,14 +1,25 @@
 import { readdirSync, existsSync, statSync } from 'fs'
 import { join } from 'path'
 import os from 'os'
-import { upsertProject, upsertSession, finalizeSession } from './db'
+import {
+  upsertProject,
+  upsertSession,
+  finalizeSession,
+  getKnownSessionIds,
+  getActiveSessionIds,
+  getSessionsNeedingBackfill,
+  updateSessionStats,
+} from './db'
 import {
   tailReadEvents,
+  headReadEvents,
+  streamSessionStats,
   deriveSessionStatus,
   extractFileActivity,
   extractWorkDir,
   extractFirstPrompt,
   extractSessionStats,
+  extractBestTitle,
   deriveSessionTitle,
 } from './events-parser'
 import type { SessionState } from '../shared/types'
@@ -24,9 +35,6 @@ export function isSubSession(sessionId: string): boolean {
 
 // Only show projects with activity in the last N days
 const RECENCY_DAYS = 14
-
-// Only deep-scan this many sessions per project (from tail of directory listing)
-const MAX_SESSIONS_PER_PROJECT = 20
 
 export function getAmplifierHome(): string {
   return process.env['AMPLIFIER_HOME'] || join(os.homedir(), '.amplifier')
@@ -80,64 +88,78 @@ export function scanSingleProject(
 
   if (!existsSync(sessionsDir)) return []
 
+  // Sort by mtime (newest first) — no cap. Discover ALL sessions.
   const sessionDirs = readdirSync(sessionsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
-    .map((entry) => entry.name)
-    .slice(-MAX_SESSIONS_PER_PROJECT)
-    .reverse()
+    .map((entry) => {
+      let mtime = 0
+      try {
+        mtime = statSync(join(sessionsDir, entry.name)).mtimeMs
+      } catch {
+        /* skip */
+      }
+      return { name: entry.name, mtime }
+    })
+    .sort((a, b) => b.mtime - a.mtime)
 
   const sessions: SessionState[] = []
 
-  for (const sessionId of sessionDirs) {
+  for (const { name: sessionId, mtime } of sessionDirs) {
     const eventsPath = join(sessionsDir, sessionId, 'events.jsonl')
     if (!existsSync(eventsPath)) continue
 
     try {
-      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
-      const status = deriveSessionStatus(events)
-      const recentFiles = extractFileActivity(events)
-      const sessionPath = join(sessionsDir, sessionId)
-      const workDir = extractWorkDir(events, sessionPath)
+      // Use headReadEvents for title (reads first 1MB — fast, gets session:start + first prompts)
+      const headEvents = headReadEvents(eventsPath)
+      const status = deriveSessionStatus(headEvents)
 
       let startedAt: string
-      const startEvent = events.find((e: { type: string }) => e.type === 'session:start')
+      const startEvent = headEvents.find((e: { type: string }) => e.type === 'session:start')
       if (startEvent) {
         startedAt = (startEvent as { timestamp: string }).timestamp
       } else {
-        startedAt = statSync(eventsPath).mtime.toISOString()
+        startedAt = new Date(mtime).toISOString()
       }
 
-      const firstPrompt = extractFirstPrompt(events)
-      const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
-      const stats = extractSessionStats(events)
-      const endEvent = events.find((e: { type: string }) => e.type === 'session:end')
+      const title = extractBestTitle(headEvents)
+      const firstPrompt = extractFirstPrompt(headEvents)
+      const endEvent = headEvents.find((e: { type: string }) => e.type === 'session:end')
       const endedAt = endEvent ? (endEvent as { timestamp: string }).timestamp : undefined
       const exitCode = endEvent
         ? ((endEvent as { data: Record<string, unknown> }).data.exitCode as number)
         : undefined
 
-      // Persist to DB as hidden — sessions only become visible when the user
-      // explicitly launches or resumes them. This prevents the sidebar from
-      // filling with historical sessions the user never asked for.
+      // For stats: headReadEvents only covers first 1MB, so stats will be
+      // partial for large sessions. The initial scan uses headEvents for a
+      // quick estimate; the async scan (scanSessionsAsync) uses
+      // streamSessionStats for accurate full-file counts.
+      const headStats = extractSessionStats(headEvents)
+
       upsertSession({
         id: sessionId,
         projectSlug: slug,
         startedBy: 'external',
         startedAt,
         status,
-        byteOffset: newByteOffset,
+        byteOffset: 0, // Will be updated by async scan or watcher
         hidden: true,
-      })
-      finalizeSession(sessionId, {
-        status,
-        endedAt: endedAt ?? null,
-        exitCode: exitCode ?? null,
         title: title ?? null,
-        firstPrompt: firstPrompt ?? null,
-        promptCount: stats.promptCount,
-        toolCallCount: stats.toolCallCount,
-        filesChangedCount: stats.filesChanged.size,
+        promptCount: headStats.promptCount,
+        toolCallCount: headStats.toolCallCount,
+        filesChangedCount: headStats.filesChanged.size,
       })
+      if (endedAt) {
+        finalizeSession(sessionId, {
+          status,
+          endedAt: endedAt ?? null,
+          exitCode: exitCode ?? null,
+          title: title ?? null,
+          firstPrompt: firstPrompt ?? null,
+          promptCount: headStats.promptCount,
+          toolCallCount: headStats.toolCallCount,
+          filesChangedCount: headStats.filesChanged.size,
+        })
+      }
 
       sessions.push({
         id: sessionId,
@@ -146,15 +168,15 @@ export function scanSingleProject(
         status,
         startedAt,
         startedBy: 'external',
-        byteOffset: newByteOffset,
-        recentFiles,
-        workDir,
+        byteOffset: 0,
+        recentFiles: [],
+        workDir: undefined,
         title,
         endedAt,
         exitCode,
-        promptCount: stats.promptCount,
-        toolCallCount: stats.toolCallCount,
-        filesChangedCount: stats.filesChanged.size,
+        promptCount: headStats.promptCount,
+        toolCallCount: headStats.toolCallCount,
+        filesChangedCount: headStats.filesChanged.size,
       })
     } catch {
       // Skip sessions with unreadable events.jsonl
@@ -211,23 +233,32 @@ export function scanProjects(amplifierHome?: string): ScanResult {
     const sessionsDir = join(projectPath, 'sessions')
     if (!existsSync(sessionsDir)) continue
 
-    const allSessionNames = readdirSync(sessionsDir, { withFileTypes: true })
+    // Discover ALL sessions, sort by mtime (newest first).
+    // No cap — every session on disk should eventually be indexed.
+    const allSessionEntries = readdirSync(sessionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
-      .map((entry) => entry.name)
+      .map((entry) => {
+        let mtime = 0
+        try {
+          mtime = statSync(join(sessionsDir, entry.name)).mtimeMs
+        } catch {
+          /* skip */
+        }
+        return { name: entry.name, mtime }
+      })
+      .sort((a, b) => b.mtime - a.mtime)
 
-    const recentNames = allSessionNames.slice(-MAX_SESSIONS_PER_PROJECT).reverse()
-
-    for (const sessionId of recentNames) {
+    for (const { name: sessionId, mtime } of allSessionEntries) {
       const eventsPath = join(sessionsDir, sessionId, 'events.jsonl')
       if (!existsSync(eventsPath)) continue
 
-      // Lightweight stub — no file I/O beyond existsSync
+      // Lightweight stub — only uses directory stat, no events.jsonl I/O
       allSessions.push({
         id: sessionId,
         projectSlug,
         projectName,
         status: 'loading',
-        startedAt: new Date().toISOString(),
+        startedAt: new Date(mtime).toISOString(),
         startedBy: 'external',
         byteOffset: 0,
         recentFiles: [],
@@ -240,9 +271,14 @@ export function scanProjects(amplifierHome?: string): ScanResult {
   return { projectCount, sessionCount: allSessions.length, sessions: allSessions }
 }
 
-/** Async incremental scan — reads one session at a time, yielding to the
- *  event loop between each so the UI stays responsive. Calls `onProgress`
- *  after every session with the full updated list. */
+/** Async incremental scan — only processes sessions NOT already in the DB,
+ *  plus active sessions that need stats refresh. Uses streamSessionStats()
+ *  for accurate full-file counts on new sessions, and tailReadEvents() for
+ *  incremental updates on active sessions.
+ *
+ *  This is the key architectural change: the DB is the persistent index.
+ *  On subsequent launches, most sessions are already indexed and skipped.
+ *  Only truly new sessions (and active ones) get file I/O. */
 export async function scanSessionsAsync(
   amplifierHome: string,
   stubs: SessionState[],
@@ -251,89 +287,170 @@ export async function scanSessionsAsync(
   const projectsDir = join(amplifierHome, 'projects')
   const results: SessionState[] = []
 
+  // Group stubs by project so we can batch DB lookups
+  const stubsByProject = new Map<string, SessionState[]>()
   for (const stub of stubs) {
-    // Yield to event loop so the renderer can paint + handle input
-    await new Promise<void>((resolve) => setImmediate(resolve))
+    const list = stubsByProject.get(stub.projectSlug) ?? []
+    list.push(stub)
+    stubsByProject.set(stub.projectSlug, list)
+  }
 
-    const sessionsDir = join(projectsDir, stub.projectSlug, 'sessions')
-    const eventsPath = join(sessionsDir, stub.id, 'events.jsonl')
+  for (const [projectSlug, projectStubs] of stubsByProject) {
+    // One DB query per project — get sessions already indexed
+    const knownIds = getKnownSessionIds(projectSlug)
+    const activeIds = getActiveSessionIds(projectSlug)
 
-    try {
-      const { events, newByteOffset } = tailReadEvents(eventsPath, 0)
-      const status = deriveSessionStatus(events)
-      const recentFiles = extractFileActivity(events)
-      const sessionPath = join(sessionsDir, stub.id)
-      const workDir = extractWorkDir(events, sessionPath)
+    // Split into: new (not in DB) vs active (in DB but running)
+    const newStubs = projectStubs.filter((s) => !knownIds.has(s.id))
+    const activeStubs = projectStubs.filter((s) => knownIds.has(s.id) && activeIds.has(s.id))
+    const skipped = projectStubs.length - newStubs.length - activeStubs.length
 
-      let startedAt: string
-      const startEvent = events.find((e) => e.type === 'session:start')
-      if (startEvent) {
-        startedAt = startEvent.timestamp
-      } else {
-        startedAt = statSync(eventsPath).mtime.toISOString()
+    console.log(
+      `[scanner] ${projectSlug}: ${newStubs.length} new, ${activeStubs.length} active, ${skipped} already indexed (skipped)`,
+    )
+
+    // Process NEW sessions — full indexing with accurate stats
+    for (const stub of newStubs) {
+      await new Promise<void>((resolve) => setImmediate(resolve))
+
+      const sessionsDir = join(projectsDir, stub.projectSlug, 'sessions')
+      const eventsPath = join(sessionsDir, stub.id, 'events.jsonl')
+
+      try {
+        // headReadEvents reads first 1MB — gets session:start, first prompts, title
+        const headEvents = headReadEvents(eventsPath)
+        const status = deriveSessionStatus(headEvents)
+
+        let startedAt = stub.startedAt
+        const startEvent = headEvents.find((e) => e.type === 'session:start')
+        if (startEvent) {
+          startedAt = startEvent.timestamp
+        }
+
+        const title = extractBestTitle(headEvents)
+        const firstPrompt = extractFirstPrompt(headEvents)
+
+        // streamSessionStats reads the FULL file line-by-line — accurate counts
+        // even for 430MB files. This is async and non-blocking.
+        const stats = await streamSessionStats(eventsPath)
+
+        const endEvent = headEvents.find((e) => e.type === 'session:end')
+        const endedAt = endEvent?.timestamp
+        const exitCode =
+          endEvent !== undefined
+            ? ((endEvent.data as Record<string, unknown>).exitCode as number)
+            : undefined
+
+        const fileSize = statSync(eventsPath).size
+
+        upsertSession({
+          id: stub.id,
+          projectSlug: stub.projectSlug,
+          startedBy: 'external',
+          startedAt,
+          status,
+          byteOffset: fileSize,
+          hidden: true,
+          title: title ?? null,
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+        })
+
+        if (endedAt) {
+          finalizeSession(stub.id, {
+            status,
+            endedAt: endedAt ?? null,
+            exitCode: exitCode ?? null,
+            title: title ?? null,
+            firstPrompt: firstPrompt ?? null,
+            promptCount: stats.promptCount,
+            toolCallCount: stats.toolCallCount,
+            filesChangedCount: 0, // streamSessionStats doesn't track files (fast path)
+          })
+        }
+
+        results.push({
+          id: stub.id,
+          projectSlug: stub.projectSlug,
+          projectName: stub.projectName,
+          status,
+          startedAt,
+          startedBy: 'external',
+          byteOffset: fileSize,
+          recentFiles: [],
+          workDir: undefined,
+          title,
+          endedAt,
+          exitCode,
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+          filesChangedCount: 0,
+        })
+      } catch (err) {
+        console.warn(
+          `[scanner] Skipping new session ${stub.id}: ${err instanceof Error ? err.message : String(err)}`,
+        )
       }
 
-      const firstPrompt = extractFirstPrompt(events)
-      const title = firstPrompt ? deriveSessionTitle(firstPrompt) : undefined
-      const stats = extractSessionStats(events)
-      const endEvent = events.find((e) => e.type === 'session:end')
-      const endedAt = endEvent?.timestamp
-      const exitCode =
-        endEvent !== undefined
-          ? ((endEvent.data as Record<string, unknown>).exitCode as number)
-          : undefined
-
-      upsertSession({
-        id: stub.id,
-        projectSlug: stub.projectSlug,
-        startedBy: 'external',
-        startedAt,
-        status,
-        byteOffset: newByteOffset,
-        hidden: true,
-      })
-
-      finalizeSession(stub.id, {
-        status,
-        endedAt: endedAt ?? null,
-        exitCode: exitCode ?? null,
-        title: title ?? null,
-        firstPrompt: firstPrompt ?? null,
-        promptCount: stats.promptCount,
-        toolCallCount: stats.toolCallCount,
-        filesChangedCount: stats.filesChanged.size,
-      })
-
-      results.push({
-        id: stub.id,
-        projectSlug: stub.projectSlug,
-        projectName: stub.projectName,
-        status,
-        startedAt,
-        startedBy: 'external',
-        byteOffset: newByteOffset,
-        recentFiles,
-        workDir,
-        title,
-        endedAt,
-        exitCode,
-        promptCount: stats.promptCount,
-        toolCallCount: stats.toolCallCount,
-        filesChangedCount: stats.filesChanged.size,
-      })
-    } catch (err) {
-      console.warn(`[scanner] Skipping session ${stub.id}: ${err instanceof Error ? err.message : String(err)}`)
+      if (results.length % 5 === 0) {
+        onProgress(results)
+      }
     }
 
-    // Push progress every 5 sessions so the UI updates incrementally
-    if (results.length % 5 === 0) {
-      onProgress(results)
+    // Refresh ACTIVE sessions — incremental read from last byteOffset
+    for (const stub of activeStubs) {
+      await new Promise<void>((resolve) => setImmediate(resolve))
+
+      const sessionsDir = join(projectsDir, stub.projectSlug, 'sessions')
+      const eventsPath = join(sessionsDir, stub.id, 'events.jsonl')
+
+      try {
+        const { events, newByteOffset } = tailReadEvents(eventsPath, stub.byteOffset)
+        if (events.length === 0) continue
+
+        const status = deriveSessionStatus(events)
+        const stats = extractSessionStats(events)
+
+        upsertSession({
+          id: stub.id,
+          projectSlug: stub.projectSlug,
+          startedBy: 'external',
+          startedAt: stub.startedAt,
+          status,
+          byteOffset: newByteOffset,
+          hidden: true,
+          promptCount: stats.promptCount,
+          toolCallCount: stats.toolCallCount,
+          filesChangedCount: stats.filesChanged.size,
+        })
+      } catch {
+        // Skip
+      }
+    }
+
+    // Backfill: fix sessions with wrong stats from the old broken scanner.
+    // These have promptCount <= 1 but large files (byteOffset > 100KB).
+    const backfillList = getSessionsNeedingBackfill(projectSlug)
+    if (backfillList.length > 0) {
+      console.log(`[scanner] Backfilling ${backfillList.length} sessions with wrong stats`)
+      for (const session of backfillList) {
+        await new Promise<void>((resolve) => setImmediate(resolve))
+        const sessionsDir = join(projectsDir, projectSlug, 'sessions')
+        const eventsPath = join(sessionsDir, session.id, 'events.jsonl')
+        if (!existsSync(eventsPath)) continue
+        try {
+          const stats = await streamSessionStats(eventsPath)
+          updateSessionStats(session.id, stats.promptCount, stats.toolCallCount)
+        } catch {
+          // Skip
+        }
+      }
     }
   }
 
   // Final push with all results
   onProgress(results)
-  console.log(`[scanner] Async scan complete: ${results.length} sessions hydrated`)
+  console.log(`[scanner] Async scan complete: ${results.length} new sessions indexed`)
   return results
 }
 
