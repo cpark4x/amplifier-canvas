@@ -147,17 +147,27 @@ export function upsertSession(session: {
   byteOffset: number
   hidden?: boolean
   title?: string | null
+  promptCount?: number
+  toolCallCount?: number
+  filesChangedCount?: number
 }): void {
   const d = getDatabase()
   const hidden = session.hidden ? 1 : 0
   d.prepare(`
-    INSERT INTO sessions (id, projectSlug, startedBy, startedAt, status, byteOffset, hidden, title)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sessions (id, projectSlug, startedBy, startedAt, status, byteOffset, hidden, title, promptCount, toolCallCount, filesChangedCount)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       status = excluded.status,
       byteOffset = excluded.byteOffset,
-      title = COALESCE(excluded.title, sessions.title)
-  `).run(session.id, session.projectSlug, session.startedBy, session.startedAt, session.status, session.byteOffset, hidden, session.title ?? null)
+      title = COALESCE(excluded.title, sessions.title),
+      promptCount = MAX(sessions.promptCount, excluded.promptCount),
+      toolCallCount = MAX(sessions.toolCallCount, excluded.toolCallCount),
+      filesChangedCount = MAX(sessions.filesChangedCount, excluded.filesChangedCount)
+  `).run(
+    session.id, session.projectSlug, session.startedBy, session.startedAt,
+    session.status, session.byteOffset, hidden, session.title ?? null,
+    session.promptCount ?? 0, session.toolCallCount ?? 0, session.filesChangedCount ?? 0
+  )
 }
 
 export function unhideSession(id: string): void {
@@ -168,6 +178,18 @@ export function unhideSession(id: string): void {
 export function updateSessionStatus(id: string, status: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET status = ? WHERE id = ?').run(status, id)
+}
+
+export function updateSessionStats(id: string, promptCount: number, toolCallCount: number): void {
+  const d = getDatabase()
+  d.prepare('UPDATE sessions SET promptCount = ?, toolCallCount = ? WHERE id = ?').run(promptCount, toolCallCount, id)
+}
+
+export function getSessionsWithZeroStats(projectSlug: string): { id: string }[] {
+  const d = getDatabase()
+  return d.prepare(
+    'SELECT id FROM sessions WHERE projectSlug = ? AND promptCount = 0'
+  ).all(projectSlug) as { id: string }[]
 }
 
 export function updateSessionTitle(id: string, title: string): void {

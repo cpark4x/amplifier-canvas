@@ -4,7 +4,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles, updateSessionStats, getSessionsWithZeroStats } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
@@ -12,7 +12,7 @@ import { isSubSession } from './scanner'
 import { unhideSession } from './db'
 import { hasPty, hasCanvasPtyForProject } from './pty'
 import { getWorkspaceState } from './workspace'
-import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle } from './events-parser'
+import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle, streamSessionStats } from './events-parser'
 import type { SessionState } from '../shared/types'
 
 // Main-process session registry — watcher pushes new sessions here
@@ -309,6 +309,45 @@ app.whenReady().then(() => {
         }
         console.log(`[startup] Watchers started for ${registeredProjects.length} projects`)
       }, 0)
+
+      // (6) Async backfill: stream-count stats for sessions with promptCount=0.
+      // Runs in background after the UI has painted. Non-blocking.
+      setTimeout(async () => {
+        let statsBackfilled = 0
+        for (const project of registeredProjects) {
+          const zeroSessions = getSessionsWithZeroStats(project.slug)
+          for (const row of zeroSessions) {
+            const eventsPath = join(projectsDir, project.slug, 'sessions', row.id, 'events.jsonl')
+            try {
+              const stats = await streamSessionStats(eventsPath)
+              if (stats.promptCount > 0 || stats.toolCallCount > 0) {
+                updateSessionStats(row.id, stats.promptCount, stats.toolCallCount)
+                statsBackfilled++
+              }
+            } catch {
+              // Skip missing/unreadable events files
+            }
+          }
+        }
+        if (statsBackfilled > 0) {
+          console.log(`[startup] Back-filled stats for ${statsBackfilled} sessions`)
+          // Re-push sessions so the UI gets updated stats
+          const updatedSessions: SessionState[] = []
+          for (const project of registeredProjects) {
+            const dbSessions = getVisibleProjectSessions(project.slug)
+            for (const row of dbSessions) {
+              const existing = liveSessions.get(row.id)
+              if (existing) {
+                existing.promptCount = row.promptCount ?? undefined
+                existing.toolCallCount = row.toolCallCount ?? undefined
+                existing.filesChangedCount = row.filesChangedCount ?? undefined
+              }
+            }
+          }
+          const visibleSessions = Array.from(liveSessions.values()).filter(s => s.hidden !== true)
+          pushSessionsChanged(mainWindow, visibleSessions)
+        }
+      }, 100)
     } catch (err) {
       console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))
       setAllowedDirs([projectsDir])

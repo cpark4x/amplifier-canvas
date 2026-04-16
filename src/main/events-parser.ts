@@ -1,4 +1,5 @@
-import { readFileSync, statSync, openSync, readSync, closeSync } from 'fs'
+import { readFileSync, statSync, openSync, readSync, closeSync, createReadStream } from 'fs'
+import { createInterface } from 'readline'
 import path from 'path'
 import type { FileActivity, SessionStatus } from '../shared/types'
 import type { PromptEntry, TestStatus, GitOperation } from '../shared/analysisTypes'
@@ -244,6 +245,35 @@ export function extractSessionStats(events: ParsedEvent[]): SessionStats {
   }
 
   return { promptCount, toolCallCount, filesChanged, lastEventTimestamp }
+}
+
+/**
+ * Fast streaming stats counter for large events.jsonl files.
+ * Reads line-by-line without loading the entire file into memory.
+ * Only counts event types — doesn't parse full JSON or extract file paths.
+ */
+export async function streamSessionStats(filePath: string): Promise<{ promptCount: number; toolCallCount: number }> {
+  return new Promise((resolve) => {
+    let promptCount = 0
+    let toolCallCount = 0
+
+    const rl = createInterface({
+      input: createReadStream(filePath, { encoding: 'utf-8' }),
+      crlfDelay: Infinity,
+    })
+
+    rl.on('line', (line) => {
+      // Fast string match — avoid JSON.parse on 100K+ character lines
+      if (line.includes('"prompt:submit"') || line.includes('"user_message"')) {
+        promptCount++
+      } else if (line.includes('"tool:pre"') || line.includes('"tool_call"')) {
+        toolCallCount++
+      }
+    })
+
+    rl.on('close', () => resolve({ promptCount, toolCallCount }))
+    rl.on('error', () => resolve({ promptCount, toolCallCount }))
+  })
 }
 
 export function deriveSessionTitle(firstPrompt: string): string {
