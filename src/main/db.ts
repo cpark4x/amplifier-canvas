@@ -217,6 +217,36 @@ export function getRecentSessionSummaries(projectSlug: string, limit = 20): {
   }[]
 }
 
+/** Get ALL sessions for a project (for history tab — no hidden filter) */
+export function getAllProjectSessions(projectSlug: string): {
+  id: string; title: string | null; status: string; startedAt: string;
+  endedAt: string | null; promptCount: number; toolCallCount: number; firstPrompt: string | null;
+}[] {
+  const d = getDatabase()
+  return d.prepare(`
+    SELECT id, title, status, startedAt, endedAt, promptCount, toolCallCount, firstPrompt
+    FROM sessions WHERE projectSlug = ?
+    ORDER BY startedAt DESC
+  `).all(projectSlug) as any[]
+}
+
+/** Get daily session counts for activity heatmap (last N days) */
+export function getDailySessionCounts(projectSlug: string, days = 28): { date: string; total: number; done: number; failed: number; active: number }[] {
+  const d = getDatabase()
+  return d.prepare(`
+    SELECT
+      date(startedAt) as date,
+      COUNT(*) as total,
+      SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as done,
+      SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+      SUM(CASE WHEN status IN ('active','running','needs_input') THEN 1 ELSE 0 END) as active
+    FROM sessions
+    WHERE projectSlug = ? AND startedAt >= datetime('now', '-' || ? || ' days')
+    GROUP BY date(startedAt)
+    ORDER BY date ASC
+  `).all(projectSlug, days) as any[]
+}
+
 export function updateSessionTitle(id: string, title: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET title = ? WHERE id = ?').run(title, id)

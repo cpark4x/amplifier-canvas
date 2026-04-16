@@ -34,6 +34,8 @@ export const IPC_CHANNELS = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
   PROJECT_OVERVIEW: 'project:overview',
+  PROJECT_HISTORY: 'project:history',
+  PROJECT_STATS: 'project:stats',
 } as const
 
 // --- Session types ---
@@ -117,6 +119,36 @@ export interface ProjectOverview {
   lastActivityAt: string
   assessment?: string  // AI-generated project health summary
   outcomes?: string[]  // key outcomes from sessions
+  description?: string  // from README.md
+  healthRatio?: { done: number; failed: number; active: number; total: number }
+  recentSessions?: { title: string; status: string; startedAt: string; promptCount: number }[]
+}
+
+// --- History tab types ---
+
+export interface ProjectHistorySession {
+  id: string
+  title: string | null
+  status: string
+  startedAt: string
+  endedAt: string | null
+  promptCount: number
+  toolCallCount: number
+}
+
+// --- Stats tab types ---
+
+export interface ProjectStatsData {
+  totalSessions: number
+  totalPrompts: number
+  totalToolCalls: number
+  totalFilesChanged: number
+  successRate: number // 0-100
+  avgPromptsPerSession: number
+  avgToolsPerSession: number
+  avgDurationMinutes: number
+  dailyActivity: { date: string; total: number; done: number; failed: number; active: number }[]
+  statusDistribution: { done: number; failed: number; active: number; other: number }
 }
 
 // --- Settings types ---

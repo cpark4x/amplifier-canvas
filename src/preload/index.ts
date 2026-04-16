@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry, WorkspaceState, CanvasSettings, ProjectOverview } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, WorkspaceState, CanvasSettings, ProjectOverview, ProjectHistorySession, ProjectStatsData } from '../shared/types'
 import type { SessionAnalysisData } from '../shared/analysisTypes'
 
 // Expose protected APIs to the renderer process via contextBridge
@@ -197,6 +197,16 @@ const api = {
   // Project overview: get aggregated project data
   getProjectOverview: async (slug: string): Promise<ProjectOverview | null> => {
     return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_OVERVIEW, { slug })
+  },
+
+  // Project history: get all sessions for a project
+  getProjectHistory: (slug: string): Promise<ProjectHistorySession[]> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_HISTORY, { slug })
+  },
+
+  // Project stats: get aggregated stats for a project
+  getProjectStats: (slug: string): Promise<ProjectStatsData | null> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_STATS, { slug })
   },
 }
 

@@ -1,11 +1,14 @@
+import { useState, useEffect, useMemo } from 'react'
 import { useCanvasStore } from '../store'
-import type { SessionState } from '../../../shared/types'
+import type { ProjectHistorySession } from '../../../shared/types'
 
 interface ProjectHistoryTabProps {
   projectSlug: string
 }
 
-const ACTIVE_STATUSES = new Set(['running', 'active', 'needs_input'])
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function formatRelativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime()
@@ -20,7 +23,7 @@ function formatRelativeTime(isoString: string): string {
   return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function formatDuration(startedAt: string, endedAt?: string): string {
+function formatDuration(startedAt: string, endedAt?: string | null): string {
   const end = endedAt ? new Date(endedAt).getTime() : Date.now()
   const ms = end - new Date(startedAt).getTime()
   const minutes = Math.floor(ms / 60_000)
@@ -31,226 +34,246 @@ function formatDuration(startedAt: string, endedAt?: string): string {
   return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`
 }
 
+type DateGroup = 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'Older'
+const GROUP_ORDER: DateGroup[] = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+
+function classifyDate(isoString: string): DateGroup {
+  const now = new Date()
+  const date = new Date(isoString)
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfYesterday = new Date(startOfToday.getTime() - 86_400_000)
+  const sevenDaysAgo = new Date(startOfToday.getTime() - 6 * 86_400_000)
+  const thirtyDaysAgo = new Date(startOfToday.getTime() - 29 * 86_400_000)
+
+  if (date >= startOfToday) return 'Today'
+  if (date >= startOfYesterday) return 'Yesterday'
+  if (date >= sevenDaysAgo) return 'This Week'
+  if (date >= thirtyDaysAgo) return 'This Month'
+  return 'Older'
+}
+
+const ACTIVE_STATUSES = new Set(['running', 'active', 'needs_input'])
+
+function statusColor(status: string): string {
+  if (status === 'done') return 'var(--green)'
+  if (status === 'failed') return 'var(--red)'
+  if (ACTIVE_STATUSES.has(status)) return 'var(--amber)'
+  return 'var(--text-very-muted)'
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.ReactElement {
-  const sessions = useCanvasStore((s) => s.sessions).filter(
-    (s) => s.projectSlug === projectSlug,
-  )
+  const [sessions, setSessions] = useState<ProjectHistorySession[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+
   const selectSession = useCanvasStore((s) => s.selectSession)
   const setViewMode = useCanvasStore((s) => s.setViewMode)
 
-  // Split into active and completed, both sorted most-recent-first
-  const activeSessions = [...sessions]
-    .filter((s) => ACTIVE_STATUSES.has(s.status))
-    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    window.electronAPI
+      .getProjectHistory(projectSlug)
+      .then((data: ProjectHistorySession[]) => {
+        if (!cancelled) setSessions(data)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectSlug])
 
-  const completedSessions = [...sessions]
-    .filter((s) => !ACTIVE_STATUSES.has(s.status))
-    .sort((a, b) => {
-      const aTime = new Date(b.endedAt ?? b.startedAt).getTime()
-      const bTime = new Date(a.endedAt ?? a.startedAt).getTime()
-      return aTime - bTime
-    })
+  // Filtered list
+  const filtered = useMemo(() => {
+    if (!query.trim()) return sessions
+    const q = query.toLowerCase()
+    return sessions.filter((s) => (s.title ?? '').toLowerCase().includes(q))
+  }, [sessions, query])
 
-  function handleNavigate(session: SessionState): void {
-    selectSession(session.id)
+  // Counts (from filtered)
+  const completedCount = filtered.filter((s) => s.status === 'done').length
+  const failedCount = filtered.filter((s) => s.status === 'failed').length
+
+  // Group by date, sorted most-recent-first within each group
+  const grouped = useMemo(() => {
+    const sorted = [...filtered].sort(
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+    )
+    const map = new Map<DateGroup, ProjectHistorySession[]>()
+    for (const s of sorted) {
+      const g = classifyDate(s.startedAt)
+      if (!map.has(g)) map.set(g, [])
+      map.get(g)!.push(s)
+    }
+    return GROUP_ORDER.filter((g) => map.has(g)).map((g) => ({
+      label: g,
+      sessions: map.get(g)!,
+    }))
+  }, [filtered])
+
+  // Handlers
+  function handleClick(id: string): void {
+    selectSession(id)
     setViewMode('session')
+  }
+
+  // --- Render ---
+
+  if (loading) {
+    return (
+      <div data-testid="project-history-tab">
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading history...</div>
+      </div>
+    )
   }
 
   return (
     <div data-testid="project-history-tab">
-      {/* Currently open sessions */}
-      {activeSessions.length > 0 && (
-        <>
+      {/* Search bar */}
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search sessions..."
+        style={{
+          width: '100%',
+          boxSizing: 'border-box',
+          fontSize: 13,
+          padding: '8px 12px',
+          background: 'var(--bg-modal)',
+          border: '1px solid var(--border)',
+          borderRadius: 6,
+          color: 'var(--text-primary)',
+          fontFamily: 'var(--font-ui)',
+          outline: 'none',
+          marginBottom: 16,
+        }}
+      />
+
+      {/* Summary line */}
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+        {filtered.length} session{filtered.length !== 1 ? 's' : ''} &middot;{' '}
+        {completedCount} completed &middot; {failedCount} failed
+      </div>
+
+      {/* Empty states */}
+      {sessions.length === 0 && (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No sessions found.</div>
+      )}
+      {sessions.length > 0 && filtered.length === 0 && query.trim() && (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          No sessions matching &lsquo;{query.trim()}&rsquo;.
+        </div>
+      )}
+
+      {/* Grouped sessions */}
+      {grouped.map((group, groupIdx) => (
+        <div key={group.label}>
+          {/* Group heading */}
           <div
             style={{
               fontSize: 10,
               fontWeight: 600,
-              textTransform: 'uppercase' as const,
+              textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              color: 'var(--amber)',
+              color: 'var(--text-muted)',
+              marginTop: groupIdx === 0 ? 0 : 16,
               marginBottom: 6,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
             }}
           >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: 'var(--amber)',
-                display: 'inline-block',
-              }}
-            />
-            Currently Open
+            {group.label}
           </div>
-          {activeSessions.map((session) => (
-            <div
-              key={session.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '9px 2px',
-                background: 'rgba(245,158,11,0.04)',
-                marginBottom: 4,
-                borderBottom: '1px solid var(--border)',
-                cursor: 'pointer',
-                gap: 12,
-              }}
-              onClick={() => handleNavigate(session)}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {session.title || session.id}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--amber)',
-                    fontFamily: 'var(--font-mono)',
-                    marginTop: 2,
-                  }}
-                >
-                  running &middot; {formatDuration(session.startedAt)}
-                  {session.worktree && session.worktree !== 'main' && (
-                    <> &middot; &#x219F; {session.worktree}</>
-                  )}
-                </div>
-              </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: 'var(--amber)',
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                }}
-              >
-                View &rarr;
-              </span>
-            </div>
-          ))}
-        </>
-      )}
 
-      {/* Completed session history */}
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          textTransform: 'uppercase' as const,
-          letterSpacing: '0.08em',
-          color: 'var(--text-very-muted)',
-          margin: `${activeSessions.length > 0 ? 14 : 0}px 0 6px`,
-        }}
-      >
-        History
-      </div>
-      {completedSessions.length === 0 && (
-        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          No completed sessions yet.
-        </div>
-      )}
-      {completedSessions.map((session, i) => {
-        const timestamp = formatRelativeTime(session.endedAt ?? session.startedAt)
-        const duration = formatDuration(session.startedAt, session.endedAt)
+          {/* Session rows */}
+          {group.sessions.map((session, i) => {
+            const isLast = i === group.sessions.length - 1
+            const duration = formatDuration(session.startedAt, session.endedAt)
+            const relTime = formatRelativeTime(session.startedAt)
+            const hasTitle = session.title != null && session.title.length > 0
 
-        return (
-          <div
-            key={session.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '9px 0',
-              borderBottom:
-                i < completedSessions.length - 1
-                  ? '1px solid var(--border)'
-                  : 'none',
-              cursor: 'pointer',
-              gap: 12,
-            }}
-            onClick={() => handleNavigate(session)}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {session.title || session.id}
-                </span>
-                {/* Worktree/branch badge */}
-                {session.worktree && session.worktree !== 'main' && (
-                  <span
-                    style={{
-                      fontSize: 9,
-                      fontFamily: 'var(--font-mono)',
-                      color: 'var(--text-very-muted)',
-                      background: 'var(--bg-sidebar)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 3,
-                      padding: '1px 5px',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    &#x219F; {session.worktree}
-                  </span>
-                )}
-                {/* Commit hash badge */}
-                {session.commitHash && (
-                  <span
-                    style={{
-                      fontSize: 9,
-                      fontFamily: 'var(--font-mono)',
-                      color: 'var(--text-very-muted)',
-                      background: 'var(--bg-sidebar)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 3,
-                      padding: '1px 5px',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    {session.commitHash}
-                  </span>
-                )}
-              </div>
+            return (
               <div
+                key={session.id}
+                onClick={() => handleClick(session.id)}
                 style={{
-                  fontSize: 11,
-                  color: 'var(--text-very-muted)',
-                  fontFamily: 'var(--font-mono)',
-                  marginTop: 2,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  padding: '8px 4px',
+                  borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                  cursor: 'pointer',
+                  gap: 10,
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
                 }}
               >
-                {timestamp} &middot; {duration}
-                {session.promptCount != null && <> &middot; {session.promptCount} prompts</>}
-                {session.filesChangedCount != null && session.filesChangedCount > 0 && (
-                  <> &middot; {session.filesChangedCount} files</>
-                )}
+                {/* Status dot */}
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: statusColor(session.status),
+                    flexShrink: 0,
+                    marginTop: 5,
+                  }}
+                />
+
+                {/* Title + metadata */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: hasTitle ? 'var(--text-primary)' : 'var(--text-very-muted)',
+                      fontStyle: hasTitle ? 'normal' : 'italic',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {hasTitle ? session.title : '(no title)'}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--text-very-muted)',
+                      marginTop: 2,
+                    }}
+                  >
+                    {duration} &middot; {session.promptCount} prompt
+                    {session.promptCount !== 1 ? 's' : ''} &middot; {session.toolCallCount} tool
+                    call{session.toolCallCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
+
+                {/* Relative time */}
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: 'var(--text-muted)',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    marginTop: 1,
+                  }}
+                >
+                  {relTime}
+                </div>
               </div>
-            </div>
-            <span
-              style={{
-                fontSize: 11,
-                color: 'var(--amber)',
-                flexShrink: 0,
-                cursor: 'pointer',
-              }}
-            >
-              Resume &rarr;
-            </span>
-          </div>
-        )
-      })}
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

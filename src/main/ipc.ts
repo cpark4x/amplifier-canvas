@@ -3,7 +3,7 @@ import { mkdirSync, existsSync } from 'fs'
 import { readdir, stat, readFile } from 'fs/promises'
 import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, ProjectStatsData, ProjectHistorySession } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject } from './pty'
 import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk } from './scanner'
 import {
@@ -16,6 +16,8 @@ import {
   getProjectBySlug,
   getProjectOverviewStats,
   getRecentSessionSummaries,
+  getAllProjectSessions,
+  getDailySessionCounts,
 } from './db'
 import { generateProjectAssessment } from './project-assessment'
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
@@ -316,6 +318,57 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const recentSessions = getRecentSessionSummaries(slug)
         const { assessment, outcomes } = generateProjectAssessment(recentSessions, totalSessions)
 
+        // Read project README.md for description
+        let description: string | undefined
+        try {
+          const readmePath = join(project.path, 'README.md')
+          const readmeContent = await readFile(readmePath, 'utf-8')
+          // Extract first paragraph after the # title line
+          const lines = readmeContent.split('\n')
+          let foundTitle = false
+          const paragraphLines: string[] = []
+          for (const line of lines) {
+            if (!foundTitle && line.startsWith('#')) {
+              foundTitle = true
+              continue
+            }
+            if (foundTitle) {
+              const trimmed = line.trim()
+              if (trimmed === '' && paragraphLines.length > 0) break
+              if (trimmed === '') continue
+              if (trimmed.startsWith('#')) break // next heading
+              paragraphLines.push(trimmed)
+            }
+          }
+          if (paragraphLines.length > 0) {
+            description = paragraphLines.join(' ')
+          }
+        } catch {
+          // No README or unreadable — description stays undefined
+        }
+
+        // Compute health ratio from all sessions
+        const allSessions = getAllProjectSessions(slug)
+        const healthRatio = { done: 0, failed: 0, active: 0, total: allSessions.length }
+        for (const s of allSessions) {
+          if (s.status === 'done') healthRatio.done++
+          else if (s.status === 'failed') healthRatio.failed++
+          else if (['active', 'running', 'needs_input'].includes(s.status)) healthRatio.active++
+        }
+
+        // Top 5 recent meaningful sessions (filter out automated junk)
+        const meaningfulSessions = allSessions
+          .filter((s) => s.title && s.title.length > 10
+            && !s.title.startsWith('load_skill')
+            && !s.title.startsWith('Execute recipe'))
+          .slice(0, 5)
+          .map((s) => ({
+            title: s.title!,
+            status: s.status,
+            startedAt: s.startedAt,
+            promptCount: s.promptCount,
+          }))
+
         return {
           slug: project.slug,
           name: project.name,
@@ -328,10 +381,107 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           lastActivityAt: stats.lastActivityAt ?? new Date().toISOString(),
           assessment,
           outcomes,
+          description,
+          healthRatio,
+          recentSessions: meaningfulSessions,
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] PROJECT_OVERVIEW failed:', message)
+        return null
+      }
+    },
+  )
+
+  // --- Project History handler ---
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_HISTORY,
+    async (
+      _event,
+      { slug }: { slug: string },
+    ): Promise<ProjectHistorySession[]> => {
+      try {
+        const sessions = getAllProjectSessions(slug)
+        return sessions.map((s) => ({
+          id: s.id,
+          title: s.title,
+          status: s.status,
+          startedAt: s.startedAt,
+          endedAt: s.endedAt,
+          promptCount: s.promptCount,
+          toolCallCount: s.toolCallCount,
+        }))
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] PROJECT_HISTORY failed:', message)
+        return []
+      }
+    },
+  )
+
+  // --- Project Stats handler ---
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_STATS,
+    async (
+      _event,
+      { slug }: { slug: string },
+    ): Promise<ProjectStatsData | null> => {
+      try {
+        const overviewStats = getProjectOverviewStats(slug)
+        const dailyActivity = getDailySessionCounts(slug)
+        const allSessions = getAllProjectSessions(slug)
+
+        // Status distribution
+        const statusDistribution = { done: 0, failed: 0, active: 0, other: 0 }
+        for (const s of allSessions) {
+          if (s.status === 'done') statusDistribution.done++
+          else if (s.status === 'failed') statusDistribution.failed++
+          else if (['active', 'running', 'needs_input'].includes(s.status)) statusDistribution.active++
+          else statusDistribution.other++
+        }
+
+        // Success rate (done / (done + failed), ignore active/other)
+        const completedTotal = statusDistribution.done + statusDistribution.failed
+        const successRate = completedTotal > 0
+          ? Math.round((statusDistribution.done / completedTotal) * 100)
+          : 0
+
+        // Averages
+        const sessionCount = allSessions.length || 1
+        const avgPromptsPerSession = Math.round((overviewStats.totalPrompts / sessionCount) * 10) / 10
+        const avgToolsPerSession = Math.round((overviewStats.totalToolCalls / sessionCount) * 10) / 10
+
+        // Average duration in minutes (only for sessions with endedAt)
+        let totalDurationMs = 0
+        let durationCount = 0
+        for (const s of allSessions) {
+          if (s.endedAt) {
+            const dur = new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()
+            if (dur > 0) {
+              totalDurationMs += dur
+              durationCount++
+            }
+          }
+        }
+        const avgDurationMinutes = durationCount > 0
+          ? Math.round(totalDurationMs / durationCount / 60000)
+          : 0
+
+        return {
+          totalSessions: allSessions.length,
+          totalPrompts: overviewStats.totalPrompts,
+          totalToolCalls: overviewStats.totalToolCalls,
+          totalFilesChanged: overviewStats.totalFilesChanged,
+          successRate,
+          avgPromptsPerSession,
+          avgToolsPerSession,
+          avgDurationMinutes,
+          dailyActivity,
+          statusDistribution,
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] PROJECT_STATS failed:', message)
         return null
       }
     },
@@ -452,6 +602,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_UNREGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_HIDE)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_OVERVIEW)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_HISTORY)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_STATS)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)
