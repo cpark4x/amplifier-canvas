@@ -23,6 +23,7 @@ import {
   updateLastVisited,
   getLastVisitedAt,
   getStalledSessions,
+  getVisibleProjectSessions,
 } from './db'
 import { generateProjectAssessment } from './project-assessment'
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
@@ -336,6 +337,58 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] PROJECT_UNREGISTER failed:', message)
         return { success: false, error: message }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_LIST_REGISTERED,
+    async (): Promise<Array<{ slug: string; name: string; path: string }>> => {
+      try {
+        return getRegisteredProjects().map((p) => ({
+          slug: p.slug,
+          name: p.name,
+          path: p.path,
+        }))
+      } catch (err) {
+        console.error('[ipc] PROJECT_LIST_REGISTERED failed:', err instanceof Error ? err.message : String(err))
+        return []
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SESSION_LIST_INITIAL,
+    async (): Promise<SessionState[]> => {
+      try {
+        const projects = getRegisteredProjects()
+        const sessions: SessionState[] = []
+        for (const project of projects) {
+          const dbSessions = getVisibleProjectSessions(project.slug)
+          for (const row of dbSessions) {
+            sessions.push({
+              id: row.id,
+              projectSlug: row.projectSlug,
+              projectName: project.name,
+              status: (row.status as SessionState['status']) || 'active',
+              startedAt: row.startedAt,
+              startedBy: 'external',
+              byteOffset: row.byteOffset || 0,
+              recentFiles: [],
+              workDir: project.path,
+              title: row.title ?? undefined,
+              endedAt: row.endedAt ?? undefined,
+              exitCode: row.exitCode ?? undefined,
+              promptCount: row.promptCount ?? undefined,
+              toolCallCount: row.toolCallCount ?? undefined,
+              filesChangedCount: row.filesChangedCount ?? undefined,
+            })
+          }
+        }
+        return sessions
+      } catch (err) {
+        console.error('[ipc] SESSION_LIST_INITIAL failed:', err instanceof Error ? err.message : String(err))
+        return []
       }
     },
   )
@@ -747,6 +800,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_DISCOVER)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_REGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_UNREGISTER)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_LIST_REGISTERED)
+    ipcMain.removeHandler(IPC_CHANNELS.SESSION_LIST_INITIAL)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_HIDE)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_BATCH_HIDE)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_OVERVIEW)

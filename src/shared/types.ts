@@ -38,6 +38,8 @@ export const IPC_CHANNELS = {
   PROJECT_HISTORY: 'project:history',
   PROJECT_STATS: 'project:stats',
   PROJECT_CONTEXT: 'project:context',
+  PROJECT_LIST_REGISTERED: 'project:list-registered',
+  SESSION_LIST_INITIAL: 'session:list-initial',
 } as const
 
 // --- Session types ---
