@@ -234,10 +234,11 @@ export function getRecentSessionSummaries(projectSlug: string, limit = 20): {
 export function getAllProjectSessions(projectSlug: string): {
   id: string; title: string | null; status: string; startedAt: string;
   endedAt: string | null; promptCount: number; toolCallCount: number; firstPrompt: string | null;
+  filesChangedCount: number;
 }[] {
   const d = getDatabase()
   return d.prepare(`
-    SELECT id, title, status, startedAt, endedAt, promptCount, toolCallCount, firstPrompt
+    SELECT id, title, status, startedAt, endedAt, promptCount, toolCallCount, firstPrompt, filesChangedCount
     FROM sessions WHERE projectSlug = ?
     ORDER BY startedAt DESC
   `).all(projectSlug) as any[]

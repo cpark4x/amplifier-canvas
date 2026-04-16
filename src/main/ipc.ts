@@ -470,6 +470,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           endedAt: s.endedAt,
           promptCount: s.promptCount,
           toolCallCount: s.toolCallCount,
+          filesChangedCount: (s as any).filesChangedCount ?? 0,
           classification: classifySession(s).classification,
           firstPrompt: s.firstPrompt,
         }))

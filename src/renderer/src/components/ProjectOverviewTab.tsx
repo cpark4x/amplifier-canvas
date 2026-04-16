@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ProjectOverview, ProjectContext } from '../../../shared/types'
 import { useCanvasStore } from '../store'
+import { generateSessionOneLiner } from '../utils/session-summary'
 
 interface ProjectOverviewTabProps {
   projectSlug: string
@@ -324,60 +325,86 @@ function RecentWorkSection({
     )
   }
 
-  // Fallback: show recent sessions if no commits
+  // Fallback: show recent sessions if no commits — with one-liners
   const sessions = recentSessions!.slice(0, 5)
   return (
     <div>
       <SectionHeader>Recent Activity</SectionHeader>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {sessions.map((session, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '8px 0',
-              cursor: 'default',
-              borderBottom:
-                i < sessions.length - 1 ? '1px solid var(--border)' : 'none',
-            }}
-          >
-            <span
+        {sessions.map((session, i) => {
+          const oneLiner = generateSessionOneLiner(
+            {
+              title: session.title,
+              firstPrompt: null,
+              status: session.status,
+              startedAt: session.startedAt,
+              endedAt: null,
+              promptCount: session.promptCount,
+              toolCallCount: 0,
+            },
+            [],
+          )
+          return (
+            <div
+              key={i}
               style={{
-                display: 'inline-block',
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: statusDotColor(session.status),
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 13,
-                color: 'var(--text-primary)',
-                flex: 1,
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                padding: '8px 0',
+                cursor: 'default',
+                borderBottom:
+                  i < sessions.length - 1 ? '1px solid var(--border)' : 'none',
               }}
             >
-              {session.title || 'Untitled session'}
-            </span>
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {formatRelativeTime(session.startedAt)}
-            </span>
-          </div>
-        ))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: statusDotColor(session.status),
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: 'var(--text-primary)',
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {session.title || 'Untitled session'}
+                </span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--text-muted)',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {formatRelativeTime(session.startedAt)}
+                </span>
+              </div>
+              {oneLiner && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--text-very-muted)',
+                    fontStyle: 'italic',
+                    paddingLeft: 16,
+                    marginTop: 2,
+                  }}
+                >
+                  {oneLiner}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -412,7 +439,7 @@ function StalledWorkSection({
             }}
             onClick={() => onSessionClick(session.id)}
           >
-            <span style={{ fontSize: 13, flexShrink: 0, color: 'var(--amber)' }}>⚠</span>
+            <span style={{ fontSize: 13, flexShrink: 0, color: 'var(--amber)' }}>{'\u26a0'}</span>
             <span
               style={{
                 fontSize: 13,
@@ -435,14 +462,143 @@ function StalledWorkSection({
               }}
             >
               {formatRelativeTime(session.startedAt)}
-              <span style={{ opacity: 0.5 }}> · </span>
+              <span style={{ opacity: 0.5 }}> {'\u00b7'} </span>
               {session.promptCount} prompt{session.promptCount !== 1 ? 's' : ''}
+            </span>
+            <span
+              onClick={(e) => {
+                e.stopPropagation()
+                onSessionClick(session.id)
+              }}
+              style={{
+                fontSize: 12,
+                color: 'var(--amber)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Resume {'\u2192'}
             </span>
           </div>
         ))}
       </div>
     </div>
   )
+}
+
+/* ---------- Section 8: Smart Suggestion Card ---------- */
+
+function SmartSuggestionCard({
+  stalledSessions,
+  onSessionClick,
+}: {
+  stalledSessions: ProjectContext['stalledSessions']
+  onSessionClick: (id: string) => void
+}): React.ReactElement | null {
+  // Only show if exactly 1 stalled session with > 5 prompts
+  if (stalledSessions.length !== 1) return null
+  const session = stalledSessions[0]
+  if (session.promptCount <= 5) return null
+
+  return (
+    <div
+      style={{
+        background: 'rgba(34, 197, 94, 0.06)',
+        border: '1px solid rgba(34, 197, 94, 0.2)',
+        borderRadius: 8,
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          marginBottom: 8,
+        }}
+      >
+        {'\ud83d\udca1'} Suggested: Pick up where you left off
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: 'var(--text-muted)',
+          marginBottom: 10,
+        }}
+      >
+        &ldquo;{session.title || 'Untitled session'}&rdquo; has been waiting for{' '}
+        {formatRelativeTimeLong(session.startedAt).replace(' ago', '')}. You were{' '}
+        {session.promptCount} prompts deep.
+      </div>
+      <span
+        onClick={() => onSessionClick(session.id)}
+        style={{
+          fontSize: 13,
+          color: 'rgb(34, 197, 94)',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Resume this session {'\u2192'}
+      </span>
+    </div>
+  )
+}
+
+/* ---------- Section 9: Welcome Card ---------- */
+
+function WelcomeCard({
+  overview,
+  commitCount,
+}: {
+  overview: ProjectOverview
+  commitCount: number
+}): React.ReactElement {
+  const projectName = overview.name || formatSlugAsName(overview.slug)
+
+  return (
+    <div
+      style={{
+        background: 'var(--bg-modal)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          marginBottom: 8,
+        }}
+      >
+        {'\ud83d\udc4b'} Welcome to {projectName}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: 'var(--text-muted)',
+        }}
+      >
+        This project has {overview.sessionCount} session{overview.sessionCount !== 1 ? 's' : ''}
+        {commitCount > 0 && (
+          <> and {commitCount} commit{commitCount !== 1 ? 's' : ''}</>
+        )}.
+        Check the History tab to see what&apos;s been happening, or start a new session.
+      </div>
+    </div>
+  )
+}
+
+function formatSlugAsName(slug: string): string {
+  return slug
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 /* ---------- Main Component ---------- */
@@ -510,6 +666,24 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
             onSessionClick={handleSessionClick}
           />
         )}
+
+      {/* 1b. Smart suggestion — "pick up where you left off" */}
+      {context &&
+        context.lastVisitedAt &&
+        context.stalledSessions.length > 0 && (
+          <SmartSuggestionCard
+            stalledSessions={context.stalledSessions}
+            onSessionClick={handleSessionClick}
+          />
+        )}
+
+      {/* 1c. Welcome card for first-time visitors */}
+      {context && !context.lastVisitedAt && (
+        <WelcomeCard
+          overview={overview}
+          commitCount={context.recentCommits.length}
+        />
+      )}
 
       {/* 2. Project Description */}
       {overview.description && (

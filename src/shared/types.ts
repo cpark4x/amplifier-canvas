@@ -149,6 +149,7 @@ export interface ProjectHistorySession {
   endedAt: string | null
   promptCount: number
   toolCallCount: number
+  filesChangedCount: number
   classification: SessionClassification
   firstPrompt: string | null
   agentCount?: number  // number of sub-agent sessions spawned by this root session

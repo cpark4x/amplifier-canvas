@@ -1,6 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useCanvasStore } from '../store'
 import type { ProjectHistorySession, SessionClassification, ProjectContext } from '../../../shared/types'
+import { generateSessionOneLiner, correlateCommitsToSession } from '../utils/session-summary'
+import type { CommitInfo } from '../utils/session-summary'
+import { groupRelatedSessions } from '../utils/session-grouping'
+import type { SessionGroup } from '../utils/session-grouping'
 
 interface ProjectHistoryTabProps {
   projectSlug: string
@@ -126,6 +130,153 @@ const CLASSIFICATION_BADGE: Record<
 const SHOW_COMMITS_IN_FILTER = new Set<ClassificationFilter>(['work', 'deep-work', 'quick-task', 'all'])
 
 // ---------------------------------------------------------------------------
+// Reusable session row component
+// ---------------------------------------------------------------------------
+
+function SessionRow({
+  session,
+  oneLiner,
+  onClick,
+}: {
+  session: ProjectHistorySession
+  oneLiner: string | null
+  onClick: () => void
+}): React.ReactElement {
+  const duration = formatDuration(session.startedAt, session.endedAt)
+  const relTime = formatRelativeTime(session.startedAt)
+  const hasTitle = session.title != null && session.title.length > 0
+  const badge = CLASSIFICATION_BADGE[session.classification]
+  const promptPreview = session.firstPrompt ? truncatePrompt(session.firstPrompt) : null
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        padding: '8px 4px',
+        borderBottom: '1px solid var(--border)',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
+      }}
+    >
+      {/* Left side */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Top line: status dot + badge + title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: statusColor(session.status),
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 500,
+              padding: '1px 6px',
+              borderRadius: 8,
+              background: badge.bg,
+              color: badge.color,
+              flexShrink: 0,
+              lineHeight: 1.4,
+            }}
+          >
+            {badge.icon}
+          </span>
+          <span
+            style={{
+              fontSize: 13,
+              color: hasTitle ? 'var(--text-primary)' : 'var(--text-very-muted)',
+              fontStyle: hasTitle ? 'normal' : 'italic',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0,
+            }}
+          >
+            {hasTitle ? session.title : '(no title)'}
+          </span>
+        </div>
+
+        {/* Metadata line */}
+        <div
+          style={{
+            fontSize: 11,
+            color: 'var(--text-very-muted)',
+            marginTop: 2,
+            marginLeft: 14 + 8,
+          }}
+        >
+          {duration} · {session.promptCount} prompt
+          {session.promptCount !== 1 ? 's' : ''} · {session.toolCallCount} tool
+          {' '}call{session.toolCallCount !== 1 ? 's' : ''}
+        </div>
+
+        {/* One-liner summary */}
+        {oneLiner && (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--text-very-muted)',
+              fontStyle: 'italic',
+              marginTop: 2,
+              marginLeft: 14 + 8,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {oneLiner}
+          </div>
+        )}
+
+        {/* First prompt preview (only when no one-liner) */}
+        {!oneLiner && promptPreview && (
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--text-very-muted)',
+              fontStyle: 'italic',
+              marginTop: 2,
+              marginLeft: 14 + 8,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {promptPreview}
+          </div>
+        )}
+      </div>
+
+      {/* Right side — relative time */}
+      <div
+        style={{
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+          textAlign: 'right',
+          marginTop: 1,
+          marginLeft: 12,
+        }}
+      >
+        {relTime}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -136,6 +287,7 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
   const [query, setQuery] = useState('')
   const [classFilter, setClassFilter] = useState<ClassificationFilter>('work') // Default: My Work
   const [dismissing, setDismissing] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const selectSession = useCanvasStore((s) => s.selectSession)
   const setViewMode = useCanvasStore((s) => s.setViewMode)
@@ -216,6 +368,42 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     ).length
     return { deepWork, quick, auto, work: deepWork + quick }
   }, [sessions])
+
+  // Compute one-liners for sessions using commit correlation
+  const sessionOneLiners = useMemo(() => {
+    const map = new Map<string, string | null>()
+    for (const s of sessions) {
+      const overlapping = correlateCommitsToSession(
+        { startedAt: s.startedAt, endedAt: s.endedAt },
+        commits as CommitInfo[],
+      )
+      map.set(s.id, generateSessionOneLiner(s, overlapping))
+    }
+    return map
+  }, [sessions, commits])
+
+  // Compute session groups for related sessions
+  const sessionGroups = useMemo(() => {
+    return groupRelatedSessions(
+      filteredSessions.map((s) => ({
+        id: s.id,
+        title: s.title,
+        startedAt: s.startedAt,
+        classification: s.classification,
+      })),
+    )
+  }, [filteredSessions])
+
+  // Build a map from session ID → group for quick lookup
+  const sessionToGroup = useMemo(() => {
+    const map = new Map<string, SessionGroup>()
+    for (const g of sessionGroups) {
+      for (const id of g.sessions) {
+        map.set(id, g)
+      }
+    }
+    return map
+  }, [sessionGroups])
 
   // Group timeline by date
   const grouped = useMemo(() => {
@@ -504,210 +692,181 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
       )}
 
       {/* 3. Timeline grouped by date — sessions + commit markers */}
-      {grouped.map((group, groupIdx) => (
-        <div key={group.label}>
-          {/* Group heading */}
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--text-muted)',
-              marginTop: groupIdx === 0 ? 0 : 16,
-              marginBottom: 6,
-            }}
-          >
-            {group.label}
-          </div>
+      {grouped.map((group, groupIdx) => {
+        // Track which related-session groups have been rendered in this date group
+        const renderedGroups = new Set<string>()
 
-          {/* 4. Timeline rows */}
-          {group.items.map((item, itemIdx) => {
-            if (item.type === 'commit') {
-              // --- Commit marker row ---
-              const commit = item.data
-              return (
-                <div
-                  key={`commit-${commit.hash}-${itemIdx}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '4px 4px 4px 22px',
-                    gap: 8,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'var(--font-mono, monospace)',
-                      color: 'var(--text-very-muted)',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {commit.hash.substring(0, 7)}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-very-muted)',
-                      flexShrink: 0,
-                    }}
-                  >
-                    —
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-very-muted)',
-                      flex: 1,
-                      minWidth: 0,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {commit.message}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-very-muted)',
-                      flexShrink: 0,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {formatRelativeTime(commit.date)}
-                  </span>
-                </div>
-              )
-            }
+        return (
+          <div key={group.label}>
+            {/* Group heading */}
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--text-muted)',
+                marginTop: groupIdx === 0 ? 0 : 16,
+                marginBottom: 6,
+              }}
+            >
+              {group.label}
+            </div>
 
-            // --- Session row ---
-            const session = item.data
-            const duration = formatDuration(session.startedAt, session.endedAt)
-            const relTime = formatRelativeTime(session.startedAt)
-            const hasTitle = session.title != null && session.title.length > 0
-            const badge = CLASSIFICATION_BADGE[session.classification]
-            const promptPreview =
-              session.firstPrompt ? truncatePrompt(session.firstPrompt) : null
-
-            return (
-              <div
-                key={session.id}
-                onClick={() => handleClick(session.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  padding: '8px 4px',
-                  borderBottom: '1px solid var(--border)',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => {
-                  ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'
-                }}
-                onMouseLeave={(e) => {
-                  ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
-                }}
-              >
-                {/* Left side */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Top line: status dot + badge + title */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {/* Status dot */}
-                    <div
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: statusColor(session.status),
-                        flexShrink: 0,
-                      }}
-                    />
-
-                    {/* Classification badge */}
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 500,
-                        padding: '1px 6px',
-                        borderRadius: 8,
-                        background: badge.bg,
-                        color: badge.color,
-                        flexShrink: 0,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {badge.icon}
-                    </span>
-
-                    {/* Title */}
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: hasTitle ? 'var(--text-primary)' : 'var(--text-very-muted)',
-                        fontStyle: hasTitle ? 'normal' : 'italic',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        minWidth: 0,
-                      }}
-                    >
-                      {hasTitle ? session.title : '(no title)'}
-                    </span>
-                  </div>
-
-                  {/* Metadata line */}
+            {/* 4. Timeline rows */}
+            {group.items.map((item, itemIdx) => {
+              if (item.type === 'commit') {
+                // --- Commit marker row ---
+                const commit = item.data
+                return (
                   <div
+                    key={`commit-${commit.hash}-${itemIdx}`}
                     style={{
-                      fontSize: 11,
-                      color: 'var(--text-very-muted)',
-                      marginTop: 2,
-                      marginLeft: 14 + 8, // align with title (dot width + gap)
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '4px 4px 4px 22px',
+                      gap: 8,
                     }}
                   >
-                    {duration} · {session.promptCount} prompt
-                    {session.promptCount !== 1 ? 's' : ''} · {session.toolCallCount} tool
-                    {' '}call{session.toolCallCount !== 1 ? 's' : ''}
-                  </div>
-
-                  {/* First prompt preview */}
-                  {promptPreview && (
-                    <div
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-mono, monospace)',
+                        color: 'var(--text-very-muted)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {commit.hash.substring(0, 7)}
+                    </span>
+                    <span
                       style={{
                         fontSize: 11,
                         color: 'var(--text-very-muted)',
-                        fontStyle: 'italic',
-                        marginTop: 2,
-                        marginLeft: 14 + 8,
+                        flexShrink: 0,
+                      }}
+                    >
+                      —
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--text-very-muted)',
+                        flex: 1,
+                        minWidth: 0,
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}
                     >
-                      {promptPreview}
-                    </div>
-                  )}
-                </div>
+                      {commit.message}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--text-very-muted)',
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {formatRelativeTime(commit.date)}
+                    </span>
+                  </div>
+                )
+              }
 
-                {/* Right side — relative time */}
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
-                    textAlign: 'right',
-                    marginTop: 1,
-                    marginLeft: 12,
-                  }}
-                >
-                  {relTime}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ))}
+              // --- Session row (possibly grouped) ---
+              const session = item.data
+              const relatedGroup = sessionToGroup.get(session.id)
+
+              // If this session belongs to a related group, handle collapse
+              if (relatedGroup) {
+                const groupKey = relatedGroup.label + ':' + relatedGroup.startedAt
+                const isExpanded = expandedGroups.has(groupKey)
+
+                if (!renderedGroups.has(groupKey)) {
+                  // First time seeing this group — render the group header
+                  renderedGroups.add(groupKey)
+
+                  // Find all session items in this group for the expanded view
+                  const groupSessions = relatedGroup.sessions
+                    .map((id) => sessions.find((s) => s.id === id))
+                    .filter(Boolean) as ProjectHistorySession[]
+
+                  return (
+                    <div key={`group-${groupKey}`}>
+                      {/* Group collapse header */}
+                      <div
+                        onClick={() => {
+                          setExpandedGroups((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(groupKey)) next.delete(groupKey)
+                            else next.add(groupKey)
+                            return next
+                          })
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '8px 4px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--border)',
+                        }}
+                        onMouseEnter={(e) => {
+                          ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.03)'
+                        }}
+                        onMouseLeave={(e) => {
+                          ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 8, flexShrink: 0 }}>
+                          {isExpanded ? '\u25be' : '\u25b8'}
+                        </span>
+                        <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, flex: 1 }}>
+                          {relatedGroup.label}
+                          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                            ({relatedGroup.sessions.length} sessions)
+                          </span>
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                          {formatRelativeTime(relatedGroup.startedAt)}
+                        </span>
+                      </div>
+
+                      {/* Expanded: show child sessions with indent + left border */}
+                      {isExpanded && (
+                        <div style={{ borderLeft: '1px solid var(--border)', marginLeft: 10, paddingLeft: 8 }}>
+                          {groupSessions.map((gs) => (
+                            <SessionRow
+                              key={gs.id}
+                              session={gs}
+                              oneLiner={sessionOneLiners.get(gs.id) ?? null}
+                              onClick={() => handleClick(gs.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+
+                // Already rendered group header — skip this session
+                // (it's rendered inside the expanded group above)
+                return null
+              }
+
+              // --- Ungrouped session row ---
+              return (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  oneLiner={sessionOneLiners.get(session.id) ?? null}
+                  onClick={() => handleClick(session.id)}
+                />
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }
