@@ -320,6 +320,11 @@ export function updateAnalysisStatus(id: string, status: string): void {
   d.prepare('UPDATE sessions SET analysis_status = ? WHERE id = ?').run(status, id)
 }
 
+export function getProjectBySlug(slug: string): ProjectRow | undefined {
+  const d = getDatabase()
+  return d.prepare('SELECT * FROM projects WHERE slug = ?').get(slug) as ProjectRow | undefined
+}
+
 export function getRegisteredProjects(): ProjectRow[] {
   const d = getDatabase()
   return d.prepare('SELECT * FROM projects WHERE registered = 1 ORDER BY name').all() as ProjectRow[]
@@ -335,6 +340,36 @@ export function getVisibleProjectSessions(projectSlug: string): SessionRow[] {
   return d
     .prepare('SELECT * FROM sessions WHERE projectSlug = ? AND hidden = 0 ORDER BY startedAt DESC')
     .all(projectSlug) as SessionRow[]
+}
+
+export function getProjectOverviewStats(projectSlug: string): {
+  sessionCount: number
+  totalPrompts: number
+  totalToolCalls: number
+  totalFilesChanged: number
+  activeSessionCount: number
+  lastActivityAt: string | null
+} {
+  const d = getDatabase()
+  const row = d.prepare(`
+    SELECT
+      COUNT(*) as sessionCount,
+      COALESCE(SUM(promptCount), 0) as totalPrompts,
+      COALESCE(SUM(toolCallCount), 0) as totalToolCalls,
+      COALESCE(SUM(filesChangedCount), 0) as totalFilesChanged,
+      SUM(CASE WHEN status IN ('active', 'running') THEN 1 ELSE 0 END) as activeSessionCount,
+      MAX(COALESCE(endedAt, startedAt)) as lastActivityAt
+    FROM sessions
+    WHERE projectSlug = ? AND hidden = 0
+  `).get(projectSlug) as {
+    sessionCount: number
+    totalPrompts: number
+    totalToolCalls: number
+    totalFilesChanged: number
+    activeSessionCount: number
+    lastActivityAt: string | null
+  }
+  return row
 }
 
 export function setSessionHidden(id: string, hidden: number): void {

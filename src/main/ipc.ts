@@ -13,6 +13,8 @@ import {
   setSessionHidden,
   upsertProject,
   getRegisteredProjectCount,
+  getProjectBySlug,
+  getProjectOverviewStats,
 } from './db'
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
 import type { WorkspaceState } from './workspace'
@@ -295,6 +297,35 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   )
 
   ipcMain.handle(
+    IPC_CHANNELS.PROJECT_OVERVIEW,
+    async (
+      _event,
+      { slug }: { slug: string },
+    ): Promise<import('../shared/types').ProjectOverview | null> => {
+      try {
+        const project = getProjectBySlug(slug)
+        if (!project) return null
+        const stats = getProjectOverviewStats(slug)
+        return {
+          slug: project.slug,
+          name: project.name,
+          path: project.path,
+          sessionCount: stats.sessionCount,
+          totalPrompts: stats.totalPrompts,
+          totalToolCalls: stats.totalToolCalls,
+          totalFilesChanged: stats.totalFilesChanged,
+          activeSessionCount: stats.activeSessionCount,
+          lastActivityAt: stats.lastActivityAt ?? new Date().toISOString(),
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] PROJECT_OVERVIEW failed:', message)
+        return null
+      }
+    },
+  )
+
+  ipcMain.handle(
     IPC_CHANNELS.SESSION_HIDE,
     async (
       _event,
@@ -408,6 +439,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_REGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_UNREGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_HIDE)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_OVERVIEW)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)

@@ -196,8 +196,7 @@ const api = {
 
   // Project overview: get aggregated project data
   getProjectOverview: async (slug: string): Promise<ProjectOverview | null> => {
-    // TODO: wire to real IPC when main-process handler is ready
-    return null
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_OVERVIEW, { slug })
   },
 }
 

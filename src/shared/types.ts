@@ -33,6 +33,7 @@ export const IPC_CHANNELS = {
   RUNNING_SESSIONS_TOAST: 'app:running-sessions-toast',
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
+  PROJECT_OVERVIEW: 'project:overview',
 } as const
 
 // --- Session types ---
