@@ -272,7 +272,7 @@ function App(): React.ReactElement {
         display: 'flex',
         overflow: 'hidden',
       }}>
-        <Sidebar
+        <ErrorBoundary fallbackLabel="Sidebar"><Sidebar
           collapsed={sidebarCollapsed}
           hidden={!workspaceLoaded}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -307,7 +307,7 @@ function App(): React.ReactElement {
               // PTY spawn can fail in test environments — don't crash
             })
           }}
-        />
+        /></ErrorBoundary>
 
         {/* Center zone: welcome screen, project view, OR terminal depending on state */}
         {viewMode === 'project' && selectedProjectSlug ? (

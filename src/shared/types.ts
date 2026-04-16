@@ -130,6 +130,10 @@ export interface ProjectOverview {
   agentSessionCount?: number
   delegationRatio?: number
   meaningfulSuccessRate?: number
+  // Repository metadata
+  repoUrl?: string             // e.g. "https://github.com/cpark4x/amplifier-canvas"
+  repoVisibility?: 'public' | 'private' | 'unknown'
+  repoContributorCount?: number
 }
 
 // --- Project context types (for dashboard tabs) ---

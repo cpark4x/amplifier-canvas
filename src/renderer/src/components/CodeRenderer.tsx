@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import DOMPurify from 'dompurify'
 import hljs from 'highlight.js/lib/core'
 import typescript from 'highlight.js/lib/languages/typescript'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -75,10 +76,10 @@ function CodeRenderer({ filePath }: CodeRendererProps): React.ReactElement {
       const language = getLanguage(filePath)
       if (language && hljs.getLanguage(language)) {
         const result = hljs.highlight(content, { language })
-        codeRef.current.innerHTML = result.value
+        codeRef.current.innerHTML = DOMPurify.sanitize(result.value)
       } else {
         const result = hljs.highlightAuto(content)
-        codeRef.current.innerHTML = result.value
+        codeRef.current.innerHTML = DOMPurify.sanitize(result.value)
       }
     }
   }, [content, loading, filePath])
