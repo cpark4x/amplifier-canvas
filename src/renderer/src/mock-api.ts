@@ -241,6 +241,7 @@ const mockAPI = {
 
   unregisterProject: async (): Promise<{ success: boolean }> => ({ success: true }),
   hideSession: async (): Promise<{ success: boolean }> => ({ success: true }),
+  batchHideSessions: async (): Promise<{ success: boolean; hiddenCount: number }> => ({ success: true, hiddenCount: 0 }),
   stopSession: async (): Promise<{ success: boolean }> => ({ success: true }),
   resumeSession: async (): Promise<{ success: boolean }> => ({ success: true }),
 

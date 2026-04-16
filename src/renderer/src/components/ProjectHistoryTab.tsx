@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useCanvasStore } from '../store'
 import type { ProjectHistorySession, SessionClassification } from '../../../shared/types'
 
@@ -7,16 +7,17 @@ interface ProjectHistoryTabProps {
 }
 
 // ---------------------------------------------------------------------------
-// Filter types
+// Filter types — default is 'work' (deep + quick), not 'all'
 // ---------------------------------------------------------------------------
 
-type ClassificationFilter = 'all' | 'deep-work' | 'quick-task' | 'auto'
+type ClassificationFilter = 'work' | 'all' | 'deep-work' | 'quick-task' | 'auto'
 
 const FILTER_CHIPS: { key: ClassificationFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
+  { key: 'work', label: 'My Work' },
   { key: 'deep-work', label: 'Deep Work' },
   { key: 'quick-task', label: 'Quick' },
   { key: 'auto', label: 'Auto' },
+  { key: 'all', label: 'All' },
 ]
 
 function matchesFilter(
@@ -24,6 +25,7 @@ function matchesFilter(
   filter: ClassificationFilter,
 ): boolean {
   if (filter === 'all') return true
+  if (filter === 'work') return classification === 'deep-work' || classification === 'quick-task'
   if (filter === 'auto') return classification === 'automated' || classification === 'failed-auto'
   return classification === filter
 }
@@ -103,7 +105,8 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
   const [sessions, setSessions] = useState<ProjectHistorySession[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
-  const [classFilter, setClassFilter] = useState<ClassificationFilter>('all')
+  const [classFilter, setClassFilter] = useState<ClassificationFilter>('work') // Default: My Work
+  const [dismissing, setDismissing] = useState(false)
 
   const selectSession = useCanvasStore((s) => s.selectSession)
   const setViewMode = useCanvasStore((s) => s.setViewMode)
@@ -124,6 +127,18 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     }
   }, [projectSlug])
 
+  // --- Resumable sessions (needs_input / running / active) ---
+  const resumable = useMemo(() => {
+    return sessions.filter((s) => ACTIVE_STATUSES.has(s.status) && s.promptCount > 0)
+  }, [sessions])
+
+  // --- Noise sessions (automated + failed-auto + ghost) for batch dismiss ---
+  const noiseSessionIds = useMemo(() => {
+    return sessions
+      .filter((s) => s.classification === 'automated' || s.classification === 'failed-auto')
+      .map((s) => s.id)
+  }, [sessions])
+
   // Filtered list — search (on title) AND classification filter
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -134,15 +149,15 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     })
   }, [sessions, query, classFilter])
 
-  // Classification counts (from filtered results)
+  // Classification counts (from ALL sessions, not filtered)
   const counts = useMemo(() => {
-    const deepWork = filtered.filter((s) => s.classification === 'deep-work').length
-    const quick = filtered.filter((s) => s.classification === 'quick-task').length
-    const auto = filtered.filter(
+    const deepWork = sessions.filter((s) => s.classification === 'deep-work').length
+    const quick = sessions.filter((s) => s.classification === 'quick-task').length
+    const auto = sessions.filter(
       (s) => s.classification === 'automated' || s.classification === 'failed-auto',
     ).length
-    return { deepWork, quick, auto }
-  }, [filtered])
+    return { deepWork, quick, auto, work: deepWork + quick }
+  }, [sessions])
 
   // Group by date, sorted most-recent-first within each group
   const grouped = useMemo(() => {
@@ -161,17 +176,33 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     }))
   }, [filtered])
 
-  const hasActiveFilters = query.trim() !== '' || classFilter !== 'all'
+  const hasActiveFilters = query.trim() !== '' || classFilter !== 'work'
 
   function clearFilters(): void {
     setQuery('')
-    setClassFilter('all')
+    setClassFilter('work')
   }
 
   function handleClick(id: string): void {
     selectSession(id)
     setViewMode('session')
   }
+
+  const handleBatchDismiss = useCallback(async () => {
+    if (noiseSessionIds.length === 0) return
+    setDismissing(true)
+    try {
+      const result = await window.electronAPI.batchHideSessions(noiseSessionIds)
+      if (result.success) {
+        // Remove dismissed sessions from local state
+        setSessions((prev) =>
+          prev.filter((s) => !noiseSessionIds.includes(s.id)),
+        )
+      }
+    } finally {
+      setDismissing(false)
+    }
+  }, [noiseSessionIds])
 
   // --- Render ---
 
@@ -194,6 +225,95 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
 
   return (
     <div data-testid="project-history-tab">
+      {/* 0. Resumable sessions — pinned to top */}
+      {resumable.length > 0 && (
+        <div
+          style={{
+            marginBottom: 16,
+            background: 'rgba(245,158,11,0.06)',
+            border: '1px solid rgba(245,158,11,0.2)',
+            borderRadius: 8,
+            padding: '10px 14px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--amber)',
+              marginBottom: 8,
+            }}
+          >
+            Waiting for you
+          </div>
+          {resumable.map((s) => (
+            <div
+              key={s.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 0',
+                borderBottom: '1px solid rgba(245,158,11,0.12)',
+              }}
+            >
+              {/* Amber pulse dot */}
+              <div
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: 'var(--amber)',
+                  flexShrink: 0,
+                  boxShadow: '0 0 4px rgba(245,158,11,0.4)',
+                }}
+              />
+              {/* Title */}
+              <span
+                style={{
+                  fontSize: 13,
+                  color: 'var(--text-primary)',
+                  flex: 1,
+                  minWidth: 0,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {s.title ?? '(no title)'}
+              </span>
+              {/* Metadata */}
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                {s.promptCount} prompts · {formatRelativeTime(s.startedAt)}
+              </span>
+              {/* Resume button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleClick(s.id)
+                }}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--amber)',
+                  background: 'rgba(245,158,11,0.1)',
+                  color: 'var(--amber)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                Resume
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* 1. Search + filter row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input
@@ -240,16 +360,54 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
         })}
       </div>
 
-      {/* 2. Summary line */}
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, marginBottom: 12 }}>
-        <span style={{ fontWeight: 600 }}>{filtered.length}</span> session
-        {filtered.length !== 1 ? 's' : ''} &middot;{' '}
-        <span style={{ fontWeight: 600 }}>{counts.deepWork}</span> deep work &middot;{' '}
-        <span style={{ fontWeight: 600 }}>{counts.quick}</span> quick &middot;{' '}
-        <span style={{ fontWeight: 600 }}>{counts.auto}</span> automated
+      {/* 2. Summary line + batch dismiss */}
+      <div
+        style={{
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          marginTop: 8,
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>
+          <span style={{ fontWeight: 600 }}>{filtered.length}</span> session
+          {filtered.length !== 1 ? 's' : ''}
+          {classFilter === 'work' && counts.auto > 0 && (
+            <span style={{ color: 'var(--text-very-muted)' }}>
+              {' '}· {counts.auto} automated hidden
+            </span>
+          )}
+        </span>
+        {/* Batch dismiss button — shown when noise exists */}
+        {noiseSessionIds.length > 0 && (
+          <button
+            onClick={handleBatchDismiss}
+            disabled={dismissing}
+            style={{
+              fontSize: 11,
+              padding: '3px 10px',
+              borderRadius: 6,
+              cursor: dismissing ? 'default' : 'pointer',
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500,
+              background: 'transparent',
+              color: 'var(--text-very-muted)',
+              border: '1px solid var(--border)',
+              opacity: dismissing ? 0.5 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {dismissing
+              ? 'Cleaning up...'
+              : `Dismiss ${noiseSessionIds.length} automated`}
+          </button>
+        )}
       </div>
 
-      {/* 5. Empty states */}
+      {/* Empty states */}
       {sessions.length === 0 && (
         <div
           style={{
@@ -282,7 +440,7 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
               textUnderlineOffset: 2,
             }}
           >
-            Clear filters
+            Show all work sessions
           </span>
         </div>
       )}
@@ -386,8 +544,8 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
                       marginLeft: 14 + 8, // align with title (dot width + gap)
                     }}
                   >
-                    {duration} &middot; {session.promptCount} prompt
-                    {session.promptCount !== 1 ? 's' : ''} &middot; {session.toolCallCount} tool
+                    {duration} · {session.promptCount} prompt
+                    {session.promptCount !== 1 ? 's' : ''} · {session.toolCallCount} tool
                     {' '}call{session.toolCallCount !== 1 ? 's' : ''}
                   </div>
                 </div>

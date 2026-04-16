@@ -26,6 +26,7 @@ export const IPC_CHANNELS = {
   PROJECT_REGISTER: 'project:register',
   PROJECT_UNREGISTER: 'project:unregister',
   SESSION_HIDE: 'session:hide',
+  SESSION_BATCH_HIDE: 'session:batch-hide',
   SESSION_STOP: 'session:stop',
   WORKSPACE_SAVE: 'workspace:save-state',
   WORKSPACE_GET: 'workspace:get-state',

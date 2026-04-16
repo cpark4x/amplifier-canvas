@@ -11,6 +11,7 @@ import {
   getRegisteredProjects,
   setProjectRegistered,
   setSessionHidden,
+  batchHideSessions,
   upsertProject,
   getRegisteredProjectCount,
   getProjectBySlug,
@@ -52,7 +53,11 @@ export function isPathAllowed(requestedPath: string): boolean {
 function classifySession(session: { title: string | null; status: string; promptCount: number; firstPrompt: string | null }): { classification: import('../shared/types').SessionClassification; label: string } {
   const title = session.title ?? ''
   const isAutoTitle = title.startsWith('load_skill') || title.startsWith('Execute recipe') || title.startsWith('amplifier tool')
-  
+
+  // Ghost sessions: no title AND 0 prompts — empty/broken sessions
+  if (!title && session.promptCount === 0) {
+    return { classification: 'failed-auto', label: 'Ghost' }
+  }
   if (isAutoTitle && session.status === 'failed') {
     return { classification: 'failed-auto', label: 'Failed Auto' }
   }
@@ -573,6 +578,23 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   )
 
   ipcMain.handle(
+    IPC_CHANNELS.SESSION_BATCH_HIDE,
+    async (
+      _event,
+      { sessionIds }: { sessionIds: string[] },
+    ): Promise<{ success: boolean; hiddenCount: number; error?: string }> => {
+      try {
+        const hiddenCount = batchHideSessions(sessionIds)
+        return { success: true, hiddenCount }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[ipc] SESSION_BATCH_HIDE failed:', message)
+        return { success: false, hiddenCount: 0, error: message }
+      }
+    },
+  )
+
+  ipcMain.handle(
     IPC_CHANNELS.SESSION_STOP,
     async (
       _event,
@@ -669,6 +691,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_REGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_UNREGISTER)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_HIDE)
+    ipcMain.removeHandler(IPC_CHANNELS.SESSION_BATCH_HIDE)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_OVERVIEW)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_HISTORY)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_STATS)

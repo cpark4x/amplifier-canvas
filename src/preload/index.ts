@@ -147,6 +147,11 @@ const api = {
     return ipcRenderer.invoke(IPC_CHANNELS.SESSION_HIDE, { sessionId })
   },
 
+  // Sessions: batch-hide multiple sessions
+  batchHideSessions: (sessionIds: string[]): Promise<{ success: boolean; hiddenCount: number }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SESSION_BATCH_HIDE, { sessionIds })
+  },
+
   // Sessions: stop a running session
   stopSession: (sessionId: string): Promise<{ success: boolean; error?: string }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.SESSION_STOP, { sessionId })

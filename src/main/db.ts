@@ -175,6 +175,15 @@ export function unhideSession(id: string): void {
   d.prepare('UPDATE sessions SET hidden = 0 WHERE id = ?').run(id)
 }
 
+/** Batch-hide multiple sessions by ID */
+export function batchHideSessions(ids: string[]): number {
+  if (ids.length === 0) return 0
+  const d = getDatabase()
+  const placeholders = ids.map(() => '?').join(',')
+  const result = d.prepare(`UPDATE sessions SET hidden = 1 WHERE id IN (${placeholders})`).run(...ids)
+  return result.changes
+}
+
 export function updateSessionStatus(id: string, status: string): void {
   const d = getDatabase()
   d.prepare('UPDATE sessions SET status = ? WHERE id = ?').run(status, id)
