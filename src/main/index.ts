@@ -1,11 +1,11 @@
 import { app, BrowserWindow, Menu, shell, net, protocol } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
-import { readdirSync, existsSync, statSync } from 'fs'
+import { existsSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
 import { APP_NAME, WINDOW_CONFIG } from '../shared/constants'
 import { registerIpcHandlers } from './ipc'
-import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles, updateSessionStats, getSessionsWithZeroStats, incrementSessionStats, getKnownSessionIds, getSessionsNeedingBackfill } from './db'
+import { initDatabase, closeDatabase, getRegisteredProjects, getRegisteredProjectCount, getVisibleProjectSessions, upsertSession, updateSessionStatus, updateByteOffset, finalizeSession, reconcileStaleActiveSessions, setSessionHidden, updateSessionTitle, getSessionsWithoutTitles, incrementSessionStats } from './db'
 import { getAmplifierHome } from './scanner'
 import { initWatcher, addProjectWatch, stopWatching } from './watcher'
 import { pushSessionsChanged, pushProjectsChanged, pushFilesChanged, pushRunningSessionsToast, setAllowedDirs, addAllowedDir, isPathAllowed } from './ipc'
@@ -13,7 +13,8 @@ import { isSubSession } from './scanner'
 import { unhideSession } from './db'
 import { hasPty, hasCanvasPtyForProject } from './pty'
 import { getWorkspaceState } from './workspace'
-import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle, extractBestTitle, streamSessionStats } from './events-parser'
+import { tailReadEvents, headReadEvents, deriveSessionStatus, extractFileActivity, extractWorkDir, extractFirstPrompt, extractSessionStats, deriveSessionTitle, extractBestTitle } from './events-parser'
+import { runBackgroundDiscovery } from './background-discovery'
 import type { SessionState } from '../shared/types'
 
 // Main-process session registry — watcher pushes new sessions here
@@ -311,123 +312,11 @@ app.whenReady().then(() => {
         console.log(`[startup] Watchers started for ${registeredProjects.length} projects`)
       }, 0)
 
-      // (6) Background discovery: find sessions on disk not yet in the DB.
-      // The DB is the persistent index — on most launches, most sessions are
-      // already indexed and this step is fast (just a readdir + set diff).
-      // New sessions are indexed with full-file streaming stats.
-      // Also backfills sessions with wrong stats from the old broken scanner.
-      setTimeout(async () => {
-        let newSessionsIndexed = 0
-        let statsBackfilled = 0
-
-        for (const project of registeredProjects) {
-          const sessionsDir = join(projectsDir, project.slug, 'sessions')
-          if (!existsSync(sessionsDir)) continue
-
-          // Discover all session dirs on disk, sorted by mtime (newest first)
-          const diskEntries = readdirSync(sessionsDir, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
-            .map((entry) => {
-              let mtime = 0
-              try {
-                mtime = statSync(join(sessionsDir, entry.name)).mtimeMs
-              } catch { /* skip */ }
-              return { name: entry.name, mtime }
-            })
-            .sort((a, b) => b.mtime - a.mtime)
-
-          const knownIds = getKnownSessionIds(project.slug)
-          const newEntries = diskEntries.filter((e) => !knownIds.has(e.name))
-
-          if (newEntries.length > 0) {
-            console.log(`[discovery] ${project.slug}: ${newEntries.length} new sessions to index (of ${diskEntries.length} on disk)`)
-          }
-
-          // Index new sessions: accurate stats via streamSessionStats, title via headReadEvents
-          for (const entry of newEntries) {
-            await new Promise<void>((resolve) => setImmediate(resolve))
-
-            const eventsPath = join(sessionsDir, entry.name, 'events.jsonl')
-            if (!existsSync(eventsPath)) continue
-
-            try {
-              const headEvents = headReadEvents(eventsPath)
-              const status = deriveSessionStatus(headEvents)
-              const startEvent = headEvents.find((e: { type: string }) => e.type === 'session:start')
-              const startedAt = startEvent ? (startEvent as { timestamp: string }).timestamp : new Date(entry.mtime).toISOString()
-              const title = extractBestTitle(headEvents)
-              const firstPrompt = extractFirstPrompt(headEvents)
-              const stats = await streamSessionStats(eventsPath)
-              const fileSize = statSync(eventsPath).size
-              const endEvent = headEvents.find((e: { type: string }) => e.type === 'session:end')
-              const endedAt = endEvent ? (endEvent as { timestamp: string }).timestamp : undefined
-              const exitCode = endEvent ? ((endEvent as { data: Record<string, unknown> }).data.exitCode as number) : undefined
-
-              upsertSession({
-                id: entry.name,
-                projectSlug: project.slug,
-                startedBy: 'external',
-                startedAt,
-                status,
-                byteOffset: fileSize,
-                hidden: true,
-                title: title ?? null,
-                promptCount: stats.promptCount,
-                toolCallCount: stats.toolCallCount,
-              })
-
-              if (endedAt) {
-                finalizeSession(entry.name, {
-                  status,
-                  endedAt: endedAt ?? null,
-                  exitCode: exitCode ?? null,
-                  title: title ?? null,
-                  firstPrompt: firstPrompt ?? null,
-                  promptCount: stats.promptCount,
-                  toolCallCount: stats.toolCallCount,
-                  filesChangedCount: 0,
-                })
-              }
-
-              newSessionsIndexed++
-            } catch {
-              // Skip unreadable sessions
-            }
-          }
-
-          // Backfill: fix sessions with wrong stats from the old broken scanner
-          const needsBackfill = getSessionsNeedingBackfill(project.slug)
-          for (const row of needsBackfill) {
-            const eventsPath = join(projectsDir, project.slug, 'sessions', row.id, 'events.jsonl')
-            try {
-              const stats = await streamSessionStats(eventsPath)
-              if (stats.promptCount > 0 || stats.toolCallCount > 0) {
-                updateSessionStats(row.id, stats.promptCount, stats.toolCallCount)
-                statsBackfilled++
-              }
-            } catch {
-              // Skip missing/unreadable events files
-            }
-          }
-        }
-
-        if (newSessionsIndexed > 0 || statsBackfilled > 0) {
-          console.log(`[discovery] Indexed ${newSessionsIndexed} new sessions, backfilled ${statsBackfilled} stats`)
-          // Re-push updated sessions to the UI
-          for (const project of registeredProjects) {
-            const dbSessions = getVisibleProjectSessions(project.slug)
-            for (const row of dbSessions) {
-              const existing = liveSessions.get(row.id)
-              if (existing) {
-                existing.promptCount = row.promptCount ?? undefined
-                existing.toolCallCount = row.toolCallCount ?? undefined
-                existing.filesChangedCount = row.filesChangedCount ?? undefined
-              }
-            }
-          }
-          const visibleSessions = Array.from(liveSessions.values()).filter(s => s.hidden !== true)
-          pushSessionsChanged(mainWindow, visibleSessions)
-        }
+      // (6) Background discovery — deferred to keep startup fast.
+      // Finds sessions on disk not yet in DB, indexes them with streaming stats,
+      // and backfills sessions with wrong stats from the old scanner.
+      setTimeout(() => {
+        void runBackgroundDiscovery(registeredProjects, projectsDir, liveSessions, mainWindow)
       }, 100)
     } catch (err) {
       console.error('[startup] Load failed:', err instanceof Error ? err.message : String(err))

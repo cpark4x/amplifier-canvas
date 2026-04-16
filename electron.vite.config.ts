@@ -6,7 +6,14 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin({ exclude: [] })],
     build: {
       rollupOptions: {
-        external: ['node-pty', 'better-sqlite3']
+        input: {
+          index: './src/main/index.ts',
+          'stats-worker': './src/main/stats-worker.ts',
+        },
+        external: ['node-pty', 'better-sqlite3'],
+        output: {
+          entryFileNames: '[name].js',
+        },
       }
     }
   },
