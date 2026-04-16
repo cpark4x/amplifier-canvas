@@ -66,6 +66,7 @@ export interface SessionState {
   worktree?: string       // e.g. "main" or "worktree/dark-mode"
   branch?: string         // git branch name
   commitHash?: string     // short SHA when session has committed
+  hidden?: boolean        // true = session is hidden from sidebar
 }
 
 // --- Toast types ---

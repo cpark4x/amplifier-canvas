@@ -408,10 +408,14 @@ app.whenReady().then(() => {
           promptCount: stats.promptCount,
           toolCallCount: stats.toolCallCount,
           filesChangedCount: stats.filesChanged.size,
+          hidden: !canvasOwnsSession,
         }
 
         liveSessions.set(data.sessionId, session)
-        pushSessionsChanged(mainWindow, Array.from(liveSessions.values()))
+        // Only push visible sessions to the renderer — hidden sessions (delegate/child
+        // sessions, failed sessions) should never leak into the sidebar.
+        const visibleSessions = Array.from(liveSessions.values()).filter(s => s.hidden !== true)
+        pushSessionsChanged(mainWindow, visibleSessions)
         pushFilesChanged(mainWindow, data.sessionId, recentFiles)
       }
     } catch (err) {

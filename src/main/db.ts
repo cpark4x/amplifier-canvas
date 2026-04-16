@@ -351,6 +351,7 @@ export function getRegisteredProjectCount(): number {
 /**
  * On app startup, mark all 'active'/'running' sessions as 'done'.
  * No PTY survives an app restart, so any session still marked active is stale.
+ * Also hide any sessions with status 'failed' so they don't clutter the sidebar.
  */
 export function reconcileStaleActiveSessions(): void {
   const d = getDatabase()
@@ -359,5 +360,13 @@ export function reconcileStaleActiveSessions(): void {
   ).run()
   if (result.changes > 0) {
     console.log(`[db] Reconciled ${result.changes} stale active sessions → done`)
+  }
+
+  // Hide failed sessions on restart — they shouldn't persist as visible across app launches.
+  const hiddenResult = d.prepare(
+    "UPDATE sessions SET hidden = 1 WHERE status = 'failed' AND hidden = 0"
+  ).run()
+  if (hiddenResult.changes > 0) {
+    console.log(`[db] Hid ${hiddenResult.changes} failed sessions`)
   }
 }

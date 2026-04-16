@@ -106,15 +106,18 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       }
     }
 
+    // Defence-in-depth: filter out hidden sessions even if the main process leaks them.
+    const visibleIncoming = incoming.filter((s) => s.hidden !== true)
+
     // Replace optimistic placeholder sessions with real ones.
     // Optimistic sessions have IDs like 'optimistic-{slug}-{ts}'.
     // When real sessions arrive for the same project, remove the placeholder.
     const optimistic = current.filter((s) => s.id.startsWith('optimistic-'))
-    let mergedSessions = [...incoming]
+    let mergedSessions = [...visibleIncoming]
     let newSelectedId = selectedId
 
     for (const opt of optimistic) {
-      const realMatch = incoming.find(
+      const realMatch = visibleIncoming.find(
         (s) => s.projectSlug === opt.projectSlug && !s.id.startsWith('optimistic-')
           && !current.some((c) => c.id === s.id) // truly new session
       )
@@ -254,6 +257,6 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   getProjectSessions: (slug) => {
     const { sessions } = get()
-    return sessions.filter((s) => s.projectSlug === slug)
+    return sessions.filter((s) => s.projectSlug === slug && s.hidden !== true)
   },
 }))
