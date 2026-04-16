@@ -412,6 +412,13 @@ app.whenReady().then(() => {
             toolCallCount: stats.toolCallCount,
             filesChangedCount: stats.filesChanged.size,
           })
+
+          // Evict finalized hidden sessions from memory — they're in the DB.
+          // Visible sessions stay so the renderer can display them.
+          if (!canvasOwnsSession) {
+            liveSessions.delete(data.sessionId)
+            return
+          }
         }
 
         const session: SessionState = {

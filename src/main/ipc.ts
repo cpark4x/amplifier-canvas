@@ -17,7 +17,7 @@ import {
   getRegisteredProjectCount,
   getProjectBySlug,
   getProjectOverviewStats,
-  getRecentSessionSummaries,
+
   getAllProjectSessions,
   getDailySessionCounts,
   updateLastVisited,
@@ -25,7 +25,7 @@ import {
   getStalledSessions,
   getVisibleProjectSessions,
 } from './db'
-import { generateProjectAssessment } from './project-assessment'
+// generateProjectAssessment removed — overview now uses structured metrics
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
 import type { WorkspaceState } from './workspace'
 import { discoverProjects } from './discovery'
@@ -451,17 +451,54 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         // after reading the old value. Calling it here causes a race condition
         // where CONTEXT reads the just-updated timestamp and finds zero new commits.
         const stats = getProjectOverviewStats(slug)
-        // Use on-disk count for real total (DB is capped at 20 most recent)
         const diskSessionCount = countProjectSessionsOnDisk(getAmplifierHome(), slug)
         const totalSessions = Math.max(diskSessionCount, stats.sessionCount)
 
-        const agentSessionCount = countAgentSessionsOnDisk(getAmplifierHome(), slug)
-        const rootSessionCount = totalSessions
-        const delegationRatio = rootSessionCount > 0 ? Math.round((agentSessionCount / rootSessionCount) * 10) / 10 : 0
-        
-        // Meaningful success rate: exclude automated sessions
-        const allSessionsForRate = getAllProjectSessions(slug)
-        const nonAutoSessions = allSessionsForRate.filter(s => {
+        // All sessions for derived metrics
+        const allSessions = getAllProjectSessions(slug)
+
+        // --- Scale & dates ---
+        const sortedByDate = [...allSessions].sort((a, b) =>
+          new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
+        const firstSessionAt = sortedByDate.length > 0 ? sortedByDate[0].startedAt : undefined
+        const lastActivityAt = stats.lastActivityAt ?? new Date().toISOString()
+
+        // --- Activity pulse: sessions this week vs last week ---
+        const now = Date.now()
+        const weekMs = 7 * 24 * 60 * 60 * 1000
+        const sessionsThisWeek = allSessions.filter(s =>
+          now - new Date(s.startedAt).getTime() < weekMs).length
+        const sessionsLastWeek = allSessions.filter(s => {
+          const age = now - new Date(s.startedAt).getTime()
+          return age >= weekMs && age < weekMs * 2
+        }).length
+
+        // Trend detection
+        const daysSinceLastActivity = (now - new Date(lastActivityAt).getTime()) / (24 * 60 * 60 * 1000)
+        let trend: 'accelerating' | 'steady' | 'slowing' | 'dormant' | 'new'
+        if (totalSessions <= 3) {
+          trend = 'new'
+        } else if (daysSinceLastActivity > 14) {
+          trend = 'dormant'
+        } else if (sessionsThisWeek > sessionsLastWeek * 1.5) {
+          trend = 'accelerating'
+        } else if (sessionsLastWeek > sessionsThisWeek * 1.5) {
+          trend = 'slowing'
+        } else {
+          trend = 'steady'
+        }
+
+        // --- Health ---
+        const healthRatio = { done: 0, failed: 0, active: 0, total: allSessions.length }
+        let stalledSessionCount = 0
+        for (const s of allSessions) {
+          if (s.status === 'done') healthRatio.done++
+          else if (s.status === 'failed') healthRatio.failed++
+          else if (['active', 'running', 'needs_input'].includes(s.status)) healthRatio.active++
+          if (s.status === 'needs_input') stalledSessionCount++
+        }
+
+        const nonAutoSessions = allSessions.filter(s => {
           const c = classifySession(s)
           return c.classification !== 'automated' && c.classification !== 'failed-auto'
         })
@@ -469,16 +506,58 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const nonAutoCompleted = nonAutoSessions.filter(s => s.status === 'done' || s.status === 'failed').length
         const meaningfulSuccessRate = nonAutoCompleted > 0 ? Math.round((nonAutoDone / nonAutoCompleted) * 100) : 0
 
-        // Generate assessment from session data
-        const recentSessions = getRecentSessionSummaries(slug)
-        const { assessment, outcomes } = generateProjectAssessment(recentSessions, totalSessions)
+        // Recent failures (last 7 days)
+        const recentFailureCount = allSessions.filter(s =>
+          s.status === 'failed' && (now - new Date(s.startedAt).getTime()) < weekMs).length
 
-        // Read project README.md for description
+        // --- Lifecycle ---
+        let lifecycle: 'new' | 'active' | 'mature' | 'dormant'
+        if (totalSessions <= 3) {
+          lifecycle = 'new'
+        } else if (daysSinceLastActivity > 30) {
+          lifecycle = 'dormant'
+        } else if (totalSessions > 50) {
+          lifecycle = 'mature'
+        } else {
+          lifecycle = 'active'
+        }
+
+        // --- Recent work topics (deduplicated keywords from recent session titles) ---
+        const meaningfulTitles = allSessions
+          .filter(s => s.title && s.title.length > 10
+            && !s.title.startsWith('load_skill')
+            && !s.title.startsWith('Execute recipe')
+            && (now - new Date(s.startedAt).getTime()) < weekMs * 2)
+          .map(s => s.title!.replace(/^(I want to |Can you |Please |Let's |Let me )/i, '').trim())
+          .slice(0, 10)
+        // Extract distinct topic phrases (first ~6 words of each, deduplicated)
+        const seenTopics = new Set<string>()
+        const recentWorkTopics: string[] = []
+        for (const title of meaningfulTitles) {
+          const topic = title.split(/\s+/).slice(0, 6).join(' ')
+          const key = topic.toLowerCase()
+          if (!seenTopics.has(key) && recentWorkTopics.length < 5) {
+            seenTopics.add(key)
+            recentWorkTopics.push(topic)
+          }
+        }
+
+        // --- Last commit ---
+        let lastCommitMessage: string | undefined
+        let lastCommitAt: string | undefined
+        try {
+          const commits = getGitCommits(project.path, null, 1)
+          if (commits.length > 0) {
+            lastCommitMessage = commits[0].message
+            lastCommitAt = commits[0].date
+          }
+        } catch { /* no git */ }
+
+        // --- README description ---
         let description: string | undefined
         try {
           const readmePath = join(project.path, 'README.md')
           const readmeContent = await readFile(readmePath, 'utf-8')
-          // Extract first paragraph after the # title line
           const lines = readmeContent.split('\n')
           let foundTitle = false
           const paragraphLines: string[] = []
@@ -491,64 +570,44 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
               const trimmed = line.trim()
               if (trimmed === '' && paragraphLines.length > 0) break
               if (trimmed === '') continue
-              if (trimmed.startsWith('#')) break // next heading
+              if (trimmed.startsWith('#')) break
               paragraphLines.push(trimmed)
             }
           }
           if (paragraphLines.length > 0) {
             description = paragraphLines.join(' ')
           }
-        } catch {
-          // No README or unreadable — description stays undefined
-        }
+        } catch { /* no README */ }
 
-        // Repository metadata (git remote, visibility, contributors)
+        // --- Repository metadata ---
         const repoMeta = getGitRepoMetadata(project.path)
 
-        // Compute health ratio from all sessions
-        const allSessions = getAllProjectSessions(slug)
-        const healthRatio = { done: 0, failed: 0, active: 0, total: allSessions.length }
-        for (const s of allSessions) {
-          if (s.status === 'done') healthRatio.done++
-          else if (s.status === 'failed') healthRatio.failed++
-          else if (['active', 'running', 'needs_input'].includes(s.status)) healthRatio.active++
-        }
-
-        // Top 5 recent meaningful sessions (filter out automated junk)
-        const meaningfulSessions = allSessions
-          .filter((s) => s.title && s.title.length > 10
-            && !s.title.startsWith('load_skill')
-            && !s.title.startsWith('Execute recipe'))
-          .slice(0, 5)
-          .map((s) => ({
-            title: s.title!,
-            status: s.status,
-            startedAt: s.startedAt,
-            promptCount: s.promptCount,
-          }))
-
-        const result = {
+        const result: import('../shared/types').ProjectOverview = {
           slug: project.slug,
           name: project.name,
           path: project.path,
+          description,
+          repoUrl: repoMeta.repoUrl,
+          repoVisibility: repoMeta.repoVisibility,
+          repoContributorCount: repoMeta.repoContributorCount,
           sessionCount: totalSessions,
           totalPrompts: stats.totalPrompts,
           totalToolCalls: stats.totalToolCalls,
           totalFilesChanged: stats.totalFilesChanged,
-          activeSessionCount: stats.activeSessionCount,
-          lastActivityAt: stats.lastActivityAt ?? new Date().toISOString(),
-          assessment,
-          outcomes,
-          description,
-          healthRatio,
-          recentSessions: meaningfulSessions,
-          rootSessionCount,
-          agentSessionCount,
-          delegationRatio,
+          firstSessionAt,
+          lastActivityAt,
+          sessionsThisWeek,
+          sessionsLastWeek,
+          trend,
           meaningfulSuccessRate,
-          repoUrl: repoMeta.repoUrl,
-          repoVisibility: repoMeta.repoVisibility,
-          repoContributorCount: repoMeta.repoContributorCount,
+          healthRatio,
+          activeSessionCount: stats.activeSessionCount,
+          lifecycle,
+          stalledSessionCount,
+          recentFailureCount,
+          recentWorkTopics,
+          lastCommitMessage,
+          lastCommitAt,
         }
         return result
       } catch (err) {

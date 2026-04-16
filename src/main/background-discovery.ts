@@ -87,6 +87,10 @@ export async function runBackgroundDiscovery(
     for (const entry of newEntries) {
       await new Promise<void>((resolve) => setImmediate(resolve))
 
+      // Re-check: watcher may have indexed this session during the yield above.
+      // getKnownSessionIds was captured once at loop start; this guards the race.
+      if (getKnownSessionIds(project.slug).has(entry.name)) continue
+
       const eventsPath = join(sessionsDir, entry.name, 'events.jsonl')
       if (!existsSync(eventsPath)) continue
 

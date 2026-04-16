@@ -116,25 +116,42 @@ export interface ProjectOverview {
   slug: string
   name: string
   path: string
+  description?: string  // from README.md
+
+  // --- Identity ---
+  repoUrl?: string                                     // "https://github.com/org/repo"
+  repoVisibility?: 'public' | 'private' | 'unknown'
+  repoContributorCount?: number
+
+  // --- Scale ---
   sessionCount: number
   totalPrompts: number
   totalToolCalls: number
   totalFilesChanged: number
-  activeSessionCount: number
-  lastActivityAt: string
-  assessment?: string  // AI-generated project health summary
-  outcomes?: string[]  // key outcomes from sessions
-  description?: string  // from README.md
+  firstSessionAt?: string          // when did this project start
+  lastActivityAt: string           // most recent activity
+
+  // --- Activity pulse ---
+  sessionsThisWeek: number         // sessions in last 7 days
+  sessionsLastWeek: number         // sessions 8-14 days ago
+  trend: 'accelerating' | 'steady' | 'slowing' | 'dormant' | 'new'
+
+  // --- Health ---
+  meaningfulSuccessRate?: number   // % of non-automated sessions that succeeded
   healthRatio?: { done: number; failed: number; active: number; total: number }
-  recentSessions?: { title: string; status: string; startedAt: string; promptCount: number }[]
-  rootSessionCount?: number
-  agentSessionCount?: number
-  delegationRatio?: number
-  meaningfulSuccessRate?: number
-  // Repository metadata
-  repoUrl?: string             // e.g. "https://github.com/cpark4x/amplifier-canvas"
-  repoVisibility?: 'public' | 'private' | 'unknown'
-  repoContributorCount?: number
+  activeSessionCount: number
+
+  // --- Lifecycle ---
+  lifecycle: 'new' | 'active' | 'mature' | 'dormant'  // project maturity signal
+
+  // --- Needs attention ---
+  stalledSessionCount: number      // needs_input sessions
+  recentFailureCount: number       // failures in last 7 days
+
+  // --- Recent work summary ---
+  recentWorkTopics: string[]       // deduplicated topic keywords from recent session titles
+  lastCommitMessage?: string       // most recent commit message
+  lastCommitAt?: string            // most recent commit date
 }
 
 // --- Project context types (for dashboard tabs) ---
