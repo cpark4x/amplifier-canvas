@@ -24,18 +24,13 @@ export interface CommitInfo {
 
 /**
  * Generate a short one-liner summary for a session.
- * Returns null if the session is ongoing or lacks enough info.
+ * Returns null only if the session truly has no useful info.
  * Max ~60 chars.
  */
 export function generateSessionOneLiner(
   session: SessionForSummary,
   overlappingCommits: CommitInfo[],
 ): string | null {
-  // Don't summarize ongoing work
-  if (session.status === 'active' || session.status === 'needs_input' || session.status === 'running') {
-    return null
-  }
-
   // 1. Has overlapping commits → "Shipped: [message]"
   if (overlappingCommits.length > 0) {
     const first = truncateMessage(overlappingCommits[0].message, 40)
@@ -50,37 +45,68 @@ export function generateSessionOneLiner(
     return `Changed ${session.filesChangedCount} file${session.filesChangedCount !== 1 ? 's' : ''}`
   }
 
-  // 3. Deep work session
-  if (session.toolCallCount > 20) {
-    return `Deep work session \u2014 ${session.toolCallCount} tool calls`
+  // 3. Still in progress — show what kind of work it is
+  if (session.status === 'active' || session.status === 'needs_input' || session.status === 'running') {
+    if (session.toolCallCount > 100) {
+      return `In progress — ${session.promptCount} prompts, ${session.toolCallCount} tool calls`
+    }
+    if (session.toolCallCount > 20) {
+      return `In progress — deep work session`
+    }
+    if (session.promptCount > 5) {
+      return `In progress — ${session.promptCount} prompts so far`
+    }
+    return null
   }
 
-  // 4. Quick task
+  // 4. Deep work session (completed)
+  if (session.toolCallCount > 20) {
+    return `${session.promptCount} prompts, ${session.toolCallCount} tool calls`
+  }
+
+  // 5. Quick task
   if (session.promptCount <= 2 && session.status === 'done') {
     return 'Quick task'
   }
 
-  // 5. Failed
+  // 6. Failed
   if (session.status === 'failed') {
     return 'Session ended with errors'
   }
 
-  // 6–7. Not enough info
+  // 7. Has some prompts — show count
+  if (session.promptCount > 2) {
+    return `${session.promptCount} prompts`
+  }
+
+  // 8. Not enough info
   return null
 }
 
 /**
  * Find commits whose date falls within a session's time window.
- * If the session has no endedAt, we use startedAt + 2 hours as the window.
+ *
+ * Window logic:
+ * - If session has endedAt → use [startedAt, endedAt]
+ * - If session is still active (no endedAt) → use [startedAt, now]
+ *   (the session is still running, so commits up to now are relevant)
+ * - Buffer: add 5 minutes before start to catch commits made just before
+ *   session began (common when you commit then start a new session)
  */
 export function correlateCommitsToSession(
-  session: { startedAt: string; endedAt: string | null },
+  session: { startedAt: string; endedAt: string | null; status?: string },
   allCommits: CommitInfo[],
 ): CommitInfo[] {
-  const start = new Date(session.startedAt).getTime()
-  const end = session.endedAt
-    ? new Date(session.endedAt).getTime()
-    : start + 2 * 60 * 60 * 1000 // +2 hours
+  const BUFFER_MS = 5 * 60 * 1000 // 5 minutes before session start
+  const start = new Date(session.startedAt).getTime() - BUFFER_MS
+
+  let end: number
+  if (session.endedAt) {
+    end = new Date(session.endedAt).getTime()
+  } else {
+    // Session still running — commits up to now are relevant
+    end = Date.now()
+  }
 
   return allCommits.filter((c) => {
     const commitTime = new Date(c.date).getTime()

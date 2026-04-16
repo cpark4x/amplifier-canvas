@@ -374,7 +374,7 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     const map = new Map<string, string | null>()
     for (const s of sessions) {
       const overlapping = correlateCommitsToSession(
-        { startedAt: s.startedAt, endedAt: s.endedAt },
+        { startedAt: s.startedAt, endedAt: s.endedAt, status: s.status },
         commits as CommitInfo[],
       )
       map.set(s.id, generateSessionOneLiner(s, overlapping))
