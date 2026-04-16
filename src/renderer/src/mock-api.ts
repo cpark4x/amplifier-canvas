@@ -272,6 +272,13 @@ const mockAPI = {
   saveSettings: async (): Promise<{ success: boolean }> => ({ success: true }),
 
   getProjectOverview: async (slug: string): Promise<ProjectOverview | null> => getProjectOverview(slug),
+
+  getProjectContext: async (): Promise<any> => ({
+    lastVisitedAt: null,
+    recentCommits: [],
+    commitsSinceLastVisit: [],
+    stalledSessions: [],
+  }),
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useCanvasStore } from '../store'
-import type { ProjectHistorySession, SessionClassification } from '../../../shared/types'
+import type { ProjectHistorySession, SessionClassification, ProjectContext } from '../../../shared/types'
 
 interface ProjectHistoryTabProps {
   projectSlug: string
@@ -31,6 +31,25 @@ function matchesFilter(
 }
 
 // ---------------------------------------------------------------------------
+// Timeline item types — sessions and commits in a unified list
+// ---------------------------------------------------------------------------
+
+interface CommitData {
+  hash: string
+  message: string
+  date: string
+  author: string
+}
+
+type TimelineItem =
+  | { type: 'session'; data: ProjectHistorySession }
+  | { type: 'commit'; data: CommitData }
+
+function getTimelineDate(item: TimelineItem): string {
+  return item.type === 'session' ? item.data.startedAt : item.data.date
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -56,6 +75,12 @@ function formatDuration(startedAt: string, endedAt?: string | null): string {
   const hours = Math.floor(minutes / 60)
   const remainder = minutes % 60
   return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`
+}
+
+function truncatePrompt(text: string, maxLen = 80): string {
+  const firstLine = text.split('\n')[0].trim()
+  if (firstLine.length <= maxLen) return firstLine
+  return firstLine.substring(0, maxLen).trimEnd() + '…'
 }
 
 type DateGroup = 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'Older'
@@ -97,12 +122,16 @@ const CLASSIFICATION_BADGE: Record<
   'failed-auto': { icon: '⚙', bg: 'rgba(239,68,68,0.1)', color: 'var(--red)' },
 }
 
+/** Filters where commits should appear alongside sessions */
+const SHOW_COMMITS_IN_FILTER = new Set<ClassificationFilter>(['work', 'deep-work', 'quick-task', 'all'])
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.ReactElement {
   const [sessions, setSessions] = useState<ProjectHistorySession[]>([])
+  const [commits, setCommits] = useState<CommitData[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [classFilter, setClassFilter] = useState<ClassificationFilter>('work') // Default: My Work
@@ -114,10 +143,17 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    window.electronAPI
-      .getProjectHistory(projectSlug)
-      .then((data: ProjectHistorySession[]) => {
-        if (!cancelled) setSessions(data)
+
+    // Fetch sessions and context in parallel
+    Promise.all([
+      window.electronAPI.getProjectHistory(projectSlug),
+      window.electronAPI.getProjectContext(projectSlug),
+    ])
+      .then(([historyData, contextData]: [ProjectHistorySession[], ProjectContext | null]) => {
+        if (!cancelled) {
+          setSessions(historyData)
+          setCommits(contextData?.recentCommits ?? [])
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -139,8 +175,8 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
       .map((s) => s.id)
   }, [sessions])
 
-  // Filtered list — search (on title) AND classification filter
-  const filtered = useMemo(() => {
+  // Filtered sessions — search (on title) AND classification filter
+  const filteredSessions = useMemo(() => {
     const q = query.trim().toLowerCase()
     return sessions.filter((s) => {
       if (q && !(s.title ?? '').toLowerCase().includes(q)) return false
@@ -148,6 +184,28 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
       return true
     })
   }, [sessions, query, classFilter])
+
+  // Build unified timeline: merge filtered sessions with commits
+  const timeline = useMemo(() => {
+    const items: TimelineItem[] = filteredSessions.map((s) => ({ type: 'session', data: s }))
+
+    // Only add commits when the current filter shows them
+    if (SHOW_COMMITS_IN_FILTER.has(classFilter)) {
+      const q = query.trim().toLowerCase()
+      for (const c of commits) {
+        // If searching, filter commits by message too
+        if (q && !c.message.toLowerCase().includes(q)) continue
+        items.push({ type: 'commit', data: c })
+      }
+    }
+
+    // Sort by date descending
+    items.sort(
+      (a, b) => new Date(getTimelineDate(b)).getTime() - new Date(getTimelineDate(a)).getTime(),
+    )
+
+    return items
+  }, [filteredSessions, commits, classFilter, query])
 
   // Classification counts (from ALL sessions, not filtered)
   const counts = useMemo(() => {
@@ -159,22 +217,22 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
     return { deepWork, quick, auto, work: deepWork + quick }
   }, [sessions])
 
-  // Group by date, sorted most-recent-first within each group
+  // Group timeline by date
   const grouped = useMemo(() => {
-    const sorted = [...filtered].sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-    )
-    const map = new Map<DateGroup, ProjectHistorySession[]>()
-    for (const s of sorted) {
-      const g = classifyDate(s.startedAt)
+    const map = new Map<DateGroup, TimelineItem[]>()
+    for (const item of timeline) {
+      const g = classifyDate(getTimelineDate(item))
       if (!map.has(g)) map.set(g, [])
-      map.get(g)!.push(s)
+      map.get(g)!.push(item)
     }
     return GROUP_ORDER.filter((g) => map.has(g)).map((g) => ({
       label: g,
-      sessions: map.get(g)!,
+      items: map.get(g)!,
     }))
-  }, [filtered])
+  }, [timeline])
+
+  // Count only sessions for the summary line
+  const filteredSessionCount = filteredSessions.length
 
   const hasActiveFilters = query.trim() !== '' || classFilter !== 'work'
 
@@ -373,8 +431,8 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
         }}
       >
         <span>
-          <span style={{ fontWeight: 600 }}>{filtered.length}</span> session
-          {filtered.length !== 1 ? 's' : ''}
+          <span style={{ fontWeight: 600 }}>{filteredSessionCount}</span> session
+          {filteredSessionCount !== 1 ? 's' : ''}
           {classFilter === 'work' && counts.auto > 0 && (
             <span style={{ color: 'var(--text-very-muted)' }}>
               {' '}· {counts.auto} automated hidden
@@ -421,7 +479,7 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
         </div>
       )}
 
-      {sessions.length > 0 && filtered.length === 0 && hasActiveFilters && (
+      {sessions.length > 0 && filteredSessionCount === 0 && hasActiveFilters && (
         <div
           style={{
             fontSize: 13,
@@ -445,7 +503,7 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
         </div>
       )}
 
-      {/* 3. Sessions grouped by date */}
+      {/* 3. Timeline grouped by date — sessions + commit markers */}
       {grouped.map((group, groupIdx) => (
         <div key={group.label}>
           {/* Group heading */}
@@ -463,12 +521,75 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
             {group.label}
           </div>
 
-          {/* 4. Session rows */}
-          {group.sessions.map((session) => {
+          {/* 4. Timeline rows */}
+          {group.items.map((item, itemIdx) => {
+            if (item.type === 'commit') {
+              // --- Commit marker row ---
+              const commit = item.data
+              return (
+                <div
+                  key={`commit-${commit.hash}-${itemIdx}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px 4px 4px 22px',
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontFamily: 'var(--font-mono, monospace)',
+                      color: 'var(--text-very-muted)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {commit.hash.substring(0, 7)}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--text-very-muted)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    —
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--text-very-muted)',
+                      flex: 1,
+                      minWidth: 0,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {commit.message}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--text-very-muted)',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {formatRelativeTime(commit.date)}
+                  </span>
+                </div>
+              )
+            }
+
+            // --- Session row ---
+            const session = item.data
             const duration = formatDuration(session.startedAt, session.endedAt)
             const relTime = formatRelativeTime(session.startedAt)
             const hasTitle = session.title != null && session.title.length > 0
             const badge = CLASSIFICATION_BADGE[session.classification]
+            const promptPreview =
+              session.firstPrompt ? truncatePrompt(session.firstPrompt) : null
 
             return (
               <div
@@ -548,6 +669,24 @@ function ProjectHistoryTab({ projectSlug }: ProjectHistoryTabProps): React.React
                     {session.promptCount !== 1 ? 's' : ''} · {session.toolCallCount} tool
                     {' '}call{session.toolCallCount !== 1 ? 's' : ''}
                   </div>
+
+                  {/* First prompt preview */}
+                  {promptPreview && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--text-very-muted)',
+                        fontStyle: 'italic',
+                        marginTop: 2,
+                        marginLeft: 14 + 8,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {promptPreview}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right side — relative time */}

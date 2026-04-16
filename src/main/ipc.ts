@@ -2,8 +2,9 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { mkdirSync, existsSync } from 'fs'
 import { readdir, stat, readFile } from 'fs/promises'
 import { join, resolve, normalize } from 'path'
+import { execSync } from 'child_process'
 import { IPC_CHANNELS } from '../shared/types'
-import type { SessionState, FileActivity, FileEntry, ProjectStatsData, ProjectHistorySession } from '../shared/types'
+import type { SessionState, FileActivity, FileEntry, ProjectStatsData, ProjectHistorySession, ProjectContext } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject } from './pty'
 import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk, countAgentSessionsOnDisk } from './scanner'
 import {
@@ -19,6 +20,9 @@ import {
   getRecentSessionSummaries,
   getAllProjectSessions,
   getDailySessionCounts,
+  updateLastVisited,
+  getLastVisitedAt,
+  getStalledSessions,
 } from './db'
 import { generateProjectAssessment } from './project-assessment'
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
@@ -68,6 +72,21 @@ function classifySession(session: { title: string | null; status: string; prompt
     return { classification: 'deep-work', label: 'Deep Work' }
   }
   return { classification: 'quick-task', label: 'Quick Task' }
+}
+
+function getGitCommits(projectPath: string, since?: string | null, limit = 20): { hash: string; message: string; date: string; author: string }[] {
+  try {
+    const sinceArg = since ? `--since="${since}"` : ''
+    const cmd = `git -C "${projectPath}" log --format="%H|||%s|||%ai|||%an" ${sinceArg} -${limit} 2>/dev/null`
+    const output = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim()
+    if (!output) return []
+    return output.split('\n').map(line => {
+      const [hash, message, date, author] = line.split('|||')
+      return { hash: hash.substring(0, 7), message, date, author }
+    })
+  } catch {
+    return []
+  }
 }
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
@@ -330,6 +349,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       try {
         const project = getProjectBySlug(slug)
         if (!project) return null
+        updateLastVisited(slug)
         const stats = getProjectOverviewStats(slug)
         // Use on-disk count for real total (DB is capped at 20 most recent)
         const diskSessionCount = countProjectSessionsOnDisk(getAmplifierHome(), slug)
@@ -451,6 +471,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           promptCount: s.promptCount,
           toolCallCount: s.toolCallCount,
           classification: classifySession(s).classification,
+          firstPrompt: s.firstPrompt,
         }))
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -555,6 +576,38 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] PROJECT_STATS failed:', message)
+        return null
+      }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_CONTEXT,
+    async (_event, { slug }: { slug: string }): Promise<ProjectContext | null> => {
+      try {
+        const project = getProjectBySlug(slug)
+        if (!project) return null
+
+        const lastVisitedAt = getLastVisitedAt(slug)
+        const allCommits = getGitCommits(project.path, null, 20)
+        const commitsSinceLastVisit = lastVisitedAt
+          ? getGitCommits(project.path, lastVisitedAt)
+          : []
+
+        // Get stalled sessions (needs_input/running, older than 1 day)
+        const stalledSessions = getStalledSessions(slug)
+
+        // Update last visited timestamp
+        updateLastVisited(slug)
+
+        return {
+          lastVisitedAt,
+          recentCommits: allCommits,
+          commitsSinceLastVisit,
+          stalledSessions,
+        }
+      } catch (err) {
+        console.error('[ipc] PROJECT_CONTEXT failed:', err)
         return null
       }
     },
@@ -695,6 +748,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_OVERVIEW)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_HISTORY)
     ipcMain.removeHandler(IPC_CHANNELS.PROJECT_STATS)
+    ipcMain.removeHandler(IPC_CHANNELS.PROJECT_CONTEXT)
     ipcMain.removeHandler(IPC_CHANNELS.SESSION_STOP)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_SAVE)
     ipcMain.removeHandler(IPC_CHANNELS.WORKSPACE_GET)

@@ -37,6 +37,7 @@ export const IPC_CHANNELS = {
   PROJECT_OVERVIEW: 'project:overview',
   PROJECT_HISTORY: 'project:history',
   PROJECT_STATS: 'project:stats',
+  PROJECT_CONTEXT: 'project:context',
 } as const
 
 // --- Session types ---
@@ -129,6 +130,15 @@ export interface ProjectOverview {
   meaningfulSuccessRate?: number
 }
 
+// --- Project context types (for dashboard tabs) ---
+
+export interface ProjectContext {
+  lastVisitedAt: string | null
+  recentCommits: { hash: string; message: string; date: string; author: string }[]
+  commitsSinceLastVisit: { hash: string; message: string; date: string; author: string }[]
+  stalledSessions: { id: string; title: string | null; status: string; startedAt: string; promptCount: number }[]
+}
+
 // --- History tab types ---
 
 export interface ProjectHistorySession {
@@ -140,6 +150,7 @@ export interface ProjectHistorySession {
   promptCount: number
   toolCallCount: number
   classification: SessionClassification
+  firstPrompt: string | null
   agentCount?: number  // number of sub-agent sessions spawned by this root session
 }
 

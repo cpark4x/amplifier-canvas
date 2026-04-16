@@ -16,7 +16,7 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 ### Scene 1.1 — Welcome
 
-**The beat.** You open Canvas for the first time. The window is clean — a narrow sidebar on the left says "Projects" with a `+` button. Below it: "No projects yet." The main area is warm off-white with a centered message: *"Welcome to Canvas — Your workspace for Amplifier sessions, files, and previews."* One button: "Create your first project →".
+**The beat.** You open Canvas for the first time. The window is clean — a narrow sidebar on the left shows "No projects yet." At the bottom of the sidebar: an "Add project" bordered pill. The main area is warm off-white with a centered message: *"Welcome to Canvas — Your workspace for Amplifier sessions, files, and previews."* One button: "Create your first project →".
 
 **Why this moment matters.** The welcome screen establishes Canvas's personality before anything functional happens. It's warm, not cold. Inviting, not overwhelming. The sidebar is already visible but empty — foreshadowing the structure that will fill in. The single call-to-action means zero decision paralysis.
 
@@ -26,9 +26,9 @@ This document is the canonical narrative for Amplifier-Canvas. The story comes f
 
 *Chris opens Canvas on Thursday morning. He last used it Tuesday evening, working on amplifier-canvas.*
 
-Canvas opens instantly. The sidebar shows exactly what he left — amplifier-canvas is expanded, the last session he was working on is selected, the viewer panel shows its analysis. Two other projects (team-pulse, budget-tracker) are collapsed in the sidebar below.
+Canvas opens instantly. The sidebar shows exactly what he left — amplifier-canvas is expanded (▾ chevron, uppercase label, `+` button), the last session he was working on is selected, its history visible in the terminal. Two other projects (team-pulse, budget-tracker) are collapsed below — each shown as a single row with a muted chevron (▸), muted uppercase label, and a relative timestamp ("3d ago", "1w ago"). An "Add project" pill sits at the bottom of the sidebar.
 
-He notices the session he left running Tuesday has a green dot now — it finished overnight. He clicks it, sees the analysis summary, and moves on.
+He notices the session he left running Tuesday has a green dot now — it finished overnight. He clicks it, sees the session summary, and moves on.
 
 He clicks "+" to start a new session on amplifier-canvas. Canvas launches Amplifier, a new session appears in the sidebar with an amber "running" dot, and the terminal is active. He's coding within 3 seconds of clicking "+".
 
@@ -44,17 +44,17 @@ Later, he decides he's done with budget-tracker for now. Right-click, "Remove fr
 
 ### Scene 1.3 — New Project
 
-**The beat.** You click the button. A modal appears over a subtle overlay. "New Project" at the top. Two fields: project name and source (blank project or existing folder). The folder path is grayed out until you select "Existing folder." Footer: Cancel and "Create project →".
+**The beat.** You click "Add project" (or "Create your first project" from the welcome screen). A modal appears over a subtle overlay. "Add Project" at the top. Two tabs: New and Existing. On the New tab: project name, location, and bundle choice. Footer: Cancel and "Create Project →".
 
-**Why this moment matters.** This is the only configuration moment in the entire onboarding. Two choices, both obvious. The "existing folder" option signals that Canvas respects your existing workflow — it doesn't force you to start from scratch. The modal is small, centered, and feels like a quick aside, not a commitment.
+**Why this moment matters.** This is the only configuration moment in the entire onboarding. The two tabs (New / Existing) cover both paths without clutter. The "existing folder" option signals that Canvas respects your existing workflow — it doesn't force you to start from scratch. The modal is small, centered, and feels like a quick aside, not a commitment.
 
 **Visual reference:** Open [canvas.html](canvas.html) — Act 1, Step 3
 
 ### Scene 1.4 — Session Started
 
-**The beat.** You hit create. The sidebar immediately shows your project name as a label ("Canvas-App") with one session below it: "main" — amber dot, bold text, "just started" in amber. The main area is now a full-width terminal. The Amplifier CLI banner appears: session ID, version, bundle, provider. A blinking amber cursor waits for your first prompt.
+**The beat.** You hit create. The sidebar immediately shows your project name as an uppercase label ("CANVAS-APP") with an inline `+` button. One session below it: "main" — amber dot, bold text, "just started" in amber. An "Add project" pill sits at the bottom of the sidebar. The main area is a full-width terminal. The Amplifier startup banner appears (block characters, "AMPLIFIER" text, session ID). A blinking cursor waits at the prompt.
 
-**Why this moment matters.** Three things happen simultaneously: the project exists, a session is running, and the terminal is live. No intermediate screens, no "setting up your workspace" spinner. The session-first sidebar design is already visible — the project name is a label, not a destination. The session is the primary object. The pane title reads "main · Canvas-App" — session first, project second. You're inside Amplifier now. Canvas got out of the way.
+**Why this moment matters.** Three things happen simultaneously: the project exists, a session is running, and the terminal is live. No intermediate screens, no "setting up your workspace" spinner. The session-first sidebar design is already visible — the project name is an uppercase label with a `+` button, not a destination. The session is the primary object. The pane title reads "main · canvas-app" — session first, project second. You're inside Amplifier now. Canvas got out of the way.
 
 ---
 
@@ -105,11 +105,11 @@ Later, he decides he's done with budget-tracker for now. Right-click, "Remove fr
 This act has three sub-arcs:
 - **Parallel work** — running multiple sessions without conflicts
 - **Staying informed** — knowing what happened without hunting for it
-- **Project memory** — accumulating understanding that persists
+- **Project intelligence** — understanding not just what happened in a session, but what the project *is* and where it's going
 
 ### Scene 3.1 — Start a Second Session
 
-**The beat.** You have an "Auth module" session running on main (28m, amber dot). You click "+ New session." Canvas creates a new session in an isolated git worktree — the sidebar shows it: "New session" with a worktree badge reading "↟ worktree/dark-mode." The terminal switches to the new session. The Amplifier banner confirms: "Worktree: worktree/dark-mode | Isolated from main." A green message: "✓ Ready. Isolated from session 1 — no file conflicts."
+**The beat.** You have an "Auth module" session running on main (28m, amber dot). You click the `+` button on the project row. Canvas creates a new session in an isolated git worktree — the sidebar now shows two sessions: "Auth module" on main (running, 28m) and "Dark mode" on worktree/dark-mode (just started, active). The terminal switches to the new session. A green message: "✓ Ready. Isolated from session 1 — no file conflicts."
 
 **Why this moment matters.** This is the parallel work breakthrough. In the CLI world, running two Amplifier sessions on the same project means git conflicts, file collisions, manual coordination. Canvas handles it invisibly — worktrees provide true isolation. Each session gets its own branch, its own working directory. The worktree badge in the sidebar makes the isolation visible without requiring the user to understand git internals. Both sessions work the same files independently. No conflicts, no coordination needed.
 
@@ -121,9 +121,21 @@ This act has three sub-arcs:
 
 ### Scene 3.3 — Review Completed Session
 
-**The beat.** You click "Auth module" in the sidebar. The terminal switches to that session's history. The right panel opens to the ANALYSIS tab — a structured summary of everything that happened. At the top: a one-sentence description ("Built the session panel sidebar with live status indicators, duration counters, and worktree badges"), test status (14/14 passing), and session stats (1h 12m, 8 prompts, 142k tokens). Below: collapsible sections for Prompt History (numbered list of every prompt you sent), Key Moments (timestamped milestones — "T:14 All tests passing for the first time"), and Possible Next Steps (AI-suggested follow-ups — "SessionStatus.tsx needs error state handling").
+**The beat.** You click "Auth module" in the sidebar. The terminal switches to that session's history. The right panel opens to the SUMMARY tab — the answer to "what happened?" At the top: a hero block with a one-line TLDR ("Built the session panel sidebar with live status indicators, duration counters, and worktree badges"), green "All tests passing" status, and a stats row (1h 12m, 8 prompts, 14 files, 142k tokens). Below: collapsed sections for Session Details (prompt history, key milestones, suggested next steps — each with a preview line and expand chevron) and a "Where you left off" trail showing the last few turns of the conversation.
 
-**Why this moment matters.** This is session recall — the ability to understand what a session did without scrolling through terminal history. The prompt history gives you the narrative arc. The key moments give you the turning points. The next steps give you continuity. A session is no longer something that happened and vanished. It's a chapter you can re-read.
+**Why this moment matters.** This is session recall — the ability to understand what a session did without scrolling through terminal history. The hero block gives you the shape instantly. The collapsed details let you drill in without visual overload. The "where you left off" trail anchors you to the exact moment work stopped. A session is no longer something that happened and vanished. It's a chapter you can re-read.
+
+### Scene 3.3a — Triage a Failed Session
+
+**The beat.** Variant — the Stripe migration session failed. Red dot and "failed · 42m" in the sidebar. The SUMMARY tab's hero block shows red status: "Build broken · 2 type errors." The "Where you left off" trail explains *why* it failed (Stripe v14 breaking changes). Three sessions are visible: Auth module (done), Stripe migration (failed, selected), Dark mode (running).
+
+**Why this moment matters.** Failed sessions need triage, not just a red dot. The trail tells you what went wrong so you can decide: resume and fix, or start over. Red status is visually louder than green — failures demand attention. The SUMMARY tab gives the same structure as a successful session but with a failure-appropriate tone.
+
+### Scene 3.3b — Revisit a Stale Session
+
+**The beat.** Variant — the Frontend components session was paused a week ago. Amber dot and "paused" in the sidebar. The SUMMARY tab's hero block shows amber status: "Incomplete — session exited before tests passed." The stats row shows an absolute date (Mon, Mar 31) instead of relative time. The "Where you left off" trail shows unfinished work.
+
+**Why this moment matters.** Stale sessions are neither done nor failed — they're incomplete. Amber is neutral: not alarming, just "hey, this needs attention." Absolute dates ground you when it's been days. The trail anchors you to the exact moment you walked away, so you can resume without re-reading the whole session.
 
 ### Scene 3.4 — Commit the Changes
 
@@ -137,9 +149,13 @@ This act has three sub-arcs:
 
 **Why this moment matters.** Exiting a session doesn't feel like closing something — it feels like completing something. The session's work persists in git, in the PR, in the session history. The "New session" slot signals readiness without pressure. You could start another session right now, or close Canvas entirely. The state is durable.
 
+### Sub-arc: Project Intelligence
+
+You've run multiple sessions. You've seen completions, failures, and parallel work. Now you step back. What *is* this project? What are its goals? How much progress have you made? The project-level views answer these questions by synthesizing across all sessions into a coherent picture. This is where Canvas transitions from tracking sessions to understanding the project.
+
 ### Scene 3.6 — Project Overview
 
-**The beat.** You click the project name ("Canvas-App") in the sidebar. The entire main area transforms into a project view. The default tab is OVERVIEW. At the top: an AI assessment banner — "✶ AI assessment: On track — 1 of 3 outcomes in progress · 3 sessions completed · last activity today." Below: the project heading ("Amplifier-Canvas"), its one-line vision, and a structured outcomes list showing each outcome from OUTCOMES.md with status badges (In progress / Not started / Too early) and AI-generated evidence for each. A status line at the bottom: "PR #47 open · 2 sessions running · last commit today."
+**The beat.** You click the project name ("CANVAS-APP") in the sidebar. The entire main area transforms into a project view. The default tab is OVERVIEW. At the top: an AI assessment banner — "✶ AI assessment: On track — 1 of 3 outcomes in progress · 3 sessions completed · last activity today." Below: the project heading ("Amplifier-Canvas"), its one-line vision, and a structured outcomes list showing each outcome from OUTCOMES.md with status badges (In progress / Not started / Too early) and AI-generated evidence for each. A status line at the bottom: "PR #47 open · 2 sessions running · last commit today."
 
 **Why this moment matters.** This is project memory made visible. Canvas isn't just tracking sessions — it's tracking *the project*. The AI assessment synthesizes across all sessions to give you a status you'd otherwise need to build manually. The outcomes list connects daily work back to the goals that matter. The project view is where the flywheel becomes tangible: sessions feed the project's understanding, and the project's understanding feeds the next session.
 
@@ -170,7 +186,7 @@ Key decisions made during the design process, recovered from exploration artifac
 **Why session-first won:**
 - The active session must be unambiguous at a glance. Sidebar B achieves this with a left amber border, bold text, and an amber dot — three simultaneous signals.
 - The project name is context, not navigation. You're always *in* a project. What matters moment-to-moment is *which session*.
-- The pane title follows the same hierarchy: "redesign · Canvas-App" — session first, project second.
+- The pane title follows the same hierarchy: "Auth module · Canvas-App" — session first, project second.
 - Session-first maps directly to what users actually switch between. You switch sessions many times per hour. You switch projects a few times per day.
 
 **Source:** sidebar-concept.html (A/B comparison, deleted in cleanup commit acd682c)
@@ -218,7 +234,7 @@ Key decisions made during the design process, recovered from exploration artifac
 
 **The decision:** The right panel (viewer) does not exist at the start of a session. It appears only when content earns its place — either Amplifier opens a file (Scene 2.2) or the user browses to one (Scene 2.3).
 
-**Why this matters:** Most IDEs and dev tools show all panels on launch, even when empty. This creates visual noise and implies the user should be doing something with each panel. Canvas starts with terminal-only. The viewer appears when there's something to view. The APP tab appears when there's a dev server running. The ANALYSIS tab appears when a session has enough data to analyze. Each panel addition is an earned moment, not a default.
+**Why this matters:** Most IDEs and dev tools show all panels on launch, even when empty. This creates visual noise and implies the user should be doing something with each panel. Canvas starts with terminal-only. The viewer appears when there's something to view. The APP tab appears when there's a dev server running. The SUMMARY tab appears when a completed session has results to show. Each panel addition is an earned moment, not a default.
 
 **Implementation detail:** The full-width terminal in Scene 2.1 isn't a different layout — it's the same layout with the right panel at width 0. The transition to two-panel in Scene 2.2 is a width animation, not a layout swap.
 
@@ -240,6 +256,16 @@ Key decisions made during the design process, recovered from exploration artifac
 
 **Source:** PR #1 — "Fixed session naming throughout all 3 acts: Act 1-2 uses 'Explore codebase' (auto-named from first prompt), Act 3 uses 'Auth module' (main) and 'Dark mode' (worktree)"
 
+### 7. ANALYSIS vs SUMMARY Tab Rule
+
+**The decision:** The right panel's third tab changes name based on session state. Running/active sessions show **ANALYSIS** (live, evolving). Completed, failed, or paused sessions show **SUMMARY** (final, retrospective). The other three tabs — FILES, APP, CHANGES — are always the same regardless of state.
+
+**Why this matters:** Early builds used ANALYSIS everywhere. This caused confusion: users seeing "ANALYSIS" on a completed session expected live data, not a retrospective. The rename to SUMMARY for finished sessions signals "this is the final record" vs. "this is still being computed." This was a major source of bugs during implementation.
+
+**The rule:**
+- Running/active: FILES, APP, **ANALYSIS**, CHANGES
+- Completed/failed/paused: FILES, APP, **SUMMARY**, CHANGES
+
 ---
 
 ## Design Language
@@ -248,16 +274,18 @@ Summarized from the v2 Maru-Anchored aesthetic brief. The full brief lives at [d
 
 ### Palette
 
-| Role | Color | Rationale |
-|------|-------|-----------|
-| Primary surface | `#F9F9F7` warm paper white | The dominant background. Not pure white (too cold), not gray (too sterile). Warm, slightly creamy — like unbleached cotton paper. This is the single most important color decision. |
-| Secondary surface | `#F2F0EB` warm stone | Sidebar, panel backgrounds, hover states. A subtle temperature shift from primary — the sidebar should feel like a slightly different paper, not a different room. |
-| Primary text | `#2A2A2A` warm charcoal | Not pure black. Avoids harshness of `#000000` on the warm white background. |
-| Secondary text | `#A8A098` warm gray | Timestamps, metadata, file sizes, secondary labels. Muted but warm, not cool blue-gray. |
-| Content accent | `#8A5A35` warm umber | Extremely sparing — active section indicators, visited links. Never a background color. |
-| Terminal | `#0F0E0C` deep carbon | The terminal zone is the only dark surface. Creates a clear boundary between "where you type" and "where you see." |
-| Status: active/accent | `#F59E0B` amber | Session indicators, active states, the pulsing running dot. Thermal warmth against the neutral palette. |
-| Status: success | `#3ECF8E` emerald | The ONE functional saturated color. Done states, test passing, CI green. |
+| Role | CSS Variable | Color | Rationale |
+|------|-------------|-------|-----------|
+| Primary surface | `--bg-page` | `#F0EBE3` warm paper | The dominant background. Not pure white (too cold), not gray (too sterile). Warm, slightly creamy — like unbleached cotton paper. This is the single most important color decision. |
+| Secondary surface | `--bg-header` | `#E8E2D8` warm stone | Header bar, pane title backgrounds. A subtle temperature shift from primary — the sidebar shares primary's color; the header is the distinct "slightly different paper." |
+| Primary text | `--text-primary` | `#1C1A16` warm charcoal | Not pure black. Avoids harshness of `#000000` on the warm background. |
+| Secondary text | `--text-muted` | `#8A8278` warm gray | Timestamps, metadata, file sizes, secondary labels. Muted but warm, not cool blue-gray. |
+| Content accent | — | `#C4784A` warm umber | Extremely sparing — logo mark stroke, git branch labels. Never a background color. |
+| Terminal | `--bg-terminal` | `#0F0E0C` deep carbon | The terminal zone is the only dark surface. Creates a clear boundary between "where you type" and "where you see." |
+| Status: active/accent | `--amber` | `#F59E0B` amber | Session indicators, active states, the pulsing running dot. Thermal warmth against the neutral palette. |
+| Status: success | `--green` | `#4CAF74` green | The ONE functional saturated color. Done states, test passing, CI green. |
+
+**Additional variables not in the palette table:** `--bg-sidebar: #F0EBE3` (same as page), `--bg-sidebar-active: #E8E0D4`, `--bg-pane-title: #DDD5C8`, `--bg-right: #F7F4EF`, `--bg-modal: #FAF8F4`, `--border: #DDD5C8`, `--text-very-muted: #A09888`, `--text-terminal: #C8C4BC`, `--amber-logo-bg: #1A0F00`.
 
 **What's not in this palette:** violet, blue, red (except failure states), orange, cyan, gradients. The shell is monochromatic and warm.
 
@@ -273,7 +301,7 @@ Summarized from the v2 Maru-Anchored aesthetic brief. The full brief lives at [d
 1. **NO DARK SIDEBAR.** The sidebar is warm stone, not charcoal. The v1 dark sidebar was rejected. The differentiation between sidebar and content is a subtle temperature shift, not a light/dark split.
 2. **NO CARD BORDERS.** No container outlines, no section dividers. Space and alignment define structure. If grouping is needed, use a background tone shift — never a border.
 3. **NO SHADOWS on content.** Flat. Shadows exist only on modals and floating overlays. Maximum two shadowed elements on any screen.
-4. **NO SATURATED COLORS in chrome.** The only saturated colors are amber (active/accent) and emerald (success). Everything else: warm whites, warm grays, warm charcoal.
+4. **NO SATURATED COLORS in chrome.** The only saturated colors are amber (active/accent) and green (success). Everything else: warm whites, warm grays, warm charcoal.
 5. **NO BOLD FONT WEIGHTS for UI chrome.** Max 600. The hierarchy is uppercase + tracking, not size + boldness.
 
 ### Reference Anchors
@@ -289,6 +317,8 @@ Summarized from the v2 Maru-Anchored aesthetic brief. The full brief lives at [d
 
 **The canonical visual reference is [canvas.html](canvas.html).** Open it in any browser to see every screen at 1440×900, rendered as self-contained HTML/CSS with the actual design system (warm paper whites, amber accent, dark terminal). No PNGs needed — the prototype IS the spec.
 
+**Spec cards.** Every screen in canvas.html now includes a `screen-spec` card with three sections: **"The beat"** (what happens in the scene), **"Why this moment matters"** (product rationale), and **"Done when you can verify"** (a checklist of verifiable conditions, including NOT constraints like "NO startup banner in terminal"). These cards are the contract between design and implementation — if a screen passes its checklist, it's correct.
+
 Design specs for implementation live in `design/`:
 - [aesthetic-brief.md](design/aesthetic-brief.md) — palette, typography, anti-slop rules
 - [nav-shell.md](design/nav-shell.md) — pixel-level layout dimensions
@@ -299,14 +329,14 @@ Design specs for implementation live in `design/`:
 
 ## Open Threads
 
-The story currently ends at "Nothing is ever lost" — project memory, session history, accumulated understanding. Acts 1–3 cover: first launch → first session → multi-session mastery → project-level awareness. The emotional arc reaches *ownership*. Here's where it could go next.
+The story currently ends at "Nothing is ever lost" — project memory, session history, accumulated understanding. Acts 1–3 cover: first launch → first session → multi-session mastery + project-level intelligence. The emotional arc reaches *ownership*. Here's where it could go next.
 
 ### Where Does Act 4 Begin?
 
 Act 3 ends with a single project, fully understood. The natural next boundary is: **what happens when you have five projects?** Act 4's job-to-be-done might be: *stay organized across your entire portfolio of work, not just one project.*
 
 Possible Act 4 beats:
-- **Multi-project home.** A view above the project level — all your projects, their statuses, which ones need attention. The sidebar already has a "Projects" section header with a `+` button — this foreshadows multiple projects but Acts 1–3 never show more than one.
+- **Multi-project home.** A view above the project level — all your projects, their statuses, which ones need attention. The sidebar already uses the collapsed project pattern (muted chevron, relative timestamp) — this foreshadows multiple projects but Acts 1–3 show at most two or three.
 - **Cross-project notifications.** A background session in Project B completes while you're working in Project A. The sidebar shows it. How does the notification hierarchy work across projects?
 - **Project switching.** What does the transition feel like? Does the terminal change? Does the viewer reset? What state is preserved?
 
@@ -316,7 +346,7 @@ Act 5 might cross the single-user boundary.
 
 Possible beats:
 - **Settings and customization.** Theme preferences, keyboard shortcuts, terminal configuration, model selection.
-- **Sharing a session.** You completed a session that produced great work. Can you share its analysis view with a teammate?
+- **Sharing a session.** You completed a session that produced great work. Can you share its SUMMARY view with a teammate?
 - **Onboarding someone else.** Your project has memory. A new team member starts a session. Does the project context help them ramp up faster?
 - **Team awareness.** Multiple people using Amplifier on the same repo. Whose sessions are running? What's been done?
 
@@ -325,7 +355,7 @@ Possible beats:
 1. **What's the maximum session count before the sidebar needs a different design?** The current sidebar shows 2–3 sessions comfortably. What about 10? 20? The collapsed 5-state indicator spec from collapsed-view.html suggests an 80px collapsed mode was explored.
 2. **How does archiving work at scale?** Scene 3.8 shows "3 more sessions" — but what about 100? Is there search? Filtering? Date grouping?
 3. **Does Canvas have its own persistence, or is everything derived from git + Amplifier?** The project overview's AI assessment implies Canvas stores data beyond what git contains. Where does it live?
-4. **What happens when a session fails?** The 5-state indicator has a "failed" state (red bar, red text), but no scene shows it. What does the recovery flow look like?
+4. **What happens when a session fails?** Scenes 3.3a and 3.3b now show failed (red) and paused/stale (amber) states in the SUMMARY tab. The open question is the *recovery* flow — what does "Resume" do for a failed session vs. a paused one?
 5. **When does the AI assessment go wrong?** The "On track" banner and LLM insights are useful when they're right. What happens when they're not? Is there a correction flow?
 
 ---

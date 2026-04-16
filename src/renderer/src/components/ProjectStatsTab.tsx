@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { ProjectStatsData } from '../../../shared/types'
+import type { ProjectStatsData, ProjectContext } from '../../../shared/types'
 
 interface ProjectStatsTabProps {
   projectSlug: string
@@ -15,18 +15,22 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-function heatColor(total: number): string {
-  if (total === 0) return 'var(--bg-page)'
-  if (total === 1) return 'rgba(245,158,11,0.15)'
-  if (total <= 3) return 'rgba(245,158,11,0.35)'
-  if (total <= 5) return 'rgba(245,158,11,0.6)'
-  return 'var(--amber)'
+function timeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d ago`
 }
 
-function successRateColor(rate: number): string {
-  if (rate >= 50) return 'var(--green)'
-  if (rate < 25) return 'var(--red)'
-  return 'var(--text-primary)'
+/** Format a date string as "Mon DD" (e.g. "Apr 15") */
+function shortDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,21 +72,80 @@ const metricLabel: React.CSSProperties = {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Commit grouping helper                                             */
+/* ------------------------------------------------------------------ */
+
+interface CommitWeekGroup {
+  label: string
+  commits: { hash: string; message: string; date: string }[]
+}
+
+function groupCommitsByWeek(
+  commits: { hash: string; message: string; date: string; author: string }[],
+): CommitWeekGroup[] {
+  if (commits.length === 0) return []
+
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+
+  // Monday of this week
+  const dayOfWeek = (now.getDay() + 6) % 7 // Mon=0 .. Sun=6
+  const thisMonday = new Date(now)
+  thisMonday.setDate(thisMonday.getDate() - dayOfWeek)
+
+  const groups: Map<number, { hash: string; message: string; date: string }[]> = new Map()
+
+  for (const c of commits) {
+    const d = new Date(c.date)
+    d.setHours(0, 0, 0, 0)
+    const diffDays = Math.floor((thisMonday.getTime() - d.getTime()) / 86400000)
+    const weekIdx = diffDays < 0 ? 0 : Math.floor(diffDays / 7)
+    if (weekIdx >= 4) continue // max 4 weeks
+
+    if (!groups.has(weekIdx)) groups.set(weekIdx, [])
+    groups.get(weekIdx)!.push({ hash: c.hash, message: c.message, date: c.date })
+  }
+
+  const labels = ['This week', 'Last week', '2 weeks ago', '3 weeks ago']
+  const result: CommitWeekGroup[] = []
+
+  for (const [weekIdx, weekCommits] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
+    result.push({
+      label: labels[weekIdx] ?? `${weekIdx} weeks ago`,
+      commits: weekCommits.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      ),
+    })
+  }
+
+  return result
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElement {
   const [data, setData] = useState<ProjectStatsData | null>(null)
+  const [context, setContext] = useState<ProjectContext | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setData(null)
-    ;(window as any).electronAPI
-      .getProjectStats(projectSlug)
-      .then((result: ProjectStatsData) => {
-        if (!cancelled) setData(result)
+    setContext(null)
+
+    const api = (window as any).electronAPI
+    Promise.all([
+      api.getProjectStats(projectSlug) as Promise<ProjectStatsData>,
+      api.getProjectContext(projectSlug) as Promise<ProjectContext>,
+    ])
+      .then(([statsResult, contextResult]) => {
+        if (!cancelled) {
+          setData(statsResult)
+          setContext(contextResult)
+        }
       })
       .catch(() => {
         /* swallow – data stays null */
@@ -90,6 +153,7 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
+
     return () => {
       cancelled = true
     }
@@ -130,56 +194,7 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
   }
 
   /* ---------------------------------------------------------------- */
-  /*  Build 28-day heatmap grid                                        */
-  /* ---------------------------------------------------------------- */
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const activityMap = new Map<string, number>()
-  for (const entry of data.dailyActivity) {
-    activityMap.set(entry.date, entry.total)
-  }
-
-  // Generate 28 dates (today − 27 … today)
-  const days: { date: Date; iso: string; total: number }[] = []
-  for (let i = 27; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    days.push({ date: d, iso, total: activityMap.get(iso) ?? 0 })
-  }
-
-  // JS getDay(): 0=Sun,1=Mon..6=Sat → remap to Mon=0..Sun=6
-  const remapDay = (d: Date): number => (d.getDay() + 6) % 7
-
-  // Build 4 columns × 7 rows
-  type Cell = { iso: string; total: number } | null
-  const columns: Cell[][] = [[], [], [], []]
-
-  const firstDay = days[0].date
-  const firstMonday = new Date(firstDay)
-  firstMonday.setDate(firstMonday.getDate() - remapDay(firstDay))
-
-  for (const day of days) {
-    const dayMonday = new Date(day.date)
-    dayMonday.setDate(dayMonday.getDate() - remapDay(day.date))
-    const weekIdx = Math.round(
-      (dayMonday.getTime() - firstMonday.getTime()) / (7 * 86400000),
-    )
-    const row = remapDay(day.date)
-    const col = Math.min(Math.max(weekIdx, 0), 3)
-    if (!columns[col]) columns[col] = []
-    columns[col][row] = { iso: day.iso, total: day.total }
-  }
-
-  for (let c = 0; c < 4; c++) {
-    for (let r = 0; r < 7; r++) {
-      if (!columns[c][r]) columns[c][r] = null
-    }
-  }
-
-  /* ---------------------------------------------------------------- */
-  /*  Session classification bar segments                              */
+  /*  Derived data                                                     */
   /* ---------------------------------------------------------------- */
   const cb = data.classificationBreakdown
   const classTotal = cb.deepWork + cb.quickTask + cb.automated + cb.failedAuto
@@ -191,44 +206,49 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
     { key: 'failAuto', count: cb.failedAuto, color: 'rgba(239,68,68,0.3)' },
   ].filter((s) => s.count > 0)
 
-  /* ---------------------------------------------------------------- */
-  /*  Day labels for heatmap                                           */
-  /* ---------------------------------------------------------------- */
-  const dayLabels = ['M', '', 'W', '', 'F', '', '']
+  const totalTimeMinutes = data.avgDurationMinutes * data.totalSessions
+  const commitCount = context?.recentCommits.length ?? 0
+  const stalledCount = context?.stalledSessions.length ?? 0
+  const commitGroups = groupCommitsByWeek(context?.recentCommits ?? [])
 
   return (
     <div data-testid="project-stats-tab">
       {/* ========== 1. Key Metrics Row ========== */}
       <div style={{ display: 'flex', gap: 12 }}>
-        {/* Success Rate */}
+        {/* Commits */}
         <div style={metricBox}>
-          <div style={{ ...metricValue, color: successRateColor(data.meaningfulSuccessRate) }}>
-            {Math.round(data.meaningfulSuccessRate)}%
-          </div>
-          <div style={metricLabel}>Success Rate</div>
+          <div style={metricValue}>{fmt(commitCount)}</div>
+          <div style={metricLabel}>Commits</div>
         </div>
 
-        {/* Deep Sessions */}
+        {/* Deep work sessions */}
         <div style={metricBox}>
           <div style={metricValue}>{fmt(cb.deepWork)}</div>
-          <div style={metricLabel}>Deep Sessions</div>
+          <div style={metricLabel}>Deep work sessions</div>
         </div>
 
-        {/* Delegation Ratio */}
+        {/* Time invested */}
         <div style={metricBox}>
-          <div style={metricValue}>{data.delegationRatio.toFixed(1)}x</div>
-          <div style={metricLabel}>Delegation Ratio</div>
+          <div style={metricValue}>{formatDuration(totalTimeMinutes)}</div>
+          <div style={metricLabel}>Time invested</div>
         </div>
 
-        {/* Total Prompts */}
+        {/* Needs attention */}
         <div style={metricBox}>
-          <div style={metricValue}>{fmt(data.totalPrompts)}</div>
-          <div style={metricLabel}>Total Prompts</div>
+          <div
+            style={{
+              ...metricValue,
+              color: stalledCount > 0 ? 'var(--red)' : 'var(--text-primary)',
+            }}
+          >
+            {stalledCount}
+          </div>
+          <div style={metricLabel}>Needs attention</div>
         </div>
       </div>
 
-      {/* ========== 2. Session Classification Bar ========== */}
-      <div style={sectionHeader}>Session Breakdown</div>
+      {/* ========== 2. How You Spent Your Time ========== */}
+      <div style={sectionHeader}>How you spent your time</div>
 
       {/* Stacked bar */}
       {classTotal > 0 ? (
@@ -285,116 +305,127 @@ function ProjectStatsTab({ projectSlug }: ProjectStatsTabProps): React.ReactElem
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
-        <LegendItem color="var(--green)" label="⚡ Deep Work" value={cb.deepWork} />
-        <LegendItem color="var(--amber)" label="→ Quick Task" value={cb.quickTask} />
-        <LegendItem color="rgba(160,152,136,0.4)" label="⚙ Automated" value={cb.automated} />
-        <LegendItem color="rgba(239,68,68,0.3)" label="⚙ Failed Auto" value={cb.failedAuto} />
+        <LegendItem color="var(--green)" label="Deep work" value={cb.deepWork} />
+        <LegendItem color="var(--amber)" label="Quick tasks" value={cb.quickTask} />
+        <LegendItem color="rgba(160,152,136,0.4)" label="Automated" value={cb.automated} />
+        <LegendItem color="rgba(239,68,68,0.3)" label="Failed" value={cb.failedAuto} />
       </div>
 
-      {/* ========== 3. Activity Heatmap ========== */}
-      <div style={sectionHeader}>Activity · Last 4 Weeks</div>
+      {/* ========== 3. Commit Timeline ========== */}
+      <div style={sectionHeader}>What was shipped</div>
 
-      <div style={{ display: 'flex', gap: 3 }}>
-        {/* Day labels column */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 3,
-            marginRight: 4,
-          }}
-        >
-          {dayLabels.map((label, i) => (
-            <div
-              key={i}
-              style={{
-                minWidth: 16,
-                height: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                fontSize: 9,
-                color: 'var(--text-very-muted)',
-                lineHeight: 1,
-              }}
-            >
-              {label}
+      {commitGroups.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {commitGroups.map((group) => (
+            <div key={group.label}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--text-secondary)',
+                  marginBottom: 6,
+                }}
+              >
+                {group.label}{' '}
+                <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+                  ({group.commits.length} commit{group.commits.length !== 1 ? 's' : ''})
+                </span>
+              </div>
+
+              {group.commits.map((c) => (
+                <div
+                  key={c.hash}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 8,
+                    padding: '3px 0',
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono, monospace)',
+                      color: 'var(--text-muted)',
+                      flexShrink: 0,
+                      fontSize: 11,
+                    }}
+                  >
+                    {c.hash.slice(0, 7)}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>&mdash;</span>
+                  <span
+                    style={{
+                      color: 'var(--text-primary)',
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {c.message}
+                  </span>
+                  <span
+                    style={{
+                      color: 'var(--text-muted)',
+                      flexShrink: 0,
+                      fontSize: 11,
+                      textAlign: 'right',
+                    }}
+                  >
+                    {shortDate(c.date)}
+                  </span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
-
-        {/* Heatmap columns */}
-        {columns.map((col, ci) => (
-          <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {col.map((cell, ri) => (
-              <div
-                key={ri}
-                title={
-                  cell
-                    ? `${cell.iso}: ${cell.total} session${cell.total !== 1 ? 's' : ''}`
-                    : ''
-                }
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 4,
-                  background: cell ? heatColor(cell.total) : 'var(--bg-page)',
-                }}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {/* ========== 4. Delegation Insights ========== */}
-      {data.agentSessionCount > 0 && (
-        <>
-          <div style={sectionHeader}>Delegation</div>
-          <div
-            style={{
-              background: 'var(--bg-modal)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '12px 16px',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--text-primary)',
-                lineHeight: 1.5,
-              }}
-            >
-              You initiated{' '}
-              <span style={{ fontWeight: 700 }}>{fmt(data.rootSessionCount)}</span>{' '}
-              sessions → spawned{' '}
-              <span style={{ fontWeight: 700 }}>{fmt(data.agentSessionCount)}</span>{' '}
-              agent sessions
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                marginTop: 4,
-                lineHeight: 1.5,
-              }}
-            >
-              Average delegation depth:{' '}
-              <span style={{ fontWeight: 700, color: 'var(--amber)' }}>
-                {data.delegationRatio.toFixed(1)}x
-              </span>{' '}
-              per session
-            </div>
-          </div>
-        </>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '4px 0' }}>
+          No commits found
+        </div>
       )}
 
-      {/* ========== 5. Averages Row ========== */}
+      {/* ========== 4. Needs Attention ========== */}
+      <div style={sectionHeader}>Needs attention</div>
+
+      {stalledCount > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {context!.stalledSessions.map((s) => {
+            const label = s.title || 'Untitled session'
+            return (
+              <div
+                key={s.id}
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ color: 'var(--amber)' }}>&#x26A0;</span>{' '}
+                &ldquo;{label}&rdquo;{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  &mdash; {s.status} {timeAgo(s.startedAt)} ({s.promptCount} prompt
+                  {s.promptCount !== 1 ? 's' : ''})
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--green)', padding: '4px 0' }}>
+          &#x2713; Nothing needs your attention
+        </div>
+      )}
+
+      {/* ========== 5. Session Averages ========== */}
       <div style={sectionHeader}>Averages</div>
       <div style={{ display: 'flex', gap: 24 }}>
-        <AverageItem value={data.avgPromptsPerSession.toFixed(1)} label="prompts/session" />
-        <AverageItem value={data.avgToolsPerSession.toFixed(1)} label="tool calls/session" />
-        <AverageItem value={formatDuration(data.avgDurationMinutes)} label="avg duration" />
+        <AverageItem value={data.avgPromptsPerSession.toFixed(1)} label="prompts per session" />
+        <AverageItem value={data.avgToolsPerSession.toFixed(1)} label="tool calls per session" />
+        <AverageItem value={formatDuration(data.avgDurationMinutes)} label="average session" />
+        <AverageItem value={`${data.delegationRatio.toFixed(1)}x`} label="delegation depth" />
       </div>
     </div>
   )

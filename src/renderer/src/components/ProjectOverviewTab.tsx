@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { ProjectOverview } from '../../../shared/types'
+import type { ProjectOverview, ProjectContext } from '../../../shared/types'
+import { useCanvasStore } from '../store'
 
 interface ProjectOverviewTabProps {
   projectSlug: string
@@ -22,6 +23,21 @@ function formatRelativeTime(iso: string): string {
   return `${months}mo ago`
 }
 
+function formatRelativeTimeLong(iso: string): string {
+  const now = Date.now()
+  const then = new Date(iso).getTime()
+  const diffMs = now - then
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} day${days !== 1 ? 's' : ''} ago`
+  const months = Math.floor(days / 30)
+  return `${months} month${months !== 1 ? 's' : ''} ago`
+}
+
 function statusDotColor(status: string): string {
   switch (status) {
     case 'done':
@@ -37,9 +53,8 @@ function statusDotColor(status: string): string {
   }
 }
 
-const fmtNumber = new Intl.NumberFormat()
-function formatNumber(n: number): string {
-  return fmtNumber.format(n)
+function truncateHash(hash: string): string {
+  return hash.slice(0, 7)
 }
 
 /* ---------- Sub-components ---------- */
@@ -61,75 +76,370 @@ function SectionHeader({ children }: { children: React.ReactNode }): React.React
   )
 }
 
-/* ---------- Health Bar ---------- */
+/* ---------- Section 1: Since You Were Last Here ---------- */
 
-function HealthBar({
-  healthRatio,
-  sessionCount,
-  lastActivityAt,
-  agentSessionCount,
-  meaningfulSuccessRate,
+function SinceLastVisitCard({
+  lastVisitedAt,
+  commitsSinceLastVisit,
+  stalledSessions,
+  onSessionClick,
 }: {
-  healthRatio: NonNullable<ProjectOverview['healthRatio']>
-  sessionCount: number
+  lastVisitedAt: string
+  commitsSinceLastVisit: ProjectContext['commitsSinceLastVisit']
+  stalledSessions: ProjectContext['stalledSessions']
+  onSessionClick: (id: string) => void
+}): React.ReactElement | null {
+  const hasCommits = commitsSinceLastVisit.length > 0
+  const hasStalled = stalledSessions.length > 0
+
+  if (!hasCommits && !hasStalled) return null
+
+  const maxCommitsShown = 3
+  const visibleCommits = commitsSinceLastVisit.slice(0, maxCommitsShown)
+  const remainingCommits = commitsSinceLastVisit.length - maxCommitsShown
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div
+      style={{
+        background: 'rgba(245, 158, 11, 0.06)',
+        border: '1px solid rgba(245, 158, 11, 0.2)',
+        borderRadius: 8,
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          marginBottom: 12,
+        }}
+      >
+        Since you were last here{' '}
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+          ({formatRelativeTimeLong(lastVisitedAt)})
+        </span>
+      </div>
+
+      {hasCommits && (
+        <div style={{ marginBottom: hasStalled ? 10 : 0 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>
+            <span style={{ color: 'var(--green)' }}>•</span>{' '}
+            {commitsSinceLastVisit.length} commit{commitsSinceLastVisit.length !== 1 ? 's' : ''} shipped
+          </div>
+          <div style={{ paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {(expanded ? commitsSinceLastVisit : visibleCommits).map((commit) => (
+              <div
+                key={commit.hash}
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                  lineHeight: 1.5,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', opacity: 0.7 }}>
+                  {truncateHash(commit.hash)}
+                </span>{' '}
+                — {commit.message}
+              </div>
+            ))}
+            {remainingCommits > 0 && !expanded && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--amber)',
+                  cursor: 'pointer',
+                  marginTop: 2,
+                }}
+                onClick={() => setExpanded(true)}
+              >
+                + {remainingCommits} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {hasStalled && (
+        <div>
+          <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+            <span style={{ color: 'var(--amber)' }}>•</span>{' '}
+            {stalledSessions.length} session{stalledSessions.length !== 1 ? 's' : ''} waiting for your input
+          </div>
+          <div style={{ paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+            {stalledSessions.map((session) => (
+              <div
+                key={session.id}
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                  lineHeight: 1.5,
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={() => onSessionClick(session.id)}
+              >
+                &ldquo;{session.title || 'Untitled session'}&rdquo;
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Section 3: Project Health (simple text) ---------- */
+
+function ProjectHealthLine({
+  healthRatio,
+  lastActivityAt,
+}: {
+  healthRatio?: ProjectOverview['healthRatio']
   lastActivityAt: string
-  agentSessionCount?: number
-  meaningfulSuccessRate?: number
 }): React.ReactElement {
-  const { done, active, failed, total } = healthRatio
-  const safeTotal = total || 1
-  const donePct = (done / safeTotal) * 100
-  const activePct = (active / safeTotal) * 100
-  const failedPct = (failed / safeTotal) * 100
+  const parts: React.ReactNode[] = []
+
+  if (healthRatio && healthRatio.total > 0) {
+    const { done, active, failed } = healthRatio
+    if (done > 0) {
+      parts.push(
+        <span key="done">
+          <span style={{ color: 'var(--green)', fontSize: 11 }}>✓</span>{' '}
+          {done} completed
+        </span>,
+      )
+    }
+    if (active > 0) {
+      parts.push(
+        <span key="active">
+          <span style={{ color: 'var(--amber)', fontSize: 10 }}>●</span>{' '}
+          {active} active
+        </span>,
+      )
+    }
+    if (failed > 0) {
+      parts.push(
+        <span key="failed">
+          <span style={{ color: 'var(--red)', fontSize: 10 }}>●</span>{' '}
+          {failed} failed
+        </span>,
+      )
+    }
+  }
+
+  return (
+    <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+      {parts.length > 0 ? (
+        <>
+          {parts.map((part, i) => (
+            <span key={i}>
+              {i > 0 && <span style={{ opacity: 0.4 }}> · </span>}
+              {part}
+            </span>
+          ))}
+          <span style={{ opacity: 0.4 }}> — </span>
+        </>
+      ) : null}
+      last worked on {formatRelativeTime(lastActivityAt)}
+    </div>
+  )
+}
+
+/* ---------- Section 5: Recent Work (commits, fallback to sessions) ---------- */
+
+function RecentWorkSection({
+  recentCommits,
+  recentSessions,
+}: {
+  recentCommits: ProjectContext['recentCommits']
+  recentSessions?: ProjectOverview['recentSessions']
+}): React.ReactElement | null {
+  const hasCommits = recentCommits.length > 0
+  const hasRecentSessions = recentSessions && recentSessions.length > 0
+
+  if (!hasCommits && !hasRecentSessions) return null
+
+  if (hasCommits) {
+    const commits = recentCommits.slice(0, 8)
+    return (
+      <div>
+        <SectionHeader>Recent Work</SectionHeader>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {commits.map((commit, i) => (
+            <div
+              key={commit.hash}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '7px 0',
+                borderBottom:
+                  i < commits.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: 12,
+                  color: 'var(--text-very-muted)',
+                  flexShrink: 0,
+                }}
+              >
+                {truncateHash(commit.hash)}
+              </span>
+              <span
+                style={{
+                  fontSize: 13,
+                  color: 'var(--text-primary)',
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {commit.message}
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {formatRelativeTime(commit.date)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Fallback: show recent sessions if no commits
+  const sessions = recentSessions!.slice(0, 5)
+  return (
+    <div>
+      <SectionHeader>Recent Activity</SectionHeader>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {sessions.map((session, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 0',
+              cursor: 'default',
+              borderBottom:
+                i < sessions.length - 1 ? '1px solid var(--border)' : 'none',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: statusDotColor(session.status),
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {session.title || 'Untitled session'}
+            </span>
+            <span
+              style={{
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {formatRelativeTime(session.startedAt)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Section 7: Stalled Work ---------- */
+
+function StalledWorkSection({
+  stalledSessions,
+  onSessionClick,
+}: {
+  stalledSessions: ProjectContext['stalledSessions']
+  onSessionClick: (id: string) => void
+}): React.ReactElement | null {
+  if (stalledSessions.length === 0) return null
 
   return (
     <div>
-      {/* Bar */}
-      <div
-        style={{
-          height: 6,
-          borderRadius: 3,
-          background: 'var(--border)',
-          overflow: 'hidden',
-          display: 'flex',
-        }}
-      >
-        {donePct > 0 && (
-          <div style={{ width: `${donePct}%`, background: 'var(--green)', transition: 'width 0.3s ease' }} />
-        )}
-        {activePct > 0 && (
-          <div style={{ width: `${activePct}%`, background: 'var(--amber)', transition: 'width 0.3s ease' }} />
-        )}
-        {failedPct > 0 && (
-          <div style={{ width: `${failedPct}%`, background: 'var(--red)', transition: 'width 0.3s ease' }} />
-        )}
-      </div>
-
-      {/* Summary line */}
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
-        {meaningfulSuccessRate != null ? (
-          <>
-            {Math.round(meaningfulSuccessRate)}% success
-            <span style={{ opacity: 0.5 }}> · </span>
-            {formatNumber(sessionCount)} session{sessionCount !== 1 ? 's' : ''}
-            {agentSessionCount != null && agentSessionCount > 0 && (
-              <>
-                <span style={{ opacity: 0.5 }}> · </span>
-                <span style={{ color: 'var(--text-very-muted)' }}>
-                  {formatNumber(agentSessionCount)} agent session{agentSessionCount !== 1 ? 's' : ''} spawned
-                </span>
-              </>
-            )}
-            <span style={{ opacity: 0.5 }}> · </span>
-            last active {formatRelativeTime(lastActivityAt)}
-          </>
-        ) : (
-          <>
-            {formatNumber(sessionCount)} session{sessionCount !== 1 ? 's' : ''}
-            <span style={{ opacity: 0.5 }}> · </span>
-            last active {formatRelativeTime(lastActivityAt)}
-          </>
-        )}
+      <SectionHeader>Needs Attention</SectionHeader>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {stalledSessions.map((session, i) => (
+          <div
+            key={session.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 0',
+              cursor: 'pointer',
+              borderBottom:
+                i < stalledSessions.length - 1 ? '1px solid var(--border)' : 'none',
+            }}
+            onClick={() => onSessionClick(session.id)}
+          >
+            <span style={{ fontSize: 13, flexShrink: 0, color: 'var(--amber)' }}>⚠</span>
+            <span
+              style={{
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              &ldquo;{session.title || 'Untitled session'}&rdquo;
+            </span>
+            <span
+              style={{
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {formatRelativeTime(session.startedAt)}
+              <span style={{ opacity: 0.5 }}> · </span>
+              {session.promptCount} prompt{session.promptCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -139,17 +449,27 @@ function HealthBar({
 
 function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.ReactElement {
   const [overview, setOverview] = useState<ProjectOverview | null>(null)
+  const [context, setContext] = useState<ProjectContext | null>(null)
   const [loading, setLoading] = useState(true)
+  const selectSession = useCanvasStore((s) => s.selectSession)
 
   useEffect(() => {
     setLoading(true)
     if (window.electronAPI) {
-      window.electronAPI.getProjectOverview(projectSlug).then((data) => {
-        setOverview(data)
+      Promise.all([
+        window.electronAPI.getProjectOverview(projectSlug),
+        window.electronAPI.getProjectContext(projectSlug),
+      ]).then(([overviewData, contextData]) => {
+        setOverview(overviewData)
+        setContext(contextData)
         setLoading(false)
       })
     }
   }, [projectSlug])
+
+  const handleSessionClick = (id: string) => {
+    selectSession(id)
+  }
 
   if (loading) {
     return (
@@ -175,14 +495,23 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
     )
   }
 
-  const hasHealthRatio = overview.healthRatio && overview.healthRatio.total > 0
-  const hasRecentSessions = overview.recentSessions && overview.recentSessions.length > 0
   const hasOutcomes = overview.outcomes && overview.outcomes.length > 0
-  const hasDelegation = overview.delegationRatio != null && overview.delegationRatio > 0
 
   return (
     <div data-testid="project-overview-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* 1. Project Description */}
+      {/* 1. Since you were last here */}
+      {context &&
+        context.lastVisitedAt &&
+        (context.commitsSinceLastVisit.length > 0 || context.stalledSessions.length > 0) && (
+          <SinceLastVisitCard
+            lastVisitedAt={context.lastVisitedAt}
+            commitsSinceLastVisit={context.commitsSinceLastVisit}
+            stalledSessions={context.stalledSessions}
+            onSessionClick={handleSessionClick}
+          />
+        )}
+
+      {/* 2. Project Description */}
       {overview.description && (
         <div
           style={{
@@ -208,50 +537,11 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
         </div>
       )}
 
-      {/* 2. Health bar + stat row */}
-      {hasHealthRatio ? (
-        <HealthBar
-          healthRatio={overview.healthRatio!}
-          sessionCount={overview.sessionCount}
-          lastActivityAt={overview.lastActivityAt}
-          agentSessionCount={overview.agentSessionCount}
-          meaningfulSuccessRate={overview.meaningfulSuccessRate}
-        />
-      ) : (
-        <div>
-          <div style={{ height: 6, borderRadius: 3, background: 'var(--border)' }} />
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1 }}>
-            {formatNumber(overview.sessionCount)} session{overview.sessionCount !== 1 ? 's' : ''}
-            <span style={{ opacity: 0.5 }}> · </span>
-            last active {formatRelativeTime(overview.lastActivityAt)}
-          </div>
-        </div>
-      )}
-
-      {/* 3. Delegation ratio badge */}
-      {hasDelegation && (
-        <div>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '3px 10px',
-              borderRadius: 12,
-              background: 'rgba(245,158,11,0.1)',
-              color: 'var(--amber)',
-              fontSize: 11,
-              fontWeight: 500,
-            }}
-          >
-            ⚡ {overview.delegationRatio!.toFixed(1)}x delegation ratio
-          </span>
-          <div style={{ fontSize: 11, color: 'var(--text-very-muted)', marginTop: 2 }}>
-            Each session spawned ~{Math.round(overview.delegationRatio!)} agent session
-            {Math.round(overview.delegationRatio!) !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
+      {/* 3. Project Health (simple text line) */}
+      <ProjectHealthLine
+        healthRatio={overview.healthRatio}
+        lastActivityAt={overview.lastActivityAt}
+      />
 
       {/* 4. Assessment card */}
       {overview.assessment && (
@@ -290,69 +580,16 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
         </div>
       )}
 
-      {/* 5. Recent Sessions */}
-      {hasRecentSessions && (
-        <div>
-          <SectionHeader>Recent Activity</SectionHeader>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {overview.recentSessions!.slice(0, 5).map((session, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '8px 0',
-                  cursor: 'default',
-                  borderBottom:
-                    i < Math.min(overview.recentSessions!.length, 5) - 1
-                      ? '1px solid var(--border)'
-                      : 'none',
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: statusDotColor(session.status),
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--text-primary)',
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {session.title || 'Untitled session'}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatRelativeTime(session.startedAt)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* 5. Recent Work (commits preferred, sessions as fallback) */}
+      <RecentWorkSection
+        recentCommits={context?.recentCommits ?? []}
+        recentSessions={overview.recentSessions}
+      />
 
-      {/* 6. Outcomes */}
+      {/* 6. What's been accomplished */}
       {hasOutcomes && (
         <div>
-          <SectionHeader>Key Outcomes</SectionHeader>
+          <SectionHeader>What&apos;s been accomplished</SectionHeader>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {overview.outcomes!.map((outcome, i) => (
               <div
@@ -383,6 +620,14 @@ function ProjectOverviewTab({ projectSlug }: ProjectOverviewTabProps): React.Rea
             ))}
           </div>
         </div>
+      )}
+
+      {/* 7. Stalled Work */}
+      {context && (
+        <StalledWorkSection
+          stalledSessions={context.stalledSessions}
+          onSessionClick={handleSessionClick}
+        />
       )}
     </div>
   )

@@ -59,6 +59,10 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
       column: 'registered',
       ddl: 'ALTER TABLE projects ADD COLUMN registered INTEGER NOT NULL DEFAULT 0',
     },
+    {
+      column: 'lastVisitedAt',
+      ddl: 'ALTER TABLE projects ADD COLUMN lastVisitedAt TEXT',
+    },
   ]
 
   for (const { column, ddl } of projectMigrations) {
@@ -490,4 +494,28 @@ export function reconcileStaleActiveSessions(): void {
   if (hiddenResult.changes > 0) {
     console.log(`[db] Hid ${hiddenResult.changes} failed sessions`)
   }
+}
+
+export function updateLastVisited(slug: string): void {
+  const d = getDatabase()
+  d.prepare('UPDATE projects SET lastVisitedAt = datetime("now") WHERE slug = ?').run(slug)
+}
+
+export function getLastVisitedAt(slug: string): string | null {
+  const d = getDatabase()
+  const row = d.prepare('SELECT lastVisitedAt FROM projects WHERE slug = ?').get(slug) as { lastVisitedAt: string | null } | undefined
+  return row?.lastVisitedAt ?? null
+}
+
+export function getStalledSessions(projectSlug: string): { id: string; title: string | null; status: string; startedAt: string; promptCount: number }[] {
+  const d = getDatabase()
+  return d.prepare(`
+    SELECT id, title, status, startedAt, promptCount
+    FROM sessions 
+    WHERE projectSlug = ? 
+      AND status IN ('needs_input', 'running', 'active')
+      AND promptCount > 0
+      AND startedAt < datetime('now', '-1 day')
+    ORDER BY startedAt DESC
+  `).all(projectSlug) as any[]
 }
