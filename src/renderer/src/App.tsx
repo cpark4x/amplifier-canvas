@@ -5,6 +5,7 @@ import Viewer from './components/Viewer'
 import ProjectView from './components/ProjectView'
 import AddProjectModal from './components/AddProjectModal'
 import SettingsModal from './components/SettingsModal'
+import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import { useCanvasStore } from './store'
 
@@ -281,7 +282,7 @@ function App(): React.ReactElement {
         {/* Center zone: welcome screen, project view, OR terminal depending on state */}
         {viewMode === 'project' && selectedProjectSlug ? (
           /* Project intelligence view */
-          <ProjectView />
+          <ErrorBoundary fallbackLabel="Project View"><ProjectView /></ErrorBoundary>
         ) : !hasSession ? (
           /* Screen 1 + 2: Welcome with optional modal overlay */
           <div
@@ -397,7 +398,7 @@ function App(): React.ReactElement {
                 <TerminalComponent key={terminalSessionId} sessionId={terminalSessionId} />
               )}
             </div>
-            {viewerOpen && <Viewer />}
+            {viewerOpen && <ErrorBoundary fallbackLabel="File Viewer"><Viewer /></ErrorBoundary>}
           </>
         )}
       </div>
