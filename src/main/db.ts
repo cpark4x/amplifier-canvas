@@ -117,6 +117,14 @@ export function initDatabase(dbPath?: string): BetterSqlite3.Database {
     }
   }
 
+  // Composite indexes for common query patterns
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_project_status
+      ON sessions(projectSlug, status);
+    CREATE INDEX IF NOT EXISTS idx_sessions_project_prompts
+      ON sessions(projectSlug, promptCount);
+  `)
+
   return db
 }
 

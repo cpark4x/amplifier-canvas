@@ -14,7 +14,10 @@
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:mac:arm64": "electron-vite build && electron-builder --mac --arm64",
     "dev:browser": "vite --config vite.config.browser.ts",
-    "test": "npx playwright test"
+    "pretest": "npm rebuild better-sqlite3 2>/dev/null",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npx playwright test"
   },
   "devDependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -33,7 +36,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",

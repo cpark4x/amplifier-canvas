@@ -1,0 +1,2 @@
+{"type":"session:start","timestamp":"2026-04-10T10:00:00.000Z","data":{"sessionId":"test-empty-001"}}
+    {"type":"session:end","timestamp":"2026-04-10T10:00:01.000Z","data":{"exitCode":0}}

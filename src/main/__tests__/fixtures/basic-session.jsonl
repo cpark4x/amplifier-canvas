@@ -1,0 +1,8 @@
+{"type":"session:start","timestamp":"2026-04-10T10:00:00.000Z","data":{"sessionId":"test-basic-001"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:05.000Z","data":{"prompt":"help me fix the login bug"}}
+    {"type":"tool_call","timestamp":"2026-04-10T10:00:10.000Z","data":{"tool":"read_file","args":{"path":"src/auth.ts"}}}
+    {"type":"tool_call","timestamp":"2026-04-10T10:00:15.000Z","data":{"tool":"edit_file","args":{"path":"src/auth.ts"}}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:01:00.000Z","data":{"prompt":"now add a test for it"}}
+    {"type":"tool_call","timestamp":"2026-04-10T10:01:05.000Z","data":{"tool":"write_file","args":{"path":"src/auth.test.ts"}}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:02:00.000Z","data":{"prompt":"looks good, commit it"}}
+    {"type":"session:end","timestamp":"2026-04-10T10:03:00.000Z","data":{"exitCode":0}}

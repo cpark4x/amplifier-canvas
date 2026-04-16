@@ -1,0 +1,7 @@
+{"type":"session:start","timestamp":"2026-04-10T10:00:00.000Z","data":{"sessionId":"test-auto-001"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:05.000Z","data":{"prompt":"load_skill('reflect-session')"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:10.000Z","data":{"prompt":"Execute recipe @superpowers:recipes/full-dev.yaml"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:15.000Z","data":{"prompt":"amplifier tool invoke recipes operation=execute"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:20.000Z","data":{"prompt":"i want to redesign the sidebar component"}}
+    {"type":"tool_call","timestamp":"2026-04-10T10:00:25.000Z","data":{"tool":"read_file","args":{"path":"src/Sidebar.tsx"}}}
+    {"type":"session:end","timestamp":"2026-04-10T10:05:00.000Z","data":{"exitCode":0}}

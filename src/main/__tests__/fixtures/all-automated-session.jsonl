@@ -1,0 +1,4 @@
+{"type":"session:start","timestamp":"2026-04-10T10:00:00.000Z","data":{"sessionId":"test-allauto-001"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:05.000Z","data":{"prompt":"load_skill('reflect-session')"}}
+    {"type":"prompt:submit","timestamp":"2026-04-10T10:00:10.000Z","data":{"prompt":"Execute recipe @dev-machine:recipes/run.yaml"}}
+    {"type":"session:end","timestamp":"2026-04-10T10:01:00.000Z","data":{"exitCode":0}}
