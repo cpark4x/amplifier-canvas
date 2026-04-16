@@ -349,7 +349,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       try {
         const project = getProjectBySlug(slug)
         if (!project) return null
-        updateLastVisited(slug)
+        // NOTE: do NOT call updateLastVisited here — PROJECT_CONTEXT handles it
+        // after reading the old value. Calling it here causes a race condition
+        // where CONTEXT reads the just-updated timestamp and finds zero new commits.
         const stats = getProjectOverviewStats(slug)
         // Use on-disk count for real total (DB is capped at 20 most recent)
         const diskSessionCount = countProjectSessionsOnDisk(getAmplifierHome(), slug)
@@ -424,7 +426,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             promptCount: s.promptCount,
           }))
 
-        return {
+        const result = {
           slug: project.slug,
           name: project.name,
           path: project.path,
@@ -444,6 +446,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           delegationRatio,
           meaningfulSuccessRate,
         }
+        return result
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error('[ipc] PROJECT_OVERVIEW failed:', message)
