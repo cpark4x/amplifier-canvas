@@ -80,35 +80,65 @@ function App(): React.ReactElement {
   const [terminalSessionId, setTerminalSessionId] = useState<string | null>(null)
   const hasSession = selectedSessionId !== null || showTerminal
 
-  // Restore workspace state on mount
+  // Hydrate store and restore workspace on mount.
+  // Chain: pull projects + sessions FIRST, then restore workspace state.
+  // This eliminates race conditions where did-finish-load pushes arrive
+  // before the renderer's IPC listeners are ready.
   useEffect(() => {
-    if (window.electronAPI) {
-      window.electronAPI.getWorkspaceState().then(({ state, isFirstTime }) => {
-        if (!isFirstTime && state) {
-          if (state.selectedProjectSlug) {
-            useCanvasStore.getState().selectProject(state.selectedProjectSlug)
-          }
-          if (state.selectedSessionId) {
-            // Only restore session + open viewer if the session still exists and is visible
-            const sessions = useCanvasStore.getState().sessions
-            const exists = sessions.some((s) => s.id === state.selectedSessionId && !s.hidden)
-            if (exists) {
-              useCanvasStore.getState().selectSession(state.selectedSessionId)
-              useCanvasStore.getState().openViewer()
-            }
-          }
-          if (state.expandedProjectSlugs.length > 0) {
-            useCanvasStore.getState().setExpandedProjectSlugs(state.expandedProjectSlugs)
-          }
-          setSidebarCollapsed(state.sidebarCollapsed)
-        }
-        setWorkspaceLoaded(true)
-      }).catch(() => {
-        setWorkspaceLoaded(true)
-      })
-    } else {
+    if (!window.electronAPI) {
       setWorkspaceLoaded(true)
+      return
     }
+
+    const api = window.electronAPI
+
+    // Step 1: Pull projects and sessions in parallel (both pull-based, race-safe)
+    const projectsP = api.getRegisteredProjects
+      ? api.getRegisteredProjects().catch(() => [] as Array<{ slug: string; name: string; path: string }>)
+      : Promise.resolve([] as Array<{ slug: string; name: string; path: string }>)
+
+    const sessionsP = api.getInitialSessions
+      ? api.getInitialSessions().catch(() => [] as import('../../shared/types').SessionState[])
+      : Promise.resolve([] as import('../../shared/types').SessionState[])
+
+    const workspaceP = api.getWorkspaceState().catch(() => ({ state: null, isFirstTime: true }))
+
+    Promise.all([projectsP, sessionsP, workspaceP]).then(([projects, sessions, { state, isFirstTime }]) => {
+      const store = useCanvasStore.getState()
+
+      // Step 2a: Hydrate projects
+      for (const p of projects) {
+        store.registerProject(p.slug, p.name, p.path)
+      }
+
+      // Step 2b: Hydrate sessions (only if pull returned data and no push beat us)
+      if (sessions.length > 0 && store.sessions.length === 0) {
+        store.setSessions(sessions)
+      }
+
+      // Step 3: NOW restore workspace state (sessions are guaranteed to be loaded)
+      if (!isFirstTime && state) {
+        if (state.selectedProjectSlug) {
+          useCanvasStore.getState().selectProject(state.selectedProjectSlug)
+        }
+        if (state.selectedSessionId) {
+          const currentSessions = useCanvasStore.getState().sessions
+          const exists = currentSessions.some((s) => s.id === state.selectedSessionId && !s.hidden)
+          if (exists) {
+            useCanvasStore.getState().selectSession(state.selectedSessionId)
+            useCanvasStore.getState().openViewer()
+          }
+        }
+        if (state.expandedProjectSlugs.length > 0) {
+          useCanvasStore.getState().setExpandedProjectSlugs(state.expandedProjectSlugs)
+        }
+        setSidebarCollapsed(state.sidebarCollapsed)
+      }
+
+      setWorkspaceLoaded(true)
+    }).catch(() => {
+      setWorkspaceLoaded(true)
+    })
   }, [])
 
   // Persist workspace state on every relevant change

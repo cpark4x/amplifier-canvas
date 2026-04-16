@@ -218,6 +218,16 @@ const api = {
   getProjectContext: (slug: string): Promise<ProjectContext | null> => {
     return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_CONTEXT, { slug })
   },
+
+  // Projects: get all registered projects (pull-based, race-condition-safe)
+  getRegisteredProjects: (): Promise<Array<{ slug: string; name: string; path: string }>> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PROJECT_LIST_REGISTERED)
+  },
+
+  // Sessions: get initial sessions from DB (pull-based, race-condition-safe)
+  getInitialSessions: (): Promise<import('../shared/types').SessionState[]> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SESSION_LIST_INITIAL)
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)
