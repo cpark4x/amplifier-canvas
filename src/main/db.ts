@@ -360,7 +360,7 @@ export function getProjectOverviewStats(projectSlug: string): {
       SUM(CASE WHEN status IN ('active', 'running') THEN 1 ELSE 0 END) as activeSessionCount,
       MAX(COALESCE(endedAt, startedAt)) as lastActivityAt
     FROM sessions
-    WHERE projectSlug = ? AND hidden = 0
+    WHERE projectSlug = ?
   `).get(projectSlug) as {
     sessionCount: number
     totalPrompts: number

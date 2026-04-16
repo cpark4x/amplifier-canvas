@@ -33,6 +33,23 @@ export function getAmplifierHome(): string {
 }
 
 /**
+ * Fast count of user sessions on disk for a project (no deep-scan).
+ * Used for project overview stats where we want the real total,
+ * not the DB-capped MAX_SESSIONS_PER_PROJECT.
+ */
+export function countProjectSessionsOnDisk(amplifierHome: string, slug: string): number {
+  const sessionsDir = join(amplifierHome, 'projects', slug, 'sessions')
+  if (!existsSync(sessionsDir)) return 0
+  try {
+    return readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !isSubSession(entry.name))
+      .length
+  } catch {
+    return 0
+  }
+}
+
+/**
  * Scan sessions for a single project. Returns lightweight SessionState stubs
  * with data loaded from events.jsonl (title, status, timestamps, stats).
  * Used when a user adds an existing project to Canvas.

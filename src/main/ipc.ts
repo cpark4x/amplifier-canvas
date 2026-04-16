@@ -5,7 +5,7 @@ import { join, resolve, normalize } from 'path'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity, FileEntry } from '../shared/types'
 import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject } from './pty'
-import { getAmplifierHome, scanSingleProject } from './scanner'
+import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk } from './scanner'
 import {
   getSessionById,
   getRegisteredProjects,
@@ -306,11 +306,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         const project = getProjectBySlug(slug)
         if (!project) return null
         const stats = getProjectOverviewStats(slug)
+        // Use on-disk count for real total (DB is capped at 20 most recent)
+        const diskSessionCount = countProjectSessionsOnDisk(getAmplifierHome(), slug)
         return {
           slug: project.slug,
           name: project.name,
           path: project.path,
-          sessionCount: stats.sessionCount,
+          sessionCount: Math.max(diskSessionCount, stats.sessionCount),
           totalPrompts: stats.totalPrompts,
           totalToolCalls: stats.totalToolCalls,
           totalFilesChanged: stats.totalFilesChanged,
