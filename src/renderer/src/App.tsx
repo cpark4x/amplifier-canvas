@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
@@ -79,6 +79,21 @@ function App(): React.ReactElement {
   // synthetic ID like 'terminal-<slug>' (new session, before Amplifier assigns one)
   const [terminalSessionId, setTerminalSessionId] = useState<string | null>(null)
   const hasSession = selectedSessionId !== null || showTerminal
+
+  // Single entry point for activating the terminal pane. Guarantees viewMode
+  // is cleared so <Terminal> renders instead of <ProjectView>. ALL code paths
+  // that want the terminal visible MUST go through this.
+  //
+  // Context: view-mode regressions were the single most-thrashed bug class
+  // in the renderer (see docs/audits/2026-04-thrash-audit.md). Before this
+  // helper, four separate handlers each had to remember to call
+  // setViewMode('session') before showing the terminal. Forgetting once
+  // left the terminal hidden forever. This helper makes forgetting impossible.
+  const enterTerminalView = useCallback((sessionId: string) => {
+    useCanvasStore.getState().setViewMode('session')
+    setTerminalSessionId(sessionId)
+    setShowTerminal(true)
+  }, [])
 
   // Hydrate store and restore workspace on mount.
   // Chain: pull projects + sessions FIRST, then restore workspace state.
@@ -282,12 +297,7 @@ function App(): React.ReactElement {
             // Show optimistic placeholder in sidebar immediately
             const rp = useCanvasStore.getState().registeredProjects.find((p) => p.slug === projectSlug)
             useCanvasStore.getState().addOptimisticSession(projectSlug, rp?.name ?? projectSlug)
-            // CRITICAL: clear viewMode so terminal pane renders (ProjectView takes precedence
-            // over Terminal when viewMode === 'project'). Without this, starting a new session
-            // from within the project view leaves the terminal hidden forever.
-            useCanvasStore.getState().setViewMode('session')
-            setTerminalSessionId(ptyId)
-            setShowTerminal(true)
+            enterTerminalView(ptyId)
             window.electronAPI.spawnPty(ptyId, 80, 24, projectPath, projectSlug).then(() => {
               setTimeout(() => {
                 window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
@@ -296,10 +306,7 @@ function App(): React.ReactElement {
           }}
           onSessionSelect={(sessionId, workDir) => {
             // Switch terminal to this session's PTY (spawn if needed, replay buffer)
-            // CRITICAL: clear viewMode so Terminal renders instead of ProjectView.
-            useCanvasStore.getState().setViewMode('session')
-            setTerminalSessionId(sessionId)
-            setShowTerminal(true)
+            enterTerminalView(sessionId)
             // Ensure a PTY exists for this session — if newly spawned, resume the session
             window.electronAPI.spawnPty(sessionId, 80, 24, workDir).then((result) => {
               if (result.success && !result.alreadyExists && !sessionId.startsWith('optimistic-')) {
@@ -479,11 +486,8 @@ function App(): React.ReactElement {
                 useCanvasStore.getState().setExpandedProjectSlugs([slug])
                 // Show optimistic placeholder in sidebar immediately
                 useCanvasStore.getState().addOptimisticSession(slug, projectName)
-                // CRITICAL: clear viewMode so Terminal renders instead of ProjectView.
-                useCanvasStore.getState().setViewMode('session')
                 setShowModal(false)
-                setTerminalSessionId(ptyId)
-                setShowTerminal(true)
+                enterTerminalView(ptyId)
 
                 window.electronAPI.spawnPty(ptyId, 80, 24, projPath, slug).then(() => {
                   setTimeout(() => {
@@ -510,11 +514,8 @@ function App(): React.ReactElement {
             useCanvasStore.getState().setExpandedProjectSlugs([project.slug])
             // Show optimistic placeholder in sidebar immediately
             useCanvasStore.getState().addOptimisticSession(project.slug, project.name)
-            // CRITICAL: clear viewMode so Terminal renders instead of ProjectView.
-            useCanvasStore.getState().setViewMode('session')
             setShowModal(false)
-            setTerminalSessionId(ptyId)
-            setShowTerminal(true)
+            enterTerminalView(ptyId)
 
             window.electronAPI.spawnPty(ptyId, 80, 24, project.path, project.slug).then(() => {
               setTimeout(() => {
