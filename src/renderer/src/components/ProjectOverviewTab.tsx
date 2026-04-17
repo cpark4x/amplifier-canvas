@@ -193,8 +193,6 @@ function AtAGlanceCard({ overview }: { overview: ProjectOverview }): React.React
     ? formatDuration(overview.firstSessionAt, new Date().toISOString())
     : null
 
-  const tr = trendLabel(overview.trend)
-
   return (
     <div>
       <SectionLabel>At a Glance</SectionLabel>
@@ -212,7 +210,10 @@ function AtAGlanceCard({ overview }: { overview: ProjectOverview }): React.React
           value={overview.totalPrompts.toLocaleString()}
           label="prompts"
         />
-        <MetricCell value={overview.totalFilesChanged.toLocaleString()} label="files changed" />
+        <MetricCell
+          value={overview.totalToolCalls.toLocaleString()}
+          label="tool calls"
+        />
         {age && <MetricCell value={age} label="project age" />}
       </div>
     </div>

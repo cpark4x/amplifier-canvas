@@ -338,9 +338,9 @@ export function registerProjectHandlers(): void {
           repoVisibility: repoMeta.repoVisibility,
           repoContributorCount: repoMeta.repoContributorCount,
           sessionCount: interactiveCount,
-          totalPrompts: stats.totalPrompts,
-          totalToolCalls: stats.totalToolCalls,
-          totalFilesChanged: stats.totalFilesChanged,
+          totalPrompts: interactiveSessions.reduce((sum, s) => sum + s.promptCount, 0),
+          totalToolCalls: interactiveSessions.reduce((sum, s) => sum + s.toolCallCount, 0),
+          totalFilesChanged: stats.totalFilesChanged,  // NOTE: currently always 0 — scanner doesn't populate this yet
           firstSessionAt,
           lastActivityAt,
           sessionsThisWeek,
