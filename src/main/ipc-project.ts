@@ -197,26 +197,35 @@ export function registerProjectHandlers(): void {
 
         const allSessions = getAllProjectSessions(slug)
 
+        // --- Classify sessions: split interactive from automated noise ---
+        const classified = allSessions.map(s => ({
+          ...s,
+          cls: classifySession(s).classification,
+        }))
+        const interactiveSessions = classified.filter(s =>
+          s.cls !== 'automated' && s.cls !== 'failed-auto')
+        const interactiveCount = interactiveSessions.length
+
         // --- Scale & dates ---
         const sortedByDate = [...allSessions].sort((a, b) =>
           new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
         const firstSessionAt = sortedByDate.length > 0 ? sortedByDate[0].startedAt : undefined
         const lastActivityAt = stats.lastActivityAt ?? new Date().toISOString()
 
-        // --- Activity pulse: sessions this week vs last week ---
+        // --- Activity pulse: interactive sessions only (no automated noise) ---
         const now = Date.now()
         const weekMs = 7 * 24 * 60 * 60 * 1000
-        const sessionsThisWeek = allSessions.filter(s =>
+        const sessionsThisWeek = interactiveSessions.filter(s =>
           now - new Date(s.startedAt).getTime() < weekMs).length
-        const sessionsLastWeek = allSessions.filter(s => {
+        const sessionsLastWeek = interactiveSessions.filter(s => {
           const age = now - new Date(s.startedAt).getTime()
           return age >= weekMs && age < weekMs * 2
         }).length
 
-        // Trend detection
+        // Trend detection (based on interactive sessions)
         const daysSinceLastActivity = (now - new Date(lastActivityAt).getTime()) / (24 * 60 * 60 * 1000)
         let trend: 'accelerating' | 'steady' | 'slowing' | 'dormant' | 'new'
-        if (totalSessions <= 3) {
+        if (interactiveCount <= 3) {
           trend = 'new'
         } else if (daysSinceLastActivity > 14) {
           trend = 'dormant'
@@ -249,13 +258,13 @@ export function registerProjectHandlers(): void {
         const recentFailureCount = allSessions.filter(s =>
           s.status === 'failed' && (now - new Date(s.startedAt).getTime()) < weekMs).length
 
-        // --- Lifecycle ---
+        // --- Lifecycle (based on interactive sessions, not automated noise) ---
         let lifecycle: 'new' | 'active' | 'mature' | 'dormant'
-        if (totalSessions <= 3) {
+        if (interactiveCount <= 3) {
           lifecycle = 'new'
         } else if (daysSinceLastActivity > 30) {
           lifecycle = 'dormant'
-        } else if (totalSessions > 50) {
+        } else if (interactiveCount > 50) {
           lifecycle = 'mature'
         } else {
           lifecycle = 'active'
@@ -328,7 +337,7 @@ export function registerProjectHandlers(): void {
           repoUrl: repoMeta.repoUrl,
           repoVisibility: repoMeta.repoVisibility,
           repoContributorCount: repoMeta.repoContributorCount,
-          sessionCount: totalSessions,
+          sessionCount: interactiveCount,
           totalPrompts: stats.totalPrompts,
           totalToolCalls: stats.totalToolCalls,
           totalFilesChanged: stats.totalFilesChanged,
