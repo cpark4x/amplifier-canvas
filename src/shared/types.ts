@@ -161,6 +161,8 @@ export interface ProjectContext {
   recentCommits: { hash: string; message: string; date: string; author: string }[]
   commitsSinceLastVisit: { hash: string; message: string; date: string; author: string }[]
   stalledSessions: { id: string; title: string | null; status: string; startedAt: string; promptCount: number }[]
+  agentUsage: { agent: string; count: number }[]
+  totalAgentSessions: number
 }
 
 // --- History tab types ---

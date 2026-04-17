@@ -5,7 +5,7 @@ import { join } from 'path'
 import { execSync } from 'child_process'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, ProjectStatsData, ProjectHistorySession, ProjectContext } from '../shared/types'
-import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk, countAgentSessionsOnDisk } from './scanner'
+import { getAmplifierHome, scanSingleProject, countProjectSessionsOnDisk, countAgentSessionsOnDisk, getAgentUsageBreakdown } from './scanner'
 import {
   getRegisteredProjects,
   setProjectRegistered,
@@ -501,6 +501,9 @@ export function registerProjectHandlers(): void {
           : []
 
         const stalledSessions = getStalledSessions(slug)
+        const ampHome = getAmplifierHome()
+        const agentUsage = getAgentUsageBreakdown(ampHome, slug)
+        const totalAgentSessions = countAgentSessionsOnDisk(ampHome, slug)
 
         updateLastVisited(slug)
 
@@ -509,6 +512,8 @@ export function registerProjectHandlers(): void {
           recentCommits: allCommits,
           commitsSinceLastVisit,
           stalledSessions,
+          agentUsage,
+          totalAgentSessions,
         }
       } catch (err) {
         console.error('[ipc] PROJECT_CONTEXT failed:', err)

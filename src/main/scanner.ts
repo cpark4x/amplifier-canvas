@@ -74,6 +74,34 @@ export function countAgentSessionsOnDisk(amplifierHome: string, slug: string): n
 }
 
 /**
+ * Get agent usage breakdown for a project — which agents were used and how often.
+ * Returns sorted array of { agent, count } pairs.
+ */
+export function getAgentUsageBreakdown(amplifierHome: string, slug: string): { agent: string; count: number }[] {
+  const sessionsDir = join(amplifierHome, 'projects', slug, 'sessions')
+  if (!existsSync(sessionsDir)) return []
+  try {
+    const counts = new Map<string, number>()
+    const entries = readdirSync(sessionsDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !isSubSession(entry.name)) continue
+      // Agent name is the part after the last underscore
+      const underscoreIdx = entry.name.lastIndexOf('_')
+      if (underscoreIdx < 0) continue
+      const agentName = entry.name.substring(underscoreIdx + 1)
+      if (agentName) {
+        counts.set(agentName, (counts.get(agentName) ?? 0) + 1)
+      }
+    }
+    return [...counts.entries()]
+      .map(([agent, count]) => ({ agent, count }))
+      .sort((a, b) => b.count - a.count)
+  } catch {
+    return []
+  }
+}
+
+/**
  * Scan sessions for a single project. Returns lightweight SessionState stubs
  * with data loaded from events.jsonl (title, status, timestamps, stats).
  * Used when a user adds an existing project to Canvas.
