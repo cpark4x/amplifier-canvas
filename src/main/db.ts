@@ -552,7 +552,7 @@ export function reconcileStaleActiveSessions(): void {
 
 export function updateLastVisited(slug: string): void {
   const d = getDatabase()
-  d.prepare('UPDATE projects SET lastVisitedAt = datetime("now") WHERE slug = ?').run(slug)
+  d.prepare("UPDATE projects SET lastVisitedAt = datetime('now') WHERE slug = ?").run(slug)
 }
 
 export function getLastVisitedAt(slug: string): string | null {
