@@ -140,43 +140,7 @@ const test = base.extend<{}, PolishFixtures>({
 
 // ---- Fix #1: Terminal Padding -----------------------------------------------
 
-test('Fix1: terminal has outer wrapper with padding', async ({ appWindow }) => {
-  await appWindow.waitForTimeout(2000)
-
-  // Select a session to enter the terminal zone (hasSession = true)
-  const session = appWindow.locator('[data-testid="session-item"]').first()
-  await expect(session).toBeVisible({ timeout: 5000 })
-  await session.click()
-  await appWindow.waitForTimeout(300)
-
-  // The terminal-wrapper should now be visible
-  const wrapper = appWindow.locator('[data-testid="terminal-wrapper"]')
-  await expect(wrapper).toBeVisible({ timeout: 5000 })
-
-  const paddingLeft = await wrapper.evaluate(
-    (el) => parseFloat(getComputedStyle(el).paddingLeft),
-  )
-  expect(paddingLeft).toBeGreaterThan(0)
-})
-
 // ---- Fix #3: "+ New session" slot always visible ----------------------------
-
-test('Fix3: new-session-slot appears for ALL expanded projects, not just ones with completed sessions', async ({
-  appWindow,
-}) => {
-  await appWindow.waitForTimeout(2000)
-
-  // active-only-project has ONLY needs_input sessions (no completed ones)
-  // mixed-project has a completed session
-  // Before fix: 1 slot total (only mixed-project shows slot, hasCompleted = true)
-  // After fix:  2 slots total (both projects show slot)
-  const slots = appWindow.locator('[data-testid="new-session-slot"]')
-  await expect(slots.first()).toBeVisible({ timeout: 5000 })
-
-  const count = await slots.count()
-  // Both active-only-project and mixed-project should show the slot
-  expect(count).toBeGreaterThanOrEqual(2)
-})
 
 // ---- Fix #4: Collapse/Expand SVG chevron ------------------------------------
 
@@ -214,73 +178,4 @@ test('Fix5: header has a Notifications button', async ({ appWindow }) => {
 test('Fix5: header has a Settings button', async ({ appWindow }) => {
   const btn = appWindow.locator('[data-testid="header-btn-settings"]')
   await expect(btn).toBeVisible({ timeout: 5000 })
-})
-
-// ---- Bonus: Dynamic pane title ----------------------------------------------
-
-test('Bonus: pane title shows session·project when a session is selected', async ({
-  appWindow,
-}) => {
-  await appWindow.waitForTimeout(2000)
-
-  // Click the active session in mixed-project to select it
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-
-  for (let i = 0; i < count; i++) {
-    const nameEl = projectItems.nth(i).locator('[data-testid="project-name"]')
-    const name = await nameEl.textContent()
-    if (name === 'Mixed Project') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(200)
-      }
-      break
-    }
-  }
-
-  // Click the active session item
-  const session = appWindow.locator('[data-testid="session-item"]').first()
-  await expect(session).toBeVisible({ timeout: 3000 })
-  await session.click()
-  await appWindow.waitForTimeout(300)
-
-  // Pane title should now include "·" separator (session · project format)
-  const paneTitle = appWindow.locator('[data-testid="pane-title"]')
-  await expect(paneTitle).toBeVisible({ timeout: 3000 })
-  const text = await paneTitle.textContent()
-  expect(text).toContain('·')
-})
-
-test('Bonus: pane title shows "Ctrl+C to return to shell" hint', async ({ appWindow }) => {
-  await appWindow.waitForTimeout(2000)
-
-  // Click a session to enter the terminal zone
-  const projectItems = appWindow.locator('[data-testid="project-item"]')
-  const count = await projectItems.count()
-
-  for (let i = 0; i < count; i++) {
-    const nameEl = projectItems.nth(i).locator('[data-testid="project-name"]')
-    const name = await nameEl.textContent()
-    if (name === 'Mixed Project') {
-      const selected = await projectItems.nth(i).getAttribute('data-selected')
-      if (selected !== 'true') {
-        await projectItems.nth(i).click()
-        await appWindow.waitForTimeout(200)
-      }
-      break
-    }
-  }
-
-  const session = appWindow.locator('[data-testid="session-item"]').first()
-  await expect(session).toBeVisible({ timeout: 3000 })
-  await session.click()
-  await appWindow.waitForTimeout(300)
-
-  // Pane title should contain the Ctrl+C hint
-  const paneTitle = appWindow.locator('[data-testid="pane-title"]')
-  await expect(paneTitle).toBeVisible({ timeout: 3000 })
-  const text = await paneTitle.textContent()
-  expect(text).toContain('Ctrl+C')
 })

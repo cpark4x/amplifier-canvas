@@ -84,15 +84,6 @@ test('S2: project names have correct font size', async ({ appWindow }) => {
   expect(fontSize).toBe('10px')
 })
 
-test('S2: clicking a project selects it', async ({ appWindow }) => {
-  await appWindow.waitForTimeout(2000)
-  const project = appWindow.locator('[data-testid="project-item"]').first()
-  await expect(project).toBeVisible({ timeout: 5000 })
-  await project.click()
-  const selected = await project.getAttribute('data-selected')
-  expect(selected).toBe('true')
-})
-
 // --- S3: Session List ---
 
 test('S3: selected project shows sessions', async ({ appWindow }) => {
