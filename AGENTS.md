@@ -51,3 +51,11 @@ Each plan ends with an antagonistic review checkpoint.
 - **Two-process model:** Main process (Node.js) owns I/O. Renderer process (Chromium) owns UI.
 - **IPC is the API:** Main and renderer talk via Electron IPC channels.
 - **Canvas reads, Amplifier writes:** Canvas never modifies Amplifier's data.
+- **IPC handlers are domain-grouped:** `ipc.ts` (coordinator + PTY + session), `ipc-files.ts` (file ops + path security), `ipc-project.ts` (project overview/history/stats/context).
+- **DB path:** `~/.amplifier/canvas/canvas.db` (NOT `~/Library/Application Support/`).
+
+## Known Gotchas
+
+- **Native module ABI mismatch:** `better-sqlite3` and `node-pty` must be compiled for Electron's Node version, not the system Node. If the app launches blank with "No handler registered" errors, run `npx electron-rebuild`. The `postinstall` hook handles this after `npm install`, but not after system Node version changes.
+- **SQL quoting in SQLite:** Always use single quotes for string literals (`datetime('now')`). Double quotes mean column identifiers in SQLite — they will silently fail or throw "no such column" errors.
+- **Launching the app:** Use `npm start` (which runs `electron-vite dev`) for development. For production builds, `npm run build && npx electron .` — but always ensure native modules are rebuilt first.
