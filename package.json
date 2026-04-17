@@ -16,10 +16,11 @@
     "dev:browser": "vite --config vite.config.browser.ts",
     "pretest": "npm rebuild better-sqlite3 2>/dev/null",
     "test": "vitest run",
+    "posttest": "electron-rebuild -f -w better-sqlite3 2>/dev/null",
     "test:watch": "vitest",
     "test:e2e": "npx playwright test",
     "prepare": "husky",
-    "precommit": "npm run build && npx playwright test e2e/smoke.spec.ts --reporter=line",
+    "precommit": "electron-rebuild -w better-sqlite3 2>/dev/null; npm run build && npx playwright test e2e/smoke.spec.ts --reporter=line",
     "smoke": "npx playwright test e2e/smoke.spec.ts --reporter=list"
   },
   "devDependencies": {

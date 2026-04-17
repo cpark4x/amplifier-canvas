@@ -194,6 +194,26 @@ it up with the right framing.
 
 ---
 
+## L11. Native-module ABI trap: `npm test` destroys Electron's better-sqlite3 binding.
+
+**Rule:** running `npm test` (vitest) rebuilds better-sqlite3 for Node ABI, which leaves
+Electron unable to load it. Until `electron-rebuild -w better-sqlite3` runs, the app
+launches but every DB query fails. Smoke shows this as S1 pass / S2-S4 fail.
+
+**Evidence:** hit it this session after observing E2E failures (commit a6b9425 prep).
+Smoke ran in 5.7s earlier, then 44s + 3 fails after an intervening `npm test`. One
+`npx electron-rebuild` → back to 5.7s green.
+
+**Structural fix (shipped):**
+- `posttest` script: restores Electron ABI after vitest.
+- `precommit` prepends `electron-rebuild -w better-sqlite3` as a safety net.
+  Idempotent when ABI is already correct, so normal commits stay fast.
+
+**What to do:** if smoke ever fails with S1 green / S2+ failing, first move is
+`npx electron-rebuild` — not code inspection.
+
+---
+
 ## Additions
 
 When a new pattern emerges, add an L-numbered entry with: **Rule**, **Evidence** (SHAs
