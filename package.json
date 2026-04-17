@@ -17,7 +17,10 @@
     "pretest": "npm rebuild better-sqlite3 2>/dev/null",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "npx playwright test",
+    "prepare": "husky",
+    "precommit": "npm run build && npx playwright test e2e/smoke.spec.ts --reporter=line",
+    "smoke": "npx playwright test e2e/smoke.spec.ts --reporter=list"
   },
   "devDependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -32,6 +35,7 @@
     "electron": "^35.0.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^3.1.0",
+    "husky": "^9.1.7",
     "playwright": "^1.52.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

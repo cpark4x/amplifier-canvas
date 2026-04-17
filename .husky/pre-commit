@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# Canvas commit gate. Blocks broken commits from landing on main.
+#
+# Rule: if the app doesn't launch + run a basic session, you don't commit.
+# Run time target: < 15 seconds on a warm cache.
+#
+# To bypass in a genuine emergency (rare): git commit --no-verify
+# Bypasses must be justified in the commit body.
+
+set -e
+
+echo "🔒 pre-commit: build + smoke test"
+echo ""
+
+# Step 1: production build must succeed (catches type errors, missing imports).
+npm run build
+
+echo ""
+
+# Step 2: smoke test must pass (catches runtime regressions in the usability gate).
+npx playwright test e2e/smoke.spec.ts --reporter=line
+
+echo ""
+echo "✅ pre-commit: app is usable. Proceeding with commit."
