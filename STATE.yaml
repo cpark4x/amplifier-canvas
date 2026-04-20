@@ -1,142 +1,229 @@
 # Amplifier Canvas — Build State
-# Read this at every session start.
+# Source of truth for current project state. Read at every session start.
+#
+# Keep ruthlessly current. A stale STATE.yaml makes agents base decisions on
+# outdated reality. If you ship something and don't update this file, you
+# have not shipped.
 
-phase: "Workspace Model — implementation complete, pending verification"
+last_updated: 2026-04-20
+branch: main
 
-completed_acts:
-  act1:
+phase:
+  name: "Stabilization complete — awaiting product-UX decisions"
+  summary: |
+    All 4 Acts have shipped implementations. A stabilization sweep on
+    2026-04-20 eliminated the viewMode regression class, installed a
+    commit gate that enforces green build + smoke, and removed 2,904
+    lines of false-signal tests. The floor is high; product-UX gaps
+    from user dogfood are the next frontier.
+
+# -----------------------------------------------------------------------------
+# SHIPPED ACTS
+# -----------------------------------------------------------------------------
+shipped:
+  act_1:
     name: "Getting Started"
-    scenes: [1.1, 1.2, 1.3]
-    status: done
-    merged: "PR #2, PR #3"
+    scenes: [1.1, 1.2, 1.3, 1.4]
+    merged_in: "PR #2, PR #3, rebuild in eb1e9af"
 
-  act2:
+  act_2:
     name: "Your First Session"
     scenes: [2.1, 2.2, 2.3, 2.4]
-    status: done
-    merged: "PR #4"
+    merged_in: "PR #4, rebuild in eb1e9af"
     deferred:
       - scene: 2.5
         name: "App Preview (embedded localhost webview)"
-        reason: "Distinct engineering surface — PTY output parsing for localhost URLs + live webview. Deferred indefinitely."
+        reason: "Distinct engineering surface — PTY parsing for localhost URLs + live webview. Deferred indefinitely."
 
-completed_acts_continued:
-  act3_phase1:
-    name: "Session Awareness"
-    scenes: [3.5, 3.2, 3.8]
-    status: done
-    merged: "PR #6"
-    design: "docs/plans/2026-04-09-act3-design.md"
-    delivered: "Session completion lifecycle, toast notifications, session history with resume, UI polish (header buttons, terminal padding, dynamic pane title)"
+  act_3:
+    name: "Session Awareness & Intelligence"
+    scenes: [3.1, 3.2, 3.5, 3.8]
+    merged_in: "PR #6 (phase 1), then a80acbd, cb9a65f, 12fef05, 5e4a0fc, b93aa00"
+    delivered: |
+      Completion lifecycle, toast notifications, session history with resume,
+      smart history (filters noise, pins resumable, batch dismiss), session
+      intelligence (one-liners, root/agent distinction, classification,
+      grouping), worktree popover, analysis badges, session summaries.
 
-current_work:
-  workspace_model:
-    name: "Workspace Model"
-    plan: "docs/plans/2026-04-10-workspace-model-implementation.md"
-    status: done
-    delivered:
-      - "Workspace DB (projects table, workspace_state table)"
-      - "Project discovery via amplifier CLI"
-      - "Register/unregister project IPC"
-      - "Hide session / stop session IPC"
-      - "Workspace state save/restore (sidebar, selection, expanded)"
-      - "AddProjectModal (create new + add existing with discovery)"
-      - "ContextMenu (right-click remove project, remove/stop session)"
-      - "Sidebar expand/collapse per project"
-      - "Stopped session status rendering"
-      - "Running sessions toast on quit"
-    commits:
-      - "fd3994e: ContextMenu + Sidebar integration (Task 12)"
-      - "51fcb14: App.tsx wiring + AddProjectModal + state restore (Task 13)"
-      - "244939b: Stopped status rendering (Task 14)"
+  act_4:
+    name: "Project Intelligence"
+    scenes: [3.3, 3.4, 3.6, 3.7]
+    merged_in: "f37493d, 1a89c4f, c388eef, c47d2dc, 11292d7, 3ce768a, 8ba074d, a74ca1c"
+    delivered: |
+      Project view container + routing, Overview tab (project-level dashboard,
+      assessment, outcomes, stats), History tab (human sessions primary, agent
+      usage card), Stats tab, repository metadata, session analysis service,
+      file browser integration.
 
-upcoming:
-  act3_phase2:
-    name: "Session Intelligence"
-    scenes: [3.3, 3.4]
-    design: "docs/plans/2026-04-09-act3-design.md"
-    delivers: "AI analysis tab, git/PR changes tab"
+# -----------------------------------------------------------------------------
+# INFRASTRUCTURE & MODEL
+# -----------------------------------------------------------------------------
+workspace_model:
+  status: done
+  scope: "DB schema (registered/hidden projects, workspace_state), discovery, register/unregister/hide/stop IPC, state save/restore, AddProjectModal, ContextMenu, expand/collapse, stopped status rendering."
+  commits: ["fd3994e", "51fcb14", "244939b"]
 
-  act3_phase3:
-    name: "Parallel Sessions"
-    scenes: [3.1]
-    delivers: "Multi-session with git worktree isolation"
+hardening:
+  # Quality layered on shipped Acts.
+  startup:
+    - "Pull-based IPC hydration eliminated startup race conditions (PR #11, b950b31)"
+    - "Background discovery + worker thread for stats (2c44190)"
+    - "React ErrorBoundary around main content panels (6594d27)"
+  data_integrity:
+    - "DOMPurify sanitizes CodeRenderer innerHTML (34dc129)"
+    - "Hidden sessions no longer leak into sidebar (b854f90)"
+    - "Session stats populated for all projects (57bf092)"
+    - "SQL single-quote correctness in updateLastVisited (ecee440)"
+    - "promptCount updates for active sessions, not just finalized (ef855b8)"
+    - "Widened commit correlation for session summaries (571eabb)"
+  architecture:
+    - "ipc.ts decomposed into domain-grouped modules: ipc.ts / ipc-files.ts / ipc-project.ts (7858171)"
+  tests:
+    - "Integration tests for data pipeline + DB indexes (0c2b70d)"
 
-  act3_phase4:
-    name: "Project Memory"
-    scenes: [3.6, 3.7]
-    delivers: "Cross-session aggregation, AI assessment, project stats"
+# -----------------------------------------------------------------------------
+# STABILIZATION SWEEP (2026-04-20)
+# -----------------------------------------------------------------------------
+stabilization_sweep_2026_04_20:
+  purpose: |
+    Raise the floor structurally. Stop the thrash pattern where fixes were
+    reverted, tests tolerated broken state, and bug classes returned.
+  commits:
+    - "55a8132 — fix viewMode regression + add smoke gate"
+    - "f06a7df — husky pre-commit gate (build + smoke must pass)"
+    - "aebfb43 — fill LESSONS.md with 11 evidence-linked patterns"
+    - "a6b9425 — delete 9 orphaned E2E specs (−2,788 lines)"
+    - "d80414f — close native-module ABI trap (postinstall + posttest hooks)"
+    - "7c72ff5 — remove 5 pre-existing E2E failures"
+    - "44fdb33 — thrash audit doc (top-5 files, 3 failure modes, ranked plays)"
+    - "8816c33 — enterTerminalView helper (regression class structurally dead)"
+  results:
+    - "31/31 E2E tests green"
+    - "Commit gate rejects any broken state"
+    - "viewMode regression structurally impossible (single activation path)"
+    - "ABI trap cannot recur (automated rebuild hooks)"
+    - "Re-audit scheduled for 2026-05-15"
 
-features:
-  # Act 1 — Getting Started
-  T1: { name: Electron shell, status: done }
-  T2: { name: xterm.js terminal, status: done }
-  T3: { name: PTY pipe, status: done }
-  T4: { name: CLI launch command, status: done }
-  T5: { name: Keyboard fidelity, status: done }
-  S1: { name: Layout split, status: done }
-  S2: { name: Project list, status: done }
-  S3: { name: Session list, status: done }
-  S4: { name: Collapse/expand toggle, status: done }
-  S5: { name: macOS title bar integration, status: done }
-  # Act 2 — Your First Session (Viewer Wiring)
-  V1: { name: Viewer panel shell + width animation, status: done }
-  V2: { name: File browser with browse button, status: done }
-  V3: { name: Provenance tracking (Opened by Amplifier / you), status: done }
-  V4: { name: Recent files section with operation badges, status: done }
-  V5: { name: Tab system + multi-file support, status: done }
-  # Act 3 Phase 1 — Session Awareness
-  D1: { name: SessionState fields + types, status: done }
-  D2: { name: DB schema migration + finalizeSession, status: done }
-  D3: { name: extractFirstPrompt, status: done }
-  D4: { name: extractSessionStats + deriveSessionTitle, status: done }
-  D5: { name: Scanner enrichment pipeline, status: done }
-  D6: { name: Watcher enrichment (live completion), status: done }
-  D7: { name: Store toast state + completion detection, status: done }
-  D8: { name: Toast component, status: done }
-  D9: { name: Sidebar status dots + history + new session slot, status: done }
-  D10: { name: Session resume IPC + button wiring, status: done }
-  # UI Polish
-  P1: { name: Terminal padding, status: done }
-  P2: { name: Header buttons (layout/notifications/settings) + logo, status: done }
-  P3: { name: Dynamic pane title + Ctrl+C hint, status: done }
-  P4: { name: SVG chevrons for sidebar collapse, status: done }
-  P5: { name: New session slot always visible, status: done }
-  # Workspace Model
-  W1: { name: Workspace DB schema + migrations, status: done }
-  W2: { name: Project discovery via amplifier CLI, status: done }
-  W3: { name: Register/unregister project IPC, status: done }
-  W4: { name: Hide session IPC, status: done }
-  W5: { name: Stop session IPC, status: done }
-  W6: { name: Workspace state save/restore IPC, status: done }
-  W7: { name: Running sessions toast IPC, status: done }
-  W8: { name: Store workspace actions, status: done }
-  W9: { name: AddProjectModal component, status: done }
-  W10: { name: ContextMenu component, status: done }
-  W11: { name: Sidebar expand/collapse + context menu wiring, status: done }
-  W12: { name: App.tsx wiring (AddProjectModal + state restore), status: done }
-  W13: { name: Stopped status rendering, status: done }
-
-review_1A:
-  status: passed
-  date: 2026-04-08
-  findings_fixed:
-    - "IPC handler leak on macOS reactivation — fixed in 5a5a235"
-    - "PTY exit not forwarded to renderer — fixed in 5a5a235"
-    - "Initial resize not sent after fit — fixed in 5a5a235"
-  minor_open:
-    - "sandbox: false is intentional (node-pty) — document the tradeoff"
-    - "No CSP meta tag — add before release"
-
+# -----------------------------------------------------------------------------
+# TEST HEALTH
+# -----------------------------------------------------------------------------
 test_health:
-  status: "5 pre-existing failures fixed (9e85ec8)"
-  remaining: "S6 may still be flaky — investigate next session if observed"
-  known_issues:
-    - "Unit tests: Node.js v24 ESM cycle error (ERR_REQUIRE_CYCLE_MODULE) — pre-existing, not related to workspace model"
-    - "E2E tests: Electron app launch >120s in CI-style invocation — pre-existing"
+  e2e:
+    count: 31
+    passing: 31
+    failing: 0
+    specs:
+      - e2e/app.spec.ts
+      - e2e/cli.spec.ts
+      - e2e/db-migration.spec.ts
+      - e2e/ipc-bridge.spec.ts
+      - e2e/sidebar.spec.ts
+      - e2e/smoke.spec.ts
+      - e2e/ui-polish.spec.ts
+  unit:
+    runner: "vitest (+ node:test / assert/strict for main-process tests)"
+    known_issues:
+      - "Node.js v24 ESM cycle error (ERR_REQUIRE_CYCLE_MODULE) — pre-existing, tracked separately"
+  gate: "husky pre-commit runs 'build + smoke' — broken state cannot land"
+  review_1A:
+    date: 2026-04-08
+    status: passed
+    fixed_then:
+      - "IPC handler leak on macOS reactivation (5a5a235)"
+      - "PTY exit not forwarded to renderer (5a5a235)"
+      - "Initial resize not sent after fit (5a5a235)"
+    still_open:
+      - "sandbox: false is intentional (node-pty) — documented tradeoff"
+      - "No CSP meta tag — add before release"
 
-open_items:
-  - "Fix #2: Native folder picker for project selection (UX improvement)"
-  - "Scene 2.5: App Preview (deferred indefinitely)"
+# -----------------------------------------------------------------------------
+# OPEN PRODUCT GAPS
+# -----------------------------------------------------------------------------
+# From transcript analysis of user complaints 2026-03-20 → 2026-04-17
+# (163 friction messages across 897 sessions → 17 distinct complaints).
+# "Canvas UX" = addressable from this repo. "Out of scope" = Amplifier-core
+# or bundle issues, not Canvas code.
+open_product_gaps:
+  canvas_ux_untouched:
+    - id: complaint_02
+      description: "Terminal padding felt invisible"
+      reports: 18
+      severity: high
+      status: "unclear — PAD_V/PAD_H exists in Terminal.tsx:140; verify shipped value matches complaint"
+    - id: complaint_05
+      description: "Manual file path input required; AddProject flow confusing"
+      reports: 5
+      severity: high
+      status: untouched
+    - id: complaint_06
+      description: "Implementation drifts from canvas.html design spec"
+      reports: 4
+      severity: high
+      status: "drift report pending (Phase F of doc cleanup)"
+    - id: complaint_07
+      description: "Sidebar/settings/new-session buttons ugly, confusing"
+      reports: 4
+      severity: medium
+      status: untouched
+    - id: complaint_10
+      description: "Feels flat, generic AI-vibed"
+      reports: 2
+      severity: medium
+      status: untouched
+    - id: complaint_13
+      description: "Can't find amplifier-canvas in project list"
+      reports: 1
+      severity: high
+      status: untouched
+    - id: complaint_14
+      description: "Unclear section header / purpose"
+      reports: 1
+      severity: low
+      status: untouched
+    - id: complaint_15
+      description: "Metrics accuracy unverified: 36 sessions, 696 prompts, 0 commits"
+      reports: 1
+      severity: medium
+      status: untouched
+  structurally_defended:
+    - id: complaint_11
+      description: "Works in chat, doesn't work in app"
+      reports: 2
+      status: "commit gate rejects claim/reality gap (f06a7df)"
+    - id: complaint_16
+      description: "Terminal content not matching expected state"
+      reports: 1
+      status: "enterTerminalView addresses display-sync class (8816c33)"
+  out_of_scope:
+    # Amplifier-core/recipe/bundle issues — not addressable from this repo.
+    - "Sessions hang during antagonist review (25 reports) — Amplifier recipe/core"
+    - "Antagonist review repeatedly fails (8 reports) — recipe"
+    - "CLI 'Prompt required' errors (6 reports) — user-typed flag, Canvas spawn is correct"
+    - "Sessions fail overnight (3 reports) — Amplifier-core"
+    - "parallel-diff-review missing (2 reports) — superpowers bundle"
+    - "Parallel session misleading status (1 report) — Amplifier status reporting"
 
-next_action: "Verify workspace model (build + E2E), then finish (PR or merge)"
+# -----------------------------------------------------------------------------
+# KNOWLEDGE ARTIFACTS
+# -----------------------------------------------------------------------------
+lessons:
+  file: LESSONS.md
+  count: 11
+  read_at: "every session start"
+
+audits:
+  thrash:
+    file: docs/audits/2026-04-thrash-audit.md
+    re_audit: 2026-05-15
+
+# -----------------------------------------------------------------------------
+# NEXT ACTION
+# -----------------------------------------------------------------------------
+next_action: |
+  Doc cleanup in progress.
+    Phase A (STATE.yaml reconciliation) — complete (this commit)
+    Phase B–F — awaiting D1–D5 user decisions (see conversation log)
+
+  Likely highest-leverage product move after doc cleanup: produce a drift
+  report comparing shipped UI vs canvas.html (addresses user complaint #06).
+  Then prioritize the remaining untouched Canvas UX gaps against the drift.
