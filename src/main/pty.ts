@@ -67,6 +67,14 @@ export function setPtyProject(ptyId: string, projectSlug: string): void {
 }
 
 /**
+ * Look up the project slug for a PTY ID.
+ * Returns null if the PTY wasn't Canvas-spawned or the ID is unknown.
+ */
+export function getPtyProject(ptyId: string): string | null {
+  return ptyProjectMap.get(ptyId) ?? null
+}
+
+/**
  * Check if Canvas has an active PTY for a given project slug.
  * Used by the watcher to determine if a new Amplifier session was Canvas-initiated.
  */
@@ -109,6 +117,29 @@ export function resizePty(sessionId: string, cols: number, rows: number): void {
   if (ptyProcess) {
     ptyProcess.resize(cols, rows)
   }
+}
+
+/**
+ * Re-key a PTY from one ID to another. The process stays the same —
+ * only the map entries move. Used when an optimistic session (terminal-proj-123)
+ * gets promoted to a real Amplifier session ID (abc123) so there's one ID everywhere.
+ */
+export function renamePty(oldId: string, newId: string): boolean {
+  const proc = ptyProcesses.get(oldId)
+  if (!proc) return false
+  ptyProcesses.delete(oldId)
+  ptyProcesses.set(newId, proc)
+  // Move output buffer
+  const buf = outputBuffers.get(oldId) ?? ''
+  outputBuffers.delete(oldId)
+  outputBuffers.set(newId, buf)
+  // Move project mapping
+  const slug = ptyProjectMap.get(oldId)
+  if (slug) {
+    ptyProjectMap.delete(oldId)
+    ptyProjectMap.set(newId, slug)
+  }
+  return true
 }
 
 export function killPty(sessionId: string): void {

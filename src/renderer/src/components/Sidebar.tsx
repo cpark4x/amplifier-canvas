@@ -31,7 +31,7 @@ interface Project {
 
 // ---- Helpers ----------------------------------------------------------------
 
-const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input', 'loading'])
+const ACTIVE_STATUSES = new Set<SessionStatus>(['running', 'active', 'needs_input', 'loading', 'creating'])
 const COMPLETED_STATUSES = new Set<SessionStatus>(['done', 'failed', 'stopped'])
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
@@ -42,6 +42,7 @@ const STATUS_COLORS: Record<SessionStatus, string> = {
   failed: '#EF4444',
   loading: '#6B7280',
   stopped: '#6B7280',
+  creating: '#6B7280',
 }
 
 /**
@@ -556,7 +557,10 @@ function UnifiedSessionRow({ session, isSelected, onSelect }: SessionRowProps): 
   let statusLabel = ''
   let statusColor = 'var(--text-very-muted)'
 
-  if (session.status === 'running' || session.status === 'active') {
+  if (session.status === 'creating') {
+    statusLabel = 'creating\u2026'
+    statusColor = 'var(--text-very-muted)'
+  } else if (session.status === 'running' || session.status === 'active') {
     statusLabel = isJustStarted(session.startedAt) ? 'just started' : 'running'
     statusColor = 'var(--amber)'
   } else if (session.status === 'needs_input') {
