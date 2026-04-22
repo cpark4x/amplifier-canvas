@@ -19,6 +19,12 @@ interface RegisteredProject {
   path: string
 }
 
+interface CreatingSessionInfo {
+  ptyId: string
+  projectSlug: string
+  optimisticId: string
+}
+
 interface CanvasStore {
   // State
   sessions: SessionState[]
@@ -30,11 +36,16 @@ interface CanvasStore {
   toasts: Toast[]
   viewMode: 'session' | 'project'
   analysisStatusMap: Record<string, AnalysisStatus>
+  // Terminal state (moved from App.tsx local state to enable store-driven sync)
+  terminalSessionId: string | null
+  showTerminal: boolean
+  creatingSession: CreatingSessionInfo | null
+
 
   // Actions
   setSessions: (sessions: SessionState[]) => void
   addSessions: (sessions: SessionState[]) => void
-  addOptimisticSession: (projectSlug: string, projectName: string) => void
+  addOptimisticSession: (projectSlug: string, projectName: string, ptyId?: string) => void
   registerProject: (slug: string, name: string, path?: string) => void
   unregisterProject: (slug: string) => void
   setViewMode: (mode: 'session' | 'project') => void
@@ -49,6 +60,11 @@ interface CanvasStore {
   dismissToast: (id: string) => void
   setAnalysisStatus: (sessionId: string, status: AnalysisStatus) => void
   getAnalysisStatus: (sessionId: string) => AnalysisStatus
+  enterTerminalView: (sessionId: string) => void
+  setShowTerminal: (show: boolean) => void
+  setTerminalSessionId: (id: string | null) => void
+  cancelCreatingSession: () => void
+  promoteCreatingSession: (realSessionId: string) => void
 
   // Derived
   getProjects: () => Project[]
@@ -67,6 +83,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   viewerOpen: false,
   toasts: [],
   analysisStatusMap: {},
+  terminalSessionId: null,
+  showTerminal: false,
+  creatingSession: null,
 
   // Actions
   setSessions: (incoming) => {
@@ -115,6 +134,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     const optimistic = current.filter((s) => s.id.startsWith('optimistic-'))
     let mergedSessions = [...visibleIncoming]
     let newSelectedId = selectedId
+    let newCreatingSession = get().creatingSession
+    let newTerminalSessionId: string | undefined
 
     for (const opt of optimistic) {
       const realMatch = visibleIncoming.find(
@@ -125,13 +146,34 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         // Transfer selection from placeholder to real session
         newSelectedId = realMatch.id
       }
+      if (realMatch) {
+        // Session promoted from creating → real.
+        // Re-key the PTY from the synthetic ID to the real session ID so
+        // there's one ID everywhere. No bridge map needed.
+        if (newCreatingSession?.optimisticId === opt.id) {
+          const oldPtyId = newCreatingSession.ptyId
+          window.electronAPI?.renamePty(oldPtyId, realMatch.id)
+          // If the terminal is currently showing the synthetic PTY, switch it
+          // to the real ID. The terminal remounts (React key change) but
+          // replays the buffer so the user sees nothing.
+          if (get().terminalSessionId === oldPtyId) {
+            newTerminalSessionId = realMatch.id
+          }
+          newCreatingSession = null
+        }
+      }
       // If no real match yet, keep the placeholder visible
       if (!realMatch) {
         mergedSessions.push(opt)
       }
     }
 
-    set({ sessions: mergedSessions, selectedSessionId: newSelectedId })
+    set({
+      sessions: mergedSessions,
+      selectedSessionId: newSelectedId,
+      creatingSession: newCreatingSession,
+      ...(newTerminalSessionId ? { terminalSessionId: newTerminalSessionId } : {}),
+    })
   },
 
   addSessions: (incoming) => {
@@ -143,7 +185,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     }
   },
 
-  addOptimisticSession: (projectSlug, projectName) => {
+  addOptimisticSession: (projectSlug, projectName, ptyId?) => {
     // Add a placeholder session immediately so it appears in the sidebar
     // before the watcher IPC arrives. The placeholder uses a synthetic ID
     // prefixed with 'optimistic-' so setSessions can replace it.
@@ -153,7 +195,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       id: `optimistic-${projectSlug}-${Date.now()}`,
       projectSlug,
       projectName,
-      status: 'active',
+      status: 'creating',
       startedAt: new Date().toISOString(),
       startedBy: 'canvas',
       byteOffset: 0,
@@ -164,6 +206,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     set((state) => ({
       sessions: [...state.sessions, placeholder],
       selectedSessionId: placeholder.id,
+      ...(ptyId ? { creatingSession: { ptyId, projectSlug, optimisticId: placeholder.id } } : {}),
     }))
   },
 
@@ -221,6 +264,45 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     })),
 
   getAnalysisStatus: (sessionId) => get().analysisStatusMap[sessionId] ?? 'none',
+
+  enterTerminalView: (sessionId) => set({
+    viewMode: 'session' as const,
+    terminalSessionId: sessionId,
+    showTerminal: true,
+  }),
+
+  setShowTerminal: (show) => set({ showTerminal: show }),
+  setTerminalSessionId: (id) => set({ terminalSessionId: id }),
+
+  cancelCreatingSession: () => {
+    const creating = get().creatingSession
+    if (!creating) return
+    set((state) => ({
+      sessions: state.sessions.filter((s) => s.id !== creating.optimisticId),
+      selectedSessionId: state.selectedSessionId === creating.optimisticId ? null : state.selectedSessionId,
+      creatingSession: null,
+      terminalSessionId: state.terminalSessionId === creating.ptyId ? null : state.terminalSessionId,
+      showTerminal: state.terminalSessionId === creating.ptyId ? false : state.showTerminal,
+    }))
+  },
+
+  promoteCreatingSession: (realSessionId) => {
+    const creating = get().creatingSession
+    if (!creating) return
+    // The main process already renamed the PTY from terminal-proj-123 → realSessionId.
+    // Now update the store: replace the optimistic placeholder with a real session stub,
+    // transfer selection, and update terminalSessionId. One ID everywhere.
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === creating.optimisticId
+          ? { ...s, id: realSessionId, status: 'active' as const, title: 'New session' }
+          : s
+      ),
+      selectedSessionId: state.selectedSessionId === creating.optimisticId ? realSessionId : state.selectedSessionId,
+      terminalSessionId: state.terminalSessionId === creating.ptyId ? realSessionId : state.terminalSessionId,
+      creatingSession: null,
+    }))
+  },
 
   // Derived
   getProjects: () => {

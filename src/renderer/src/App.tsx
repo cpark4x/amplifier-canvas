@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import TerminalComponent from './components/Terminal'
 import Sidebar from './components/Sidebar'
 import Viewer from './components/Viewer'
@@ -39,6 +39,11 @@ if (typeof window !== 'undefined' && window.electronAPI) {
       message: `${count} ${count === 1 ? 'session is' : 'sessions are'} still running. They'll continue in the background.`,
     })
   })
+  // PTY session capture: main process detected a real session ID from PTY output.
+  // This fires BEFORE the file watcher — it's the primary promotion path.
+  window.electronAPI.onPtySessionCaptured(({ sessionId }) => {
+    useCanvasStore.getState().promoteCreatingSession(sessionId)
+  })
 }
 
 // Inline button style for header icon buttons (no hover state in inline styles —
@@ -74,25 +79,41 @@ function App(): React.ReactElement {
 
   const [showModal, setShowModal] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [showTerminal, setShowTerminal] = useState(false)
-  // The terminal PTY session ID — either an Amplifier session ID (resume) or a
-  // synthetic ID like 'terminal-<slug>' (new session, before Amplifier assigns one)
-  const [terminalSessionId, setTerminalSessionId] = useState<string | null>(null)
+  // Terminal state lives in the store so setSessions can sync IDs on promotion
+  const terminalSessionId = useCanvasStore((s) => s.terminalSessionId)
+  const showTerminal = useCanvasStore((s) => s.showTerminal)
   const hasSession = selectedSessionId !== null || showTerminal
+
+  // Ref for the pending 'amplifier\r' setTimeout — cleared on session switch
+  // to prevent firing into an abandoned background PTY.
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Single entry point for activating the terminal pane. Guarantees viewMode
   // is cleared so <Terminal> renders instead of <ProjectView>. ALL code paths
   // that want the terminal visible MUST go through this.
   //
-  // Context: view-mode regressions were the single most-thrashed bug class
-  // in the renderer (see docs/audits/2026-04-thrash-audit.md). Before this
-  // helper, four separate handlers each had to remember to call
-  // setViewMode('session') before showing the terminal. Forgetting once
-  // left the terminal hidden forever. This helper makes forgetting impossible.
+  // Also handles cleanup for session-creation race conditions:
+  //  - Fix 1: Cancels any pending 'amplifier\r' timer
+  //  - Fix 2: Kills orphaned synthetic PTY when switching away during creation
   const enterTerminalView = useCallback((sessionId: string) => {
-    useCanvasStore.getState().setViewMode('session')
-    setTerminalSessionId(sessionId)
-    setShowTerminal(true)
+    // Fix 1: Cancel any pending delayed input (e.g. 'amplifier\r' after 200ms)
+    if (pendingTimerRef.current) {
+      clearTimeout(pendingTimerRef.current)
+      pendingTimerRef.current = null
+    }
+
+    // Fix 2: Kill orphaned PTY if switching away from a creating session
+    const store = useCanvasStore.getState()
+    const creating = store.creatingSession
+    if (creating && creating.ptyId !== sessionId) {
+      // Switching away from a session that's still being created —
+      // kill the synthetic PTY so amplifier doesn't start in the background,
+      // and remove the optimistic placeholder from the sidebar.
+      window.electronAPI?.killPty(creating.ptyId)
+      store.cancelCreatingSession()
+    }
+
+    store.enterTerminalView(sessionId)
   }, [])
 
   // Hydrate store and restore workspace on mount.
@@ -172,8 +193,7 @@ function App(): React.ReactElement {
   // even when another test file in the same Playwright worker has already
   // selected a session or created a project.
   ;(window as unknown as Record<string, unknown>).__resetToWelcome = () => {
-    setShowTerminal(false)
-    useCanvasStore.setState({ selectedSessionId: null, viewerOpen: false })
+    useCanvasStore.setState({ selectedSessionId: null, viewerOpen: false, showTerminal: false, terminalSessionId: null })
   }
 
   // Derive pane title from selected session
@@ -296,24 +316,31 @@ function App(): React.ReactElement {
             const ptyId = `terminal-${projectSlug}-${Date.now()}`
             // Show optimistic placeholder in sidebar immediately
             const rp = useCanvasStore.getState().registeredProjects.find((p) => p.slug === projectSlug)
-            useCanvasStore.getState().addOptimisticSession(projectSlug, rp?.name ?? projectSlug)
+            useCanvasStore.getState().addOptimisticSession(projectSlug, rp?.name ?? projectSlug, ptyId)
             enterTerminalView(ptyId)
             window.electronAPI.spawnPty(ptyId, 80, 24, projectPath, projectSlug).then(() => {
-              setTimeout(() => {
+              pendingTimerRef.current = setTimeout(() => {
                 window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                pendingTimerRef.current = null
               }, 200)
             })
           }}
           onSessionSelect={(sessionId, workDir) => {
             // Switch terminal to this session's PTY (spawn if needed, replay buffer)
             enterTerminalView(sessionId)
-            // Ensure a PTY exists for this session — if newly spawned, resume the session
+            // Ensure a PTY exists for this session — if newly spawned, maybe resume
             window.electronAPI.spawnPty(sessionId, 80, 24, workDir).then((result) => {
               if (result.success && !result.alreadyExists && !sessionId.startsWith('optimistic-')) {
-                // New PTY for a real Amplifier session — auto-resume it
-                setTimeout(() => {
-                  window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
-                }, 200)
+                // New PTY — only auto-resume sessions that are still alive.
+                // Completed sessions (done/failed/stopped) just get a shell for review.
+                const session = useCanvasStore.getState().sessions.find((s) => s.id === sessionId)
+                const isActive = session && (session.status === 'running' || session.status === 'active' || session.status === 'needs_input')
+                if (isActive) {
+                  pendingTimerRef.current = setTimeout(() => {
+                    window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
+                    pendingTimerRef.current = null
+                  }, 200)
+                }
               }
               // If alreadyExists, the PTY is already running — just show it (buffer replay handles display)
             }).catch(() => {
@@ -485,13 +512,14 @@ function App(): React.ReactElement {
                 useCanvasStore.getState().selectProject(slug)
                 useCanvasStore.getState().setExpandedProjectSlugs([slug])
                 // Show optimistic placeholder in sidebar immediately
-                useCanvasStore.getState().addOptimisticSession(slug, projectName)
+                useCanvasStore.getState().addOptimisticSession(slug, projectName, ptyId)
                 setShowModal(false)
                 enterTerminalView(ptyId)
 
                 window.electronAPI.spawnPty(ptyId, 80, 24, projPath, slug).then(() => {
-                  setTimeout(() => {
+                  pendingTimerRef.current = setTimeout(() => {
                     window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                    pendingTimerRef.current = null
                   }, 200)
                 }).catch((err: unknown) => {
                   console.error('[App] spawnPty failed:', err)
@@ -513,13 +541,14 @@ function App(): React.ReactElement {
             useCanvasStore.getState().selectProject(project.slug)
             useCanvasStore.getState().setExpandedProjectSlugs([project.slug])
             // Show optimistic placeholder in sidebar immediately
-            useCanvasStore.getState().addOptimisticSession(project.slug, project.name)
+            useCanvasStore.getState().addOptimisticSession(project.slug, project.name, ptyId)
             setShowModal(false)
             enterTerminalView(ptyId)
 
             window.electronAPI.spawnPty(ptyId, 80, 24, project.path, project.slug).then(() => {
-              setTimeout(() => {
+              pendingTimerRef.current = setTimeout(() => {
                 window.electronAPI.sendTerminalInput(ptyId, 'amplifier\r')
+                pendingTimerRef.current = null
               }, 200)
             })
           }}
@@ -529,12 +558,12 @@ function App(): React.ReactElement {
             useCanvasStore.getState().selectSession(sessionId)
             useCanvasStore.getState().setExpandedProjectSlugs([project.slug])
             setShowModal(false)
-            setTerminalSessionId(sessionId)
-            setShowTerminal(true)
+            enterTerminalView(sessionId)
 
             window.electronAPI.spawnPty(sessionId, 80, 24, project.path).then(() => {
-              setTimeout(() => {
+              pendingTimerRef.current = setTimeout(() => {
                 window.electronAPI.sendTerminalInput(sessionId, `amplifier session resume ${sessionId}\r`)
+                pendingTimerRef.current = null
               }, 200)
             })
           }}

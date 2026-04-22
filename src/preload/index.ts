@@ -17,6 +17,11 @@ const api = {
     return ipcRenderer.invoke(IPC_CHANNELS.PTY_KILL, { sessionId })
   },
 
+  // Re-key a PTY from one ID to another (process stays the same)
+  renamePty: (oldId: string, newId: string): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PTY_RENAME, { oldId, newId })
+  },
+
   // Get buffered output for a session (for replay on terminal switch)
   getPtyBuffer: (sessionId: string): Promise<string> => {
     return ipcRenderer.invoke(IPC_CHANNELS.PTY_GET_BUFFER, { sessionId })
@@ -42,6 +47,17 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.TERMINAL_DATA, handler)
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.TERMINAL_DATA, handler)
+    }
+  },
+
+  // PTY session capture: main process detected a real Amplifier session ID from PTY output
+  onPtySessionCaptured: (callback: (data: { ptyId: string; sessionId: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { ptyId: string; sessionId: string }): void => {
+      callback(data)
+    }
+    ipcRenderer.on(IPC_CHANNELS.PTY_SESSION_CAPTURED, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PTY_SESSION_CAPTURED, handler)
     }
   },
 

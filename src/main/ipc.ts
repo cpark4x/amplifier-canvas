@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow, shell } from 'electron'
 import { IPC_CHANNELS } from '../shared/types'
 import type { SessionState, FileActivity } from '../shared/types'
-import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject } from './pty'
+import { spawnPty, writeToPty, resizePty, killPty, killAllPtys, getPty, hasPty, appendToBuffer, getBuffer, setPtyProject, getPtyProject, renamePty } from './pty'
 import {
   getSessionById,
   setSessionHidden,
@@ -9,6 +9,7 @@ import {
   getRegisteredProjects,
   getRegisteredProjectCount,
   getVisibleProjectSessions,
+  upsertSession,
 } from './db'
 import { getWorkspaceState, saveWorkspaceState } from './workspace'
 import type { WorkspaceState } from './workspace'
@@ -30,18 +31,77 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   registerProjectHandlers()
 
   // --- Per-session PTY management ---
-  // Helper to attach PTY output/exit listeners that tag data with sessionId
+
+  // Captures Amplifier session ID from PTY output. One-shot per PTY — once captured,
+  // the scanner stops. Amplifier prints: "Session ID: <ansi codes><uuid>"
+  const SESSION_ID_PATTERN = /Session ID:[\s│]*(?:\x1b\[[0-9;]*m)*\s*(?:\x1b\[[0-9;]*m)*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i
+  // Track which PTYs have already captured their session ID (one-shot)
+  const capturedSessions = new Set<string>()
+
+  // Helper to attach PTY output/exit listeners that tag data with sessionId.
+  // currentId is mutable — when the PTY is renamed (synthetic → real session ID),
+  // the closure picks up the new ID so output is tagged correctly.
   function attachPtyListeners(sessionId: string, pty: ReturnType<typeof spawnPty>): void {
+    let currentId = sessionId
+    let scanBuffer = ''
+
     pty.onData((data) => {
-      // Buffer output for replay when switching terminals
-      appendToBuffer(sessionId, data)
+      appendToBuffer(currentId, data)
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, { sessionId, data })
+        mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_DATA, { sessionId: currentId, data })
+      }
+
+      // One-shot session ID capture from PTY output.
+      // Only scan synthetic PTYs (terminal-*) that haven't captured yet.
+      if (sessionId.startsWith('terminal-') && !capturedSessions.has(sessionId)) {
+        const cleaned = data.replace(/\r\x1b\[2K/g, '').replace(/\r(?!\n)/g, '')
+        scanBuffer += cleaned
+        const match = scanBuffer.match(SESSION_ID_PATTERN)
+        if (match) {
+          const realSessionId = match[1]
+          capturedSessions.add(sessionId)
+          console.log(`[pty-capture] Captured session ID: ${sessionId} → ${realSessionId}`)
+          scanBuffer = ''
+
+          // Re-key PTY in all maps
+          renamePty(sessionId, realSessionId)
+          // Update the mutable closure so subsequent onData/onExit use the real ID
+          currentId = realSessionId
+
+          // Write DB row immediately — the session exists now, don't wait for the
+          // file watcher to discover it on disk. The watcher will UPDATE this row
+          // later with stats and status changes from events.jsonl.
+          const projectSlug = getPtyProject(realSessionId) // renamed, so lookup with new ID
+            || getPtyProject(sessionId) // fallback to old ID just in case
+          console.log(`[pty-capture] Project lookup: getPtyProject('${realSessionId}')=${getPtyProject(realSessionId)}, getPtyProject('${sessionId}')=${getPtyProject(sessionId)}`)
+          if (projectSlug) {
+            upsertSession({
+              id: realSessionId,
+              projectSlug,
+              startedBy: 'canvas',
+              startedAt: new Date().toISOString(),
+              status: 'active',
+              byteOffset: 0,
+              hidden: false,
+            })
+            console.log(`[pty-capture] DB row created for ${realSessionId} (project: ${projectSlug})`)
+          }
+
+          // Tell the renderer
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(IPC_CHANNELS.PTY_SESSION_CAPTURED, { ptyId: sessionId, sessionId: realSessionId })
+          }
+        }
+        if (scanBuffer.length > 100_000) {
+          console.log(`[pty-capture] Gave up scanning ${sessionId} (buffer exceeded 100KB)`)
+          capturedSessions.add(sessionId)
+          scanBuffer = ''
+        }
       }
     })
     pty.onExit(({ exitCode, signal }) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { sessionId, exitCode, signal })
+        mainWindow.webContents.send(IPC_CHANNELS.TERMINAL_EXIT, { sessionId: currentId, exitCode, signal })
       }
     })
   }
@@ -80,6 +140,16 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     (_event, { sessionId }: { sessionId: string }): { success: boolean } => {
       killPty(sessionId)
       return { success: true }
+    },
+  )
+
+  // PTY_RENAME: Re-key a PTY from a synthetic ID to the real session ID.
+  // The underlying process is untouched — only the map entries move.
+  ipcMain.handle(
+    IPC_CHANNELS.PTY_RENAME,
+    (_event, { oldId, newId }: { oldId: string; newId: string }): { success: boolean } => {
+      const renamed = renamePty(oldId, newId)
+      return { success: renamed }
     },
   )
 
@@ -334,6 +404,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ipcMain.removeListener(IPC_CHANNELS.TERMINAL_RESIZE, onResize)
     ipcMain.removeHandler(IPC_CHANNELS.PTY_SPAWN)
     ipcMain.removeHandler(IPC_CHANNELS.PTY_KILL)
+    ipcMain.removeHandler(IPC_CHANNELS.PTY_RENAME)
     ipcMain.removeHandler(IPC_CHANNELS.PTY_GET_BUFFER)
     ipcMain.removeHandler(IPC_CHANNELS.LIST_DIR)
     ipcMain.removeHandler(IPC_CHANNELS.READ_TEXT)

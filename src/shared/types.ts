@@ -13,6 +13,7 @@ export const IPC_CHANNELS = {
   // Renderer → Main (invoke/handle)
   PTY_SPAWN: 'pty:spawn',               // payload: { sessionId: string, cwd?: string, cols: number, rows: number }
   PTY_KILL: 'pty:kill',                  // payload: { sessionId: string }
+  PTY_RENAME: 'pty:rename',              // payload: { oldId: string, newId: string } → re-keys a PTY in place
   PTY_GET_BUFFER: 'pty:get-buffer',      // payload: { sessionId: string } → returns string
   SESSION_RESUME: 'session:resume',
   LIST_DIR: 'files:list-dir',
@@ -20,6 +21,7 @@ export const IPC_CHANNELS = {
   GET_ANALYSIS: 'analysis:get',
   TRIGGER_ANALYSIS: 'analysis:trigger',
   // Main → Renderer (push)
+  PTY_SESSION_CAPTURED: 'pty:session-captured',  // payload: { ptyId: string, sessionId: string }
   ANALYSIS_READY: 'analysis:ready',
   // Workspace model channels
   PROJECT_DISCOVER: 'project:discover',
@@ -45,7 +47,7 @@ export const IPC_CHANNELS = {
 
 // --- Session types ---
 
-export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active' | 'loading' | 'stopped'
+export type SessionStatus = 'running' | 'needs_input' | 'done' | 'failed' | 'active' | 'loading' | 'stopped' | 'creating'
 
 export interface FileActivity {
   path: string
