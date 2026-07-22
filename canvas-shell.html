@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Amplifier Canvas — Shell Review</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS (from canvas.html, kept in sync)
+   ============================================================ */
+:root {
+  --bg-page:           #F0EBE3;
+  --bg-header:         #E8E2D8;
+  --bg-sidebar:        #F0EBE3;
+  --bg-sidebar-active: #E8E0D4;
+  --bg-pane-title:     #DDD5C8;
+  --bg-terminal:       #0F0E0C;
+  --bg-right:          #F7F4EF;
+  --bg-modal:          #FAF8F4;
+  --border:            #DDD5C8;
+  --text-primary:      #1C1A16;
+  --text-muted:        #8A8278;
+  --text-very-muted:   #A09888;
+  --text-terminal:     #C8C4BC;
+  --amber:             #F59E0B;
+  --green:             #4CAF74;
+  --font-ui:           -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  --font-mono:         'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button { font-family: var(--font-ui); cursor: pointer; }
+ul { list-style: none; }
+
+/* ============================================================
+   PAGE
+   ============================================================ */
+body {
+  background: var(--bg-page);
+  font-family: var(--font-ui);
+  padding: 48px 0;
+  min-width: 1440px;
+  color: var(--text-primary);
+}
+
+.doc-banner {
+  max-width: 1440px;
+  margin: 0 auto 32px;
+  padding: 16px 20px;
+  background: var(--bg-right);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: 3px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.doc-banner strong { font-weight: 600; }
+.doc-banner p { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
+
+.screen-wrapper { max-width: 1440px; margin: 0 auto 64px; }
+.screen-label {
+  display: flex; align-items: baseline; gap: 12px; padding: 0 0 12px;
+}
+.screen-label-step {
+  font-size: 11px; text-transform: uppercase; color: var(--amber);
+  font-weight: 600; letter-spacing: 0.1em;
+}
+.screen-label-title {
+  font-size: 16px; font-weight: 600; color: var(--text-primary);
+}
+.screen-label-desc { font-size: 13px; color: var(--text-muted); }
+
+/* ============================================================
+   SCREEN CONTAINER
+   ============================================================ */
+.screen {
+  width: 1440px;
+  height: 900px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  background: var(--bg-page);
+}
+
+/* ============================================================
+   APP HEADER (38px, drag region w/ 80px left padding for traffic lights)
+   ============================================================ */
+.app-header {
+  height: 38px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 80px;
+  flex-shrink: 0;
+}
+.app-header-left { display: flex; align-items: center; gap: 8px; }
+.logo-mark { width: 22px; height: 22px; flex-shrink: 0; display: block; }
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.app-header-right { display: flex; align-items: center; gap: 2px; }
+.header-icon-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text-very-muted);
+  background: none; border: none; border-radius: 3px; line-height: 1;
+}
+.header-icon-btn:hover { background: rgba(0,0,0,0.06); }
+.traffic-lights {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; gap: 8px;
+}
+.traffic-dot { width: 12px; height: 12px; border-radius: 50%; }
+.traffic-dot.close  { background: #FF5F57; }
+.traffic-dot.min    { background: #FEBC2E; }
+.traffic-dot.max    { background: #28C840; }
+.app-header { position: relative; }
+
+/* ============================================================
+   BODY ROW (flex: 1)
+   ============================================================ */
+.body-row { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+/* ============================================================
+   SIDEBAR (200px)
+   ============================================================ */
+.sidebar {
+  width: 200px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+.project-label {
+  padding: 12px 12px 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-very-muted);
+}
+.project-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 12px 4px;
+}
+.project-row .project-label { padding: 0; }
+.project-add-session-btn {
+  font-size: 14px; color: var(--text-very-muted);
+  background: none; border: none; line-height: 1; padding: 0;
+}
+.session-row {
+  height: 36px;
+  padding: 0 12px 0 14px;
+  display: flex; align-items: center; gap: 8px;
+  position: relative;
+}
+.session-row.active { background: var(--bg-sidebar-active); }
+.session-row.active::before {
+  content: ''; position: absolute;
+  left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--amber); border-radius: 0 1px 1px 0;
+}
+.session-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.session-dot.gray  { background: var(--text-very-muted); }
+.session-dot.amber { background: var(--amber); }
+.session-name {
+  font-size: 12px; color: var(--text-primary); flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.session-name.bold { font-weight: 600; }
+.session-age { font-size: 11px; color: var(--text-very-muted); flex-shrink: 0; }
+.sidebar-empty {
+  padding: 32px 16px; font-size: 11px; color: var(--text-very-muted);
+  text-align: center; line-height: 1.6;
+}
+.sidebar-add-project {
+  margin: auto 10px 10px;
+  padding: 8px 14px;
+  font-size: 11px; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 4px;
+  text-align: center; background: none;
+}
+
+/* ============================================================
+   CENTER ZONE
+   ============================================================ */
+.center-zone {
+  flex: 1;
+  display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+}
+
+/* Welcome state */
+.welcome {
+  flex: 1;
+  background: var(--bg-right);
+  display: flex; align-items: center; justify-content: center;
+}
+.welcome-inner {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.welcome-logo { width: 80px; height: 80px; margin-bottom: 20px; }
+.welcome-title {
+  font-size: 28px; font-weight: 700; font-style: italic;
+  color: var(--text-primary); letter-spacing: -0.02em;
+}
+.welcome-sub {
+  font-size: 14px; color: var(--text-muted);
+  margin-top: 8px; max-width: 340px; line-height: 1.5;
+}
+.welcome-btn {
+  margin-top: 24px;
+  padding: 9px 18px;
+  border: 1px solid #3A3530;
+  background: var(--bg-modal);
+  color: var(--text-primary);
+  font-size: 13px; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.welcome-btn .arrow { color: var(--amber); }
+
+/* Terminal state */
+.pane-title {
+  height: 28px;
+  background: var(--bg-pane-title);
+  padding: 0 12px;
+  font-size: 11px; color: var(--text-muted);
+  display: flex; align-items: center;
+  flex-shrink: 0;
+}
+.pane-title-hint {
+  margin-left: auto; font-size: 10px;
+  color: var(--text-very-muted); font-family: var(--font-mono);
+}
+.terminal-area {
+  flex: 1;
+  background: var(--bg-terminal);
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 11.5px; line-height: 1.65;
+  color: var(--text-terminal);
+  overflow: hidden;
+}
+.t { display: block; }
+.t.dim { color: var(--text-muted); }
+.t.success { color: var(--green); }
+.t.blank { display: block; height: 1.65em; }
+.terminal-cursor {
+  display: inline-block;
+  width: 8px; height: 13px;
+  background: var(--amber);
+  vertical-align: middle; margin-left: 1px;
+  position: relative; top: -1px;
+}
+
+/* ============================================================
+   RIGHT PANEL / VIEWER (340px)
+   ============================================================ */
+.right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--bg-right);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.tab-row-primary {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-end;
+  padding: 0 12px; gap: 20px;
+  flex-shrink: 0;
+}
+.tab-primary {
+  font-size: 12px; font-weight: 500;
+  padding-bottom: 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab-primary.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+}
+.tab-row-secondary {
+  height: 30px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 8px; gap: 2px;
+  flex-shrink: 0;
+}
+.browse-btn {
+  width: 22px; height: 22px;
+  background: transparent; border: none;
+  color: var(--text-very-muted); font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px;
+}
+.file-tab {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 3px 8px;
+  color: var(--text-very-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; white-space: nowrap;
+}
+.file-tab.active {
+  color: var(--text-primary); font-weight: 500;
+  border-bottom-color: var(--amber);
+}
+.file-tab-close { font-size: 10px; color: var(--text-very-muted); }
+.panel-content {
+  flex: 1; padding: 16px;
+  overflow: hidden;
+  font-size: 12.5px; line-height: 1.6; color: var(--text-muted);
+}
+
+/* ============================================================
+   PLACEHOLDER MARKERS
+   ============================================================ */
+.placeholder {
+  color: var(--text-very-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 12px;
+  letter-spacing: 0.02em;
+}
+.placeholder-block {
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  padding: 12px;
+  margin: 12px 0;
+  background: rgba(0,0,0,0.01);
+}
+
+/* ============================================================
+   REGION LABELS (UX review overlays)
+   ============================================================ */
+.region-note {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--amber);
+  background: rgba(26, 15, 0, 0.92);
+  padding: 2px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Logo SVG helpers */
+.logo-stroke-dark { stroke: #1C1A16; }
+.logo-stroke-amber { stroke: #C4784A; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     BANNER
+     ============================================================ -->
+<div class="doc-banner">
+  <strong>Canvas Shell — core chrome only, for UX review.</strong>
+  Extracted design tokens from <code>canvas.html</code>; layout regions mirror the shipped <code>App.tsx</code>. Content in each pane is intentionally blank/labelled so you can evaluate proportions, spacing, density, and hierarchy without scene noise.
+  <p>Two canonical states below: <em>Welcome</em> (no session) and <em>Active Session</em> (sidebar + terminal + viewer). Dimensions: 1440 × 900. Header 38 px · sidebar 200 px · pane-title 28 px · viewer 340 px.</p>
+</div>
+
+<!-- ============================================================
+     SCREEN 1 — WELCOME (empty state)
+     ============================================================ -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">STATE 1</span>
+    <span class="screen-label-title">Welcome — no session</span>
+    <span class="screen-label-desc">First run or no project selected. Header + sidebar (empty) + welcome center.</span>
+  </div>
+  <div class="screen">
+
+    <!-- HEADER -->
+    <div class="app-header">
+      <div class="traffic-lights">
+        <span class="traffic-dot close"></span>
+        <span class="traffic-dot min"></span>
+        <span class="traffic-dot max"></span>
+      </div>
+      <div class="app-header-left">
+        <svg class="logo-mark" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="116" y="116" width="240" height="240" rx="28" class="logo-stroke-dark" stroke-width="18" fill="none"/>
+          <rect x="156" y="156" width="240" height="240" rx="28" class="logo-stroke-amber" stroke-width="18" fill="none"/>
+        </svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </button>
+        <button class="header-icon-btn" title="Notifications">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+        <button class="header-icon-btn" title="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body-row">
+
+      <!-- SIDEBAR (empty) -->
+      <aside class="sidebar">
+        <div class="sidebar-empty">
+          ⟨ no projects yet ⟩<br><br>
+          Sessions and projects appear here after creation.
+        </div>
+        <button class="sidebar-add-project">+ Add project</button>
+      </aside>
+
+      <!-- CENTER: welcome -->
+      <main class="center-zone">
+        <div class="welcome">
+          <div class="welcome-inner">
+            <svg class="welcome-logo" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="116" y="116" width="240" height="240" rx="28" class="logo-stroke-dark" stroke-width="18" fill="none"/>
+              <rect x="156" y="156" width="240" height="240" rx="28" class="logo-stroke-amber" stroke-width="18" fill="none"/>
+            </svg>
+            <div class="welcome-title">Welcome to Canvas</div>
+            <div class="welcome-sub">Your workspace for Amplifier sessions, files, and previews.</div>
+            <button class="welcome-btn">Create your first project <span class="arrow">→</span></button>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 2 — ACTIVE SESSION (sidebar + terminal + viewer)
+     ============================================================ -->
+<div class="screen-wrapper">
+  <div class="screen-label">
+    <span class="screen-label-step">STATE 2</span>
+    <span class="screen-label-title">Active session — viewer open</span>
+    <span class="screen-label-desc">Full shell: sidebar populated, terminal pane with title bar, viewer (340 px) on the right with primary + secondary tab rows.</span>
+  </div>
+  <div class="screen">
+
+    <!-- HEADER (same) -->
+    <div class="app-header">
+      <div class="traffic-lights">
+        <span class="traffic-dot close"></span>
+        <span class="traffic-dot min"></span>
+        <span class="traffic-dot max"></span>
+      </div>
+      <div class="app-header-left">
+        <svg class="logo-mark" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="116" y="116" width="240" height="240" rx="28" class="logo-stroke-dark" stroke-width="18" fill="none"/>
+          <rect x="156" y="156" width="240" height="240" rx="28" class="logo-stroke-amber" stroke-width="18" fill="none"/>
+        </svg>
+        <span class="app-name">Amplifier Canvas</span>
+      </div>
+      <div class="app-header-right">
+        <button class="header-icon-btn" title="Layout">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </button>
+        <button class="header-icon-btn" title="Notifications">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+        <button class="header-icon-btn" title="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body-row">
+
+      <!-- SIDEBAR (populated placeholder) -->
+      <aside class="sidebar">
+        <div class="project-row">
+          <span class="project-label">Project Alpha</span>
+          <button class="project-add-session-btn">+</button>
+        </div>
+        <div class="session-row active">
+          <span class="session-dot amber"></span>
+          <span class="session-name bold">⟨ session title ⟩</span>
+          <span class="session-age">2m</span>
+        </div>
+        <div class="session-row">
+          <span class="session-dot gray"></span>
+          <span class="session-name">⟨ session title ⟩</span>
+          <span class="session-age">1h</span>
+        </div>
+        <div class="session-row">
+          <span class="session-dot gray"></span>
+          <span class="session-name">⟨ session title ⟩</span>
+          <span class="session-age">3h</span>
+        </div>
+
+        <div class="project-row">
+          <span class="project-label">Project Beta</span>
+          <button class="project-add-session-btn">+</button>
+        </div>
+        <div class="session-row">
+          <span class="session-dot gray"></span>
+          <span class="session-name">⟨ session title ⟩</span>
+          <span class="session-age">1d</span>
+        </div>
+        <div class="session-row">
+          <span class="session-dot gray"></span>
+          <span class="session-name">⟨ session title ⟩</span>
+          <span class="session-age">2d</span>
+        </div>
+
+        <button class="sidebar-add-project">+ Add project</button>
+      </aside>
+
+      <!-- CENTER: terminal zone -->
+      <main class="center-zone">
+        <div class="pane-title">
+          ⟨ session title ⟩ · Project Alpha
+          <span class="pane-title-hint">Ctrl+C to return to shell</span>
+        </div>
+        <div class="terminal-area">
+          <span class="t dim">⟨ terminal — xterm.js pty ⟩</span>
+          <span class="t blank"></span>
+          <span class="t dim">$ _<span class="terminal-cursor"></span></span>
+        </div>
+      </main>
+
+      <!-- RIGHT PANEL (viewer) -->
+      <aside class="right-panel">
+        <div class="tab-row-primary">
+          <span class="tab-primary active">Files</span>
+          <span class="tab-primary">Activity</span>
+          <span class="tab-primary">Preview</span>
+        </div>
+        <div class="tab-row-secondary">
+          <button class="browse-btn" title="Browse">☰</button>
+          <span class="file-tab active">
+            ⟨ file ⟩ <span class="file-tab-close">×</span>
+          </span>
+          <span class="file-tab">⟨ file ⟩ <span class="file-tab-close">×</span></span>
+        </div>
+        <div class="panel-content">
+          <div class="placeholder-block">
+            ⟨ viewer content ⟩<br>
+            file contents · markdown render · activity feed · preview
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FOOTER NOTES
+     ============================================================ -->
+<div class="doc-banner" style="border-left-color: var(--text-very-muted);">
+  <strong>Regions &amp; dimensions reference</strong>
+  <p style="margin-top: 8px;">
+    • <strong>Header:</strong> 38 px · drag region · 80 px left pad for traffic lights · logo + title left, 3 icon buttons right (Layout / Notifications / Settings)<br>
+    • <strong>Sidebar:</strong> 200 px · collapsible · project groups with session rows · 36 px session row · amber accent for active · bottom-docked "+ Add project" button<br>
+    • <strong>Center zone:</strong> 3 states — Welcome · Project view · Terminal (pane-title 28 px + xterm area on <code>#0F0E0C</code>)<br>
+    • <strong>Right panel / Viewer:</strong> 340 px · optional (<code>viewerOpen</code>) · primary tab row 36 px + secondary file-tab row 30 px
+  </p>
+</div>
+
+</body>
+</html>
